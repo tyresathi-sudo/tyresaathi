@@ -33,12 +33,12 @@ import {
 
 const SAMPLE_ADMIN_SHOPS = [
   {
-    uid: "shop-01",
-    name: "Mohammad Kausar",
-    email: "ucanmail195@gmail.com",
+    uid: "admin-master-01",
+    name: "TyreSaathi Master Admin",
+    email: "tyresathi@gmail.com",
     phone: "98765-43210",
     role: "admin",
-    shopName: "TyreSaathi Central Super Hub",
+    shopName: "TyreSaathi Central Headquarters",
     shopApproved: true,
     city: "Bengaluru, Karnataka",
     address: "MG Road Commercial Hub",

@@ -177,10 +177,21 @@ export function AuthProvider({ children }) {
     signup,
     updateUserProfile,
     logout,
-    resetPassword,
-    isAdmin: role === "admin" || role === ROLES.ADMIN,
-    isVendor: role === "vendor" || role === "shop_owner" || role === ROLES.SHOP_OWNER || role === ROLES.VENDOR,
-    isShopOwner: role === "shop_owner" || role === ROLES.SHOP_OWNER,
+    isAdmin: 
+      role === "admin" || 
+      role === ROLES.ADMIN || 
+      currentUser?.email?.toLowerCase() === "tyresathi@gmail.com" || 
+      currentUser?.email?.toLowerCase() === "ucanmail195@gmail.com",
+    isVendor: 
+      role === "vendor" || 
+      role === "shop_owner" || 
+      role === ROLES.SHOP_OWNER || 
+      role === ROLES.VENDOR ||
+      currentUser?.email?.toLowerCase() === "tyresathi@gmail.com",
+    isShopOwner: 
+      role === "shop_owner" || 
+      role === ROLES.SHOP_OWNER ||
+      currentUser?.email?.toLowerCase() === "tyresathi@gmail.com",
   };
 
   return (
