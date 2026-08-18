@@ -75,9 +75,9 @@ export default function Navbar({ onMenuClick }) {
         <div className="utility-container">
           <div className="top-left-info">
             <span className="top-phone">
-              <Phone size={13} className="phone-icon" /> 080-2667-8473 &nbsp;|&nbsp; 080-3589-3314
+              ⚡ TyreSaathi — India's Verified Tyre & Service Network
             </span>
-            <span className="top-timing">⏰ Support: 8:00 AM - 9:30 PM (All 7 Days)</span>
+            <span className="top-timing">🛡️ 100% Genuine Tyres & Authorized Fitment</span>
           </div>
 
           <div className="top-right-tools">

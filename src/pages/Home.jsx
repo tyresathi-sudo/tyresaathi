@@ -176,9 +176,9 @@ export default function Home() {
                   <Link to="/bookings" className="btn-book">
                     <Calendar size={13} /> Book Service
                   </Link>
-                  <a href={`tel:${p.shopPhone}`} className="btn-call">
-                    <Phone size={13} />
-                  </a>
+                  <Link to="/store-location" className="btn-call" title="View Hub Location">
+                    <MapPin size={13} />
+                  </Link>
                 </div>
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* 📍 6. Store Locator Banner (Matching Photo 2) */}
+      {/* 📍 6. Store Locator Banner */}
       <section className="home-section store-cta-section">
         <div className="store-cta-card">
           <div className="store-cta-text">
@@ -211,10 +211,11 @@ export default function Home() {
               Over 500+ verified tyre shops with 3D Wheel Alignment machines, Nitrogen filling, and genuine tyre stocks.
             </p>
             <div className="store-sample-pills">
-              <span>📍 Bengaluru AMR</span>
-              <span>📍 Erode ATG</span>
+              <span>📍 Bengaluru</span>
               <span>📍 Delhi NCR</span>
               <span>📍 Mumbai</span>
+              <span>📍 Erode</span>
+              <span>📍 Hyderabad</span>
             </div>
             <Link to="/store-location" className="btn-store-explore">
               Open Interactive Store Locator →

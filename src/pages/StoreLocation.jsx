@@ -91,13 +91,10 @@ export default function StoreLocation() {
 
                   <p className="store-address">{shop.address}</p>
 
-                  <div className="store-contact-row">
-                    <span className="store-phone">
-                      <Phone size={13} /> {shop.phone}
-                    </span>
-                    <span className="store-hours">
-                      <Clock size={13} /> {shop.openingHours}
-                    </span>
+                  <div className="store-services-chips">
+                    {shop.servicesOffered?.slice(0, 3).map((svc, idx) => (
+                      <span key={idx} className="svc-chip">✓ {svc}</span>
+                    ))}
                   </div>
 
                   <div className="store-card-actions">
@@ -147,17 +144,21 @@ export default function StoreLocation() {
               </div>
               <div className="popup-rating">
                 <span className="star-num">{selectedShop.rating} ★</span>
-                <span className="reviews-count">({selectedShop.reviewsCount})</span>
+                <span className="reviews-count">({selectedShop.reviewsCount} reviews)</span>
                 <span className="open-badge">
-                  <CheckCircle2 size={13} color="#27ae60" /> Open Now ({selectedShop.openingHours})
+                  <CheckCircle2 size={13} color="#27ae60" /> Verified TyreSaathi Hub
                 </span>
               </div>
               <div className="popup-services">
                 <strong>Services:</strong> {selectedShop.servicesOffered.join(" • ")}
               </div>
               <div className="popup-action-buttons">
-                <a href={`tel:${selectedShop.phone}`} className="popup-call-btn">
-                  <Phone size={14} /> Call {selectedShop.phone}
+                <a
+                  href="/bookings"
+                  className="popup-call-btn"
+                  style={{ background: "#c0392b", color: "white", textDecoration: "none" }}
+                >
+                  📅 Book at this Hub
                 </a>
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedShop.address)}`}
@@ -390,18 +391,19 @@ export default function StoreLocation() {
           line-height: 1.4;
           margin: 0 0 10px;
         }
-        .store-contact-row {
+        .store-services-chips {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
-          font-size: 12px;
-          color: var(--text-muted);
+          flex-wrap: wrap;
+          gap: 6px;
           margin-bottom: 12px;
         }
-        .store-contact-row span {
-          display: flex;
-          align-items: center;
-          gap: 6px;
+        .svc-chip {
+          font-size: 11px;
+          background: var(--surface-2);
+          color: var(--text);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-weight: 600;
         }
         .store-card-actions {
           display: flex;

@@ -229,7 +229,7 @@ export default function AddProduct() {
         published: !isDraft,
         shopId: activeUser?.uid || "demo_shop",
         shopName: activeProfile?.shopName || "TyreSaathi Partner Shop",
-        shopPhone: activeProfile?.phone || "080-2667-8473",
+        shopPhone: activeProfile?.phone || "",
         updatedAt: serverTimestamp(),
       };
 

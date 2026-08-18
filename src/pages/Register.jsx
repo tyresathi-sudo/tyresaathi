@@ -103,7 +103,7 @@ export default function Register() {
               <input
                 value={shopName}
                 onChange={(e) => setShopName(e.target.value)}
-                placeholder="Jaise: Cherry Tyre Park / Raja Tyre Center"
+                placeholder="Jaise: Shree Ram Tyre Care / National Tyre Hub"
                 required
               />
             </div>
