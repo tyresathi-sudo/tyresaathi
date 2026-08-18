@@ -27,9 +27,11 @@ import {
   User, 
   Filter, 
   ChevronRight,
-  Receipt
+  Receipt,
+  Download
 } from "lucide-react";
 import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
+import { exportBookingsToExcel } from "../utils/excelExport";
 
 const INITIAL_DEMO_BOOKINGS = [
   {
@@ -206,9 +208,21 @@ export default function Bookings() {
           </p>
         </div>
 
-        <button className="book-service-cta" onClick={() => setModalOpen(true)}>
-          <Plus size={16} /> Book New Service (नई बुकिंग)
-        </button>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="book-service-cta"
+            style={{ background: "#27ae60" }}
+            onClick={() => exportBookingsToExcel(filteredBookings)}
+            title="Download Bookings as Excel Sheet (.csv)"
+          >
+            <Download size={16} /> 📥 Export to Excel
+          </button>
+
+          <button className="book-service-cta" onClick={() => setModalOpen(true)}>
+            <Plus size={16} /> Book New Service (नई बुकिंग)
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs */}

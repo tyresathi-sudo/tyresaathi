@@ -31,6 +31,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { SERVICE_TYPES, MEGA_MENU_BRANDS } from "../config/tyreCatalog";
+import { exportInvoicesToExcel } from "../utils/excelExport";
 
 const INITIAL_DEMO_INVOICES = [
   {
@@ -855,6 +856,16 @@ export default function Billing() {
                 onClick={() => setFilterPayment("cash")}
               >
                 💵 Cash
+              </button>
+
+              <button
+                type="button"
+                className="btn-tbl-wa"
+                style={{ background: "#27ae60", cursor: "pointer", border: "none", marginLeft: "6px" }}
+                onClick={() => exportInvoicesToExcel(filteredInvoices)}
+                title="Download All Filtered Bills in Excel / CSV"
+              >
+                <Download size={13} /> 📥 Export to Excel
               </button>
             </div>
           </div>

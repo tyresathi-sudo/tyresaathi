@@ -14,6 +14,9 @@ import NotFound from "./pages/NotFound.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
 import Billing from "./pages/Billing.jsx";
+import Settings from "./pages/Settings.jsx";
+import SupportTickets from "./pages/SupportTickets.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";
 
 export default function App() {
   return (
@@ -35,6 +38,9 @@ export default function App() {
         <Route path="/search" element={<Search />} />
         <Route path="/bookings" element={<Bookings />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/support" element={<SupportTickets />} />
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="/store-location" element={<StoreLocation />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/shop/add-product" element={<AddProduct />} />

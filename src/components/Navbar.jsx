@@ -15,7 +15,10 @@ import {
   Calendar, 
   MapPin, 
   Store,
-  Receipt
+  Receipt,
+  Settings as SettingsIcon,
+  LifeBuoy,
+  ShieldCheck
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -118,6 +121,17 @@ export default function Navbar({ onMenuClick }) {
                       <Link to="/billing" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                         <Receipt size={14} /> Shop Billing & Invoices
                       </Link>
+                      <Link to="/settings" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                        <SettingsIcon size={14} /> Settings & Preferences
+                      </Link>
+                      <Link to="/support" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                        <LifeBuoy size={14} /> Help & Support Tickets
+                      </Link>
+                      {(isAdmin || isVendor) && (
+                        <Link to="/admin" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                          <ShieldCheck size={14} color="#c0392b" /> Master Admin Panel
+                        </Link>
+                      )}
                       {isVendor && (
                         <Link to="/shop/add-product" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                           <PlusCircle size={14} /> Add Product / Service
