@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { 
   collection, 
   addDoc, 
@@ -25,7 +26,8 @@ import {
   MapPin, 
   User, 
   Filter, 
-  ChevronRight 
+  ChevronRight,
+  Receipt
 } from "lucide-react";
 import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
 
@@ -387,6 +389,15 @@ export default function Bookings() {
                       </a>
                     </>
                   )}
+
+                  {/* 🧾 Quick Bill Generator Shortcut */}
+                  <Link
+                    to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
+                    className="btn-action-bill-shortcut"
+                    title="Generate Bill for this Service"
+                  >
+                    <Receipt size={14} /> 🧾 Bill Banayein
+                  </Link>
                 </div>
               </div>
             </div>
@@ -859,6 +870,23 @@ export default function Bookings() {
         }
         .btn-action-whatsapp:hover {
           background: #1ebd56;
+          color: white;
+        }
+        .btn-action-bill-shortcut {
+          background: #2c3e50;
+          color: white;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 700;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.15s ease;
+        }
+        .btn-action-bill-shortcut:hover {
+          background: #1a252f;
           color: white;
         }
 

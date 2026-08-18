@@ -14,7 +14,8 @@ import {
   PlusCircle, 
   Calendar, 
   MapPin, 
-  Store 
+  Store,
+  Receipt
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -113,6 +114,9 @@ export default function Navbar({ onMenuClick }) {
                       </Link>
                       <Link to="/bookings" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                         <Calendar size={14} /> My Bookings
+                      </Link>
+                      <Link to="/billing" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                        <Receipt size={14} /> Shop Billing & Invoices
                       </Link>
                       {isVendor && (
                         <Link to="/shop/add-product" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
@@ -233,6 +237,10 @@ export default function Navbar({ onMenuClick }) {
 
             <NavLink to="/bookings" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
               BOOKINGS
+            </NavLink>
+
+            <NavLink to="/billing" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
+              BILLING
             </NavLink>
 
             <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>

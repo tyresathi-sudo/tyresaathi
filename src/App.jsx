@@ -13,6 +13,7 @@ import Profile from "./pages/Profile.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
+import Billing from "./pages/Billing.jsx";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<Search />} />
         <Route path="/bookings" element={<Bookings />} />
+        <Route path="/billing" element={<Billing />} />
         <Route path="/store-location" element={<StoreLocation />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/shop/add-product" element={<AddProduct />} />
