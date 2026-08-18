@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+
+/* ---------- Theme tokens ---------- */
+:root,
+[data-theme="light"] {
+  --bg: #F0EDE6;
+  --surface: #FFFFFF;
+  --surface-2: #E3DFD4;
+  --border: #DCD6C9;
+  --text: #1C1C1E;
+  --text-muted: #4A5057;
+  --orange: #FF6B35;
+  --yellow: #FFC145;
+  --green: #2F9E44;
+  --danger: #C0392B;
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="dark"] {
+  --bg: #121214;
+  --surface: #1C1C1E;
+  --surface-2: #26262A;
+  --border: #33333A;
+  --text: #F2F1ED;
+  --text-muted: #A8ACB3;
+  --orange: #FF7A47;
+  --yellow: #FFC145;
+  --green: #3EBE57;
+  --danger: #E0574A;
+  --shadow: rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Noto Sans Devanagari", sans-serif;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--orange);
+}
+
+.brand-font {
+  font-family: "Barlow Condensed", "Noto Sans Devanagari", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- App shell / responsive layout ---------- */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px;
+  padding-bottom: 90px; /* room for bottom nav on mobile */
+}
+
+@media (min-width: 900px) {
+  .app-main {
+    padding: 28px 32px;
+    padding-bottom: 32px; /* sidebar handles nav on desktop */
+  }
+}
+
+.page-pad {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ---------- Auth pages (Login / Register / Forgot Password) ---------- */
+.auth-wrap {
+  min-height: calc(100vh - 58px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 16px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+.auth-title {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+.auth-sub {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 0 0 20px;
+}
+.auth-field {
+  margin-bottom: 14px;
+}
+.auth-field label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+.auth-field input,
+.auth-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+.auth-field input:focus,
+.auth-field select:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+.role-pick {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.role-btn {
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: center;
+}
+.role-btn-active {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 10%, var(--bg));
+}
+.auth-btn {
+  width: 100%;
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  font-size: 12.5px;
+}
+.auth-links a {
+  text-decoration: none;
+  font-weight: 600;
+}
+.auth-error {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.auth-success {
+  background: color-mix(in srgb, var(--green) 15%, transparent);
+  color: var(--green);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}

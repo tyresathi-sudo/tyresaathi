@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Phase 2 — Authentication. Ab jo bhi Firebase Auth se login hai,
+    // wahi apna users/{uid} profile padh/likh sakta hai. Koi doosre
+    // user ka profile edit nahi kar sakta.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // "role" field ko user khud change nahi kar sakta (admin promotion
+      // sirf Firebase Console se manually honi chahiye).
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.role == resource.data.role;
+    }
+
+    // Purane Bazaar/Kaam collections abhi bhi khule hain kyunki naya
+    // roadmap (Phase 3/4 me) inhe replace karega. Tab tak in par
+    // touch nahi kiya — koi impact nahi Phase 2 ke changes ka.
+    match /products/{productId} {
+      allow read, create, update, delete: if true;
+    }
+    match /jobs/{jobId} {
+      allow read, create, update, delete: if true;
+    }
+  }
+}
