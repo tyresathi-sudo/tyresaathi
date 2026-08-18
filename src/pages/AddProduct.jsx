@@ -56,33 +56,33 @@ export default function AddProduct() {
   const [loading, setLoading] = useState(edit);
   const [uploadingSlot, setUploadingSlot] = useState(null);
 
-  // Form State with 4 photo slots
+  // Form State with 4 photo slots (Clean empty state)
   const [form, setForm] = useState({
     productType: "tyre",
     condition: "new", // 'new' or 'old'
     categoryKey: "passenger_car",
     categoryName: "Passenger Car & Hatchback",
-    vehicleTypeName: "Hatchback (Swift, WagonR, i10, Tiago)",
-    brandName: "Apollo",
-    sizeName: "185/65 R15",
-    modelName: "Apollo Amazer 4G Life",
+    vehicleTypeName: "",
+    brandName: "",
+    sizeName: "",
+    modelName: "",
     customBrand: "",
     customSize: "",
     customModel: "",
-    productName: "Apollo Amazer 4G Life 185/65 R15",
+    productName: "",
     description: "",
     images: ["", "", "", ""], // 4 dedicated photo slots
     tyreType: "Tubeless",
-    warranty: "5 Years Manufacturer Warranty",
+    warranty: "",
     tubeSize: "",
     valveType: "TR",
     flapSize: "",
     patchType: "",
     serviceName: "",
     serviceDuration: "30 Mins",
-    originalPrice: "4800",
-    offerPrice: "4199",
-    stock: "8",
+    originalPrice: "",
+    offerPrice: "",
+    stock: "",
     published: true,
   });
 
@@ -575,6 +575,9 @@ export default function AddProduct() {
             <h3 className="section-title">
               <span className="step-num">4</span> Pricing & Stock (दाम और स्टॉक)
             </h3>
+            <p className="section-subtext">
+              अपना सही MRP और सेलिंग प्राइस डालें — वेबसाइट पर ग्राहक को यही दाम दिखेगा।
+            </p>
 
             <div className="two-col-grid">
               <div className="input-field-group">
@@ -583,20 +586,20 @@ export default function AddProduct() {
                   type="number"
                   value={form.originalPrice}
                   onChange={(e) => updateField("originalPrice", e.target.value)}
-                  placeholder="Original MRP"
+                  placeholder="उदा: 4800 (MRP)"
                   className="smart-text-input"
                 />
               </div>
 
               <div className="input-field-group">
                 <label className="field-label" style={{ color: "#27ae60", fontWeight: 700 }}>
-                  Selling / Offer Price (₹ ऑफर दाम) *
+                  Selling / Offer Price (₹ सेलिंग प्राइस / ग्राहक का दाम) *
                 </label>
                 <input
                   type="number"
                   value={form.offerPrice}
                   onChange={(e) => updateField("offerPrice", e.target.value)}
-                  placeholder="Customer Price"
+                  placeholder="उदा: 4199 (दाम दर्ज करें)"
                   className="smart-text-input highlight-price-input"
                   required
                 />
@@ -611,7 +614,7 @@ export default function AddProduct() {
                     type="number"
                     value={form.stock}
                     onChange={(e) => updateField("stock", e.target.value)}
-                    placeholder="1"
+                    placeholder="उदा: 5 (उपलब्ध पीस)"
                     min="0"
                     className="smart-text-input"
                     required
@@ -624,7 +627,7 @@ export default function AddProduct() {
                     type="text"
                     value={form.warranty}
                     onChange={(e) => updateField("warranty", e.target.value)}
-                    placeholder="e.g. 5 Years Unconditional"
+                    placeholder="उदा: 5 Years Warranty (वैकल्पिक)"
                     className="smart-text-input"
                   />
                 </div>
@@ -636,7 +639,7 @@ export default function AddProduct() {
               <textarea
                 value={form.description}
                 onChange={(e) => updateField("description", e.target.value)}
-                placeholder="Tyre fitting available, high mileage tread, emergency repair..."
+                placeholder="उदा: नई फिटिंग उपलब्ध, 5 साल वारंटी, तुरंत डिलीवरी..."
                 rows={3}
                 className="smart-textarea"
               />
@@ -664,14 +667,18 @@ export default function AddProduct() {
           </div>
         </form>
 
-        {/* Right Side: Live Customer Preview (Photo 3 Look Enhanced) */}
+        {/* Right Side: Live Customer Preview (दुकानदार के लिए पूर्वावलोकन) */}
         <div className="live-preview-sidebar">
           <div className="preview-sticky-card">
             <div className="preview-header">
               <span className="live-pulse-dot" />
-              <h4>👁️ Live Customer Preview</h4>
-              <span className="preview-tag">Customer View</span>
+              <h4>👁️ लाइव प्रीव्यू (Live Customer View)</h4>
+              <span className="preview-tag">Preview</span>
             </div>
+
+            <p style={{ fontSize: "11.5px", color: "var(--text-muted)", margin: "0 0 10px", lineHeight: 1.3 }}>
+              ℹ️ यह कार्ड सिर्फ आपको दिखाने के लिए है कि फॉर्म भरने के बाद यह सामान वेबसाइट पर ग्राहक को कैसा दिखेगा।
+            </p>
 
             {/* Main Preview Image */}
             <div className="preview-main-img-box">
@@ -684,7 +691,7 @@ export default function AddProduct() {
               ) : (
                 <div className="preview-img-empty">
                   <Camera size={36} color="#aaa" />
-                  <span>No Photos Added Yet</span>
+                  <span>फोटो अपलोड करने पर यहाँ दिखेगी</span>
                 </div>
               )}
 
@@ -704,21 +711,31 @@ export default function AddProduct() {
 
             {/* Product Meta */}
             <div className="preview-body">
-              <span className="preview-category-badge">{form.categoryName}</span>
+              <span className="preview-category-badge">{form.categoryName || "Vehicle Category"}</span>
               <h3 className="preview-product-title">
-                {form.productType === "service" ? (form.serviceName || "Service Title...") : (form.productName || "Tyre Product Title...")}
+                {form.productType === "service" 
+                  ? (form.serviceName || "सर्विस का नाम...") 
+                  : (form.productName || "उत्पाद का नाम (ऑटो जनरेट होगा)...")}
               </h3>
 
               <div className="preview-price-box">
-                <span className="preview-offer-price">₹{form.offerPrice || "0"}</span>
-                {Number(form.originalPrice) > Number(form.offerPrice) && (
-                  <span className="preview-mrp">₹{form.originalPrice}</span>
+                {form.offerPrice ? (
+                  <>
+                    <span className="preview-offer-price">₹{form.offerPrice}</span>
+                    {Number(form.originalPrice) > Number(form.offerPrice) && (
+                      <span className="preview-mrp">₹{form.originalPrice}</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="preview-offer-price" style={{ color: "var(--text-muted)", fontSize: "16px" }}>
+                    ₹ -- (दाम दर्ज करें)
+                  </span>
                 )}
               </div>
 
               <div className="preview-features-list">
                 <div className="preview-feature-item">
-                  <strong>🏷️ Brand:</strong> {form.brandName === "OTHER" ? (form.customBrand || "Custom") : form.brandName}
+                  <strong>🏷️ Brand:</strong> {form.brandName === "OTHER" ? (form.customBrand || "Custom") : (form.brandName || "चुनें")}
                 </div>
                 {form.sizeName && (
                   <div className="preview-feature-item">
@@ -728,13 +745,13 @@ export default function AddProduct() {
                 {form.productType !== "service" && (
                   <div className="preview-feature-item">
                     <strong>📦 Stock:</strong>{" "}
-                    <span style={{ color: Number(form.stock) > 0 ? "#27ae60" : "#c0392b", fontWeight: 700 }}>
-                      {Number(form.stock) > 0 ? `${form.stock} Pieces in Stock` : "Out of Stock"}
+                    <span style={{ color: Number(form.stock) > 0 ? "#27ae60" : "var(--text-muted)", fontWeight: 700 }}>
+                      {Number(form.stock) > 0 ? `${form.stock} Pieces in Stock` : (form.stock === "" ? "संख्या दर्ज करें" : "Out of Stock")}
                     </span>
                   </div>
                 )}
                 <div className="preview-feature-item">
-                  <strong>🏪 Shop:</strong> {activeProfile?.shopName || "TyreSaathi Authorized Shop"}
+                  <strong>🏪 Shop:</strong> {activeProfile?.shopName || "आपकी दुकान का नाम"}
                 </div>
               </div>
             </div>
