@@ -306,7 +306,7 @@ export default function Bookings() {
                 <div className="meta-block">
                   <span className="meta-label">🏪 Service Shop:</span>
                   <span className="meta-value">{b.shopName}</span>
-                  <span className="meta-subtext">📞 {b.shopPhone}</span>
+                  <span className="meta-subtext">{b.shopPhone ? `📞 ${b.shopPhone}` : "✓ Verified TyreSaathi Hub"}</span>
                 </div>
 
                 <div className="meta-block">
@@ -322,7 +322,7 @@ export default function Bookings() {
                 </div>
               )}
 
-              {/* Bottom Row: Shop Owner Action Buttons (Accept / Reject) */}
+              {/* Bottom Row: Shop Owner Action Buttons (Accept / Reject / Call / WhatsApp) */}
               <div className="booking-card-actions">
                 <div className="action-left-info">
                   <span className="time-ago-text">Booking ID: #{b.id.slice(-6)}</span>
@@ -365,9 +365,28 @@ export default function Bookings() {
                     </button>
                   )}
 
-                  <a href={`tel:${b.customerPhone}`} className="btn-action-call">
-                    <Phone size={14} /> Call
-                  </a>
+                  {/* 📞 One-Click Direct Phone Call Button */}
+                  {b.customerPhone && (
+                    <>
+                      <a
+                        href={`tel:${b.customerPhone}`}
+                        className="btn-action-call"
+                        title={`Call ${b.customerName}`}
+                      >
+                        <Phone size={14} /> Call ({b.customerPhone})
+                      </a>
+
+                      <a
+                        href={`https://wa.me/91${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Namaste ${b.customerName}, TyreSaathi par aapki booking (${b.serviceName}) ke regarding...`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-action-whatsapp"
+                        title="Chat on WhatsApp"
+                      >
+                        💬 WhatsApp
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -817,6 +836,30 @@ export default function Bookings() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          transition: background 0.15s ease;
+        }
+        .btn-action-call:hover {
+          background: var(--border);
+          color: #c0392b;
+        }
+        .btn-action-whatsapp {
+          background: #25D366;
+          color: white;
+          border: none;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 700;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
+          transition: background 0.15s ease;
+        }
+        .btn-action-whatsapp:hover {
+          background: #1ebd56;
+          color: white;
         }
 
         /* Modal */
