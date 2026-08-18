@@ -38,11 +38,11 @@ const INITIAL_DEMO_INVOICES = [
     id: "TS-INV-1001",
     invoiceNo: "TS-INV-1001",
     date: "2026-08-18",
-    customerName: "Ramesh Sharma",
-    customerPhone: "98765-11223",
+    customerName: "Ahmad Raja",
+    customerPhone: "9876543210",
     vehicleName: "Swift Dzire",
     vehicleNumber: "KA 05 MN 4589",
-    shopName: "TyreSaathi Partner Hub",
+    shopName: "Shree Ram Tyre & Service Center",
     items: [
       { id: "1", name: "MRF Zapper FX 100/90-17 Tubeless Tyre", type: "tyre", qty: 2, rate: 2100, amount: 4200 },
       { id: "2", name: "Tyre Cut & Sidewall Repair (सर्विस)", type: "service", qty: 1, rate: 350, amount: 350 },
@@ -387,19 +387,42 @@ export default function Billing() {
           <div className="billing-form-card">
             <form onSubmit={handleSaveInvoice}>
               {/* Section 1: Customer & Vehicle Info */}
+              {/* Section 1: Customer, Shop & Vehicle Info */}
               <div className="form-sub-card">
                 <div className="card-section-title">
-                  <span>1</span> Grahak Aur Gaadi Ki Details (Customer & Vehicle)
+                  <span>1</span> Dukan, Grahak Aur Gaadi Ki Details (Shop & Customer Info)
                 </div>
 
-                <div className="form-grid-3">
+                <div className="form-grid-2" style={{ marginBottom: "14px" }}>
+                  <div className="form-input-group">
+                    <label>Shop / Business Name (दुकान का नाम) *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Shree Ram Tyre & Service Center"
+                      value={invoice.shopName}
+                      onChange={(e) => setInvoice({ ...invoice, shopName: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-input-group">
+                    <label>Invoice Date (तारीख)</label>
+                    <input
+                      type="date"
+                      value={invoice.date}
+                      onChange={(e) => setInvoice({ ...invoice, date: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
                   <div className="form-input-group">
                     <label>Customer Name (ग्राहक का नाम) *</label>
                     <div className="input-with-icon">
                       <User size={15} />
                       <input
                         type="text"
-                        placeholder="उदा: Ramesh Sharma"
+                        placeholder="e.g. Ahmad Raja"
                         value={invoice.customerName}
                         onChange={(e) => setInvoice({ ...invoice, customerName: e.target.value })}
                         required
@@ -413,22 +436,10 @@ export default function Billing() {
                       <Phone size={15} />
                       <input
                         type="tel"
-                        placeholder="उदा: 9876543210"
+                        placeholder="e.g. 9876543210"
                         value={invoice.customerPhone}
                         onChange={(e) => setInvoice({ ...invoice, customerPhone: e.target.value })}
                         required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-input-group">
-                    <label>Invoice Date (तारीख)</label>
-                    <div className="input-with-icon">
-                      <Calendar size={15} />
-                      <input
-                        type="date"
-                        value={invoice.date}
-                        onChange={(e) => setInvoice({ ...invoice, date: e.target.value })}
                       />
                     </div>
                   </div>
@@ -441,7 +452,7 @@ export default function Billing() {
                       <Car size={15} />
                       <input
                         type="text"
-                        placeholder="उदा: Swift Dzire / Creta / Activa"
+                        placeholder="e.g. Swift Dzire / Creta / Activa"
                         value={invoice.vehicleName}
                         onChange={(e) => setInvoice({ ...invoice, vehicleName: e.target.value })}
                       />
@@ -452,7 +463,7 @@ export default function Billing() {
                     <label>Vehicle Registration No. (गाड़ी नंबर)</label>
                     <input
                       type="text"
-                      placeholder="उदा: KA 05 MN 4589 / DL 01 AB 1234"
+                      placeholder="e.g. DL 01 AB 1234 / KA 05 MN 4589"
                       value={invoice.vehicleNumber}
                       onChange={(e) => setInvoice({ ...invoice, vehicleNumber: e.target.value.toUpperCase() })}
                       style={{ textTransform: "uppercase" }}
@@ -671,14 +682,18 @@ export default function Billing() {
           <div className="billing-receipt-sidebar">
             <div className="live-receipt-card">
               <div className="receipt-top-brand">
-                <span className="brand-badge">TYRESAATHI RETAIL INVOICE</span>
+                <span className="brand-badge">🧾 RETAIL INVOICE</span>
                 <span className="receipt-inv-num">#{invoice.invoiceNo}</span>
               </div>
 
               <div className="receipt-shop-meta">
-                <h3>{invoice.shopName || "TyreSaathi Partner Hub"}</h3>
-                <p>Verified Tyre & Auto Service Network</p>
-                <small>Date: {invoice.date}</small>
+                <h3 style={{ color: "#c0392b", fontWeight: 800, fontSize: "16px", margin: "0 0 2px" }}>
+                  {invoice.shopName || profile?.shopName || "Shree Ram Tyre Center"}
+                </h3>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>
+                  Verified TyreSaathi Partner Network
+                </p>
+                <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>Date: {invoice.date}</small>
               </div>
 
               <div className="receipt-divider" />
@@ -1320,10 +1335,12 @@ export default function Billing() {
           position: absolute;
           left: 12px;
           color: var(--text-muted);
+          pointer-events: none;
+          z-index: 1;
         }
         .input-with-icon input {
           width: 100%;
-          padding: 10px 12px 10px 36px;
+          padding: 10px 14px 10px 42px !important;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);

@@ -100,12 +100,12 @@ export const POPULAR_PATTERNS = [
 ];
 
 export const SERVICE_TYPES = [
-  { id: "cut_repair", name: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)", duration: "45 Mins", price: 350 },
-  { id: "puncture", name: "Tubeless Puncture Repair (पंचर रिपेयर)", duration: "15 Mins", price: 100 },
-  { id: "alignment", name: "3D Wheel Alignment & Balancing (अलाइनमेंट)", duration: "30 Mins", price: 450 },
-  { id: "fitting", name: "New Tyre Fitting & Nitrogen Fill (फिटिंग)", duration: "20 Mins", price: 150 },
-  { id: "doorstep", name: "Doorstep Emergency Assistance (घर/रास्ते पर सर्विस)", duration: "45 Mins", price: 499 },
-  { id: "rotation", name: "Tyre Rotation & Brake Check (रोटेशन)", duration: "25 Mins", price: 250 },
+  { id: "cut_repair", name: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)", duration: "45 Mins" },
+  { id: "puncture", name: "Tubeless Puncture Repair (पंचर रिपेयर)", duration: "15 Mins" },
+  { id: "alignment", name: "3D Wheel Alignment & Balancing (अलाइनमेंट)", duration: "30 Mins" },
+  { id: "fitting", name: "New Tyre Fitting & Nitrogen Fill (फिटिंग)", duration: "20 Mins" },
+  { id: "doorstep", name: "Doorstep Emergency Assistance (घर/रास्ते पर सर्विस)", duration: "45 Mins" },
+  { id: "rotation", name: "Tyre Rotation & Brake Check (रोटेशन)", duration: "25 Mins" },
 ];
 
 export const SAMPLE_SHOPS = [
@@ -232,7 +232,7 @@ export const INITIAL_FEATURED_PRODUCTS = [
     distanceKm: 1.2,
     isNearest: true,
     images: [
-      "https://images.unsplash.com/photo-1549497538-303791108f95?w=600&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=600&auto=format&fit=crop&q=80"
     ],
     description: "Guaranteed 100,000 km tread life with ultra micro-silica compound for maximum fuel efficiency."
   },
@@ -280,7 +280,7 @@ export const INITIAL_FEATURED_PRODUCTS = [
     distanceKm: 3.5,
     isNearest: false,
     images: [
-      "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?w=600&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1527247043586-646dd2d82d0b?w=600&auto=format&fit=crop&q=80"
     ],
     description: "Ultra quiet luxury touring tyre with highest safety rating on wet surfaces."
   },

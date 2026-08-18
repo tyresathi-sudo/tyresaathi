@@ -30,9 +30,9 @@ const INITIAL_DEMO_TICKETS = [
     subject: "Doorstep emergency mechanic late by 25 mins",
     description: "Maine highway par puncture assistance book kiya tha, shopkeeper se contact nahi ho pa raha tha. Please check.",
     status: "resolved", // open, in_progress, resolved, closed
-    userName: "Ramesh Sharma",
-    userEmail: "ramesh@example.com",
-    userPhone: "98765-11223",
+    userName: "Ahmad Raja",
+    userEmail: "ahmad@example.com",
+    userPhone: "9876543210",
     vehicleNumber: "KA 05 MN 4589",
     adminReply: "Humne partner shop se baat ki hai aur mechanic aapki location par reach kar chuka hai. Delay ke liye khed hai.",
     createdAt: "2026-08-18",

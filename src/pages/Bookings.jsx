@@ -36,9 +36,9 @@ import { exportBookingsToExcel } from "../utils/excelExport";
 const INITIAL_DEMO_BOOKINGS = [
   {
     id: "booking-101",
-    customerName: "Ramesh Sharma",
-    customerPhone: "98765-11223",
-    customerEmail: "ramesh@example.com",
+    customerName: "Ahmad Raja",
+    customerPhone: "9876543210",
+    customerEmail: "ahmad@example.com",
     serviceId: "cut_repair",
     serviceName: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)",
     vehicleType: "Car (Swift Dzire)",
@@ -446,7 +446,7 @@ export default function Bookings() {
                 >
                   {SERVICE_TYPES.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} (~₹{s.price})
+                      {s.name}
                     </option>
                   ))}
                 </select>
