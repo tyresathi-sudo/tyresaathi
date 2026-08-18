@@ -36,9 +36,9 @@ import { exportBookingsToExcel } from "../utils/excelExport";
 const INITIAL_DEMO_BOOKINGS = [
   {
     id: "booking-101",
-    customerName: "Ahmad Raja",
+    customerName: "Ahamad Raza",
     customerPhone: "9876543210",
-    customerEmail: "ahmad@example.com",
+    customerEmail: "ahamad@example.com",
     serviceId: "cut_repair",
     serviceName: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)",
     vehicleType: "Car (Swift Dzire)",

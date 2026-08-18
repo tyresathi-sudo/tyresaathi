@@ -202,7 +202,7 @@ export default function Settings() {
                       type="text"
                       value={settings.shopName}
                       onChange={(e) => setSettings({ ...settings, shopName: e.target.value })}
-                      placeholder="उदा: Shree Ram Tyre & Service Center"
+                      placeholder="e.g. ABC Tyre & Service Center"
                     />
                   </div>
 

@@ -38,11 +38,11 @@ const INITIAL_DEMO_INVOICES = [
     id: "TS-INV-1001",
     invoiceNo: "TS-INV-1001",
     date: "2026-08-18",
-    customerName: "Ahmad Raja",
+    customerName: "Ahamad Raza",
     customerPhone: "9876543210",
     vehicleName: "Swift Dzire",
     vehicleNumber: "KA 05 MN 4589",
-    shopName: "Shree Ram Tyre & Service Center",
+    shopName: "ABC Tyre & Service Center",
     items: [
       { id: "1", name: "MRF Zapper FX 100/90-17 Tubeless Tyre", type: "tyre", qty: 2, rate: 2100, amount: 4200 },
       { id: "2", name: "Tyre Cut & Sidewall Repair (सर्विस)", type: "service", qty: 1, rate: 350, amount: 350 },
@@ -398,7 +398,7 @@ export default function Billing() {
                     <label>Shop / Business Name (दुकान का नाम) *</label>
                     <input
                       type="text"
-                      placeholder="e.g. Shree Ram Tyre & Service Center"
+                      placeholder="e.g. ABC Tyre & Service Center"
                       value={invoice.shopName}
                       onChange={(e) => setInvoice({ ...invoice, shopName: e.target.value })}
                       required
@@ -422,7 +422,7 @@ export default function Billing() {
                       <User size={15} />
                       <input
                         type="text"
-                        placeholder="e.g. Ahmad Raja"
+                        placeholder="e.g. Ahamad Raza"
                         value={invoice.customerName}
                         onChange={(e) => setInvoice({ ...invoice, customerName: e.target.value })}
                         required
@@ -688,7 +688,7 @@ export default function Billing() {
 
               <div className="receipt-shop-meta">
                 <h3 style={{ color: "#c0392b", fontWeight: 800, fontSize: "16px", margin: "0 0 2px" }}>
-                  {invoice.shopName || profile?.shopName || "Shree Ram Tyre Center"}
+                  {invoice.shopName || profile?.shopName || "ABC Tyre & Service Center"}
                 </h3>
                 <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>
                   Verified TyreSaathi Partner Network
