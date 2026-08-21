@@ -19,13 +19,11 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install Node Dependencies
         run: npm install
@@ -36,14 +34,18 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Build Android APK (Debug)
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TyreSaathi-Android-APK
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
