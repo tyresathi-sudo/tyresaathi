@@ -17,20 +17,38 @@ import {
   HelpCircle,
   Percent,
   Sparkles,
-  Smartphone
+  Smartphone,
+  FileSpreadsheet,
+  Copy,
+  ExternalLink,
+  Check,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { Link } from "react-router-dom";
+import { 
+  getGoogleSheetUrl, 
+  setGoogleSheetUrl, 
+  testGoogleSheetConnection, 
+  APPS_SCRIPT_TEMPLATE 
+} from "../utils/googleSheets";
 
 export default function Settings() {
   const { user, profile, updateUserProfile, resetPassword, isVendor, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState("shop"); // 'shop', 'billing', 'notifications', 'security'
+  const [activeTab, setActiveTab] = useState("shop"); // 'shop', 'billing', 'notifications', 'security', 'sheets'
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+
+  // Google Sheets state
+  const [sheetUrl, setSheetUrl] = useState(() => getGoogleSheetUrl());
+  const [testingSheet, setTestingSheet] = useState(false);
+  const [sheetTestResult, setSheetTestResult] = useState(null);
+  const [copiedScript, setCopiedScript] = useState(false);
 
   // Settings Form State
   const [settings, setSettings] = useState({
@@ -80,6 +98,7 @@ export default function Settings() {
 
     try {
       await updateUserProfile(settings);
+      setGoogleSheetUrl(sheetUrl);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 4000);
     } catch (err) {
@@ -87,6 +106,39 @@ export default function Settings() {
       alert("Settings save karne me samasya aayi: " + (err.message || err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCopyAppsScript = () => {
+    navigator.clipboard.writeText(APPS_SCRIPT_TEMPLATE);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 3000);
+  };
+
+  const handleTestSheet = async () => {
+    if (!sheetUrl || !sheetUrl.trim()) {
+      setSheetTestResult({
+        type: "error",
+        message: "Pehle apna Google Apps Script Web App URL dalein!"
+      });
+      return;
+    }
+    setTestingSheet(true);
+    setSheetTestResult(null);
+    try {
+      setGoogleSheetUrl(sheetUrl);
+      const res = await testGoogleSheetConnection(sheetUrl);
+      setSheetTestResult({
+        type: "success",
+        message: res.message || "✅ Signal bhej diya gaya! Apni Google Sheet check karein."
+      });
+    } catch (err) {
+      setSheetTestResult({
+        type: "error",
+        message: err.message || "Connection me dikkat aayi. URL check karein."
+      });
+    } finally {
+      setTestingSheet(false);
     }
   };
 
@@ -171,6 +223,17 @@ export default function Settings() {
             <div>
               <strong>Account & Security</strong>
               <small>पासवर्ड व सुरक्षा</small>
+            </div>
+          </button>
+
+          <button
+            className={`nav-tab-btn ${activeTab === "sheets" ? "tab-btn-active" : ""}`}
+            onClick={() => setActiveTab("sheets")}
+          >
+            <FileSpreadsheet size={18} color="#27ae60" />
+            <div>
+              <strong>Google Sheets Sync</strong>
+              <small>गूगल शीट रिकॉर्ड्स लॉग</small>
             </div>
           </button>
 
@@ -414,6 +477,219 @@ export default function Settings() {
                         🛡️ Open Master Admin Panel
                       </Link>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ TAB 5: GOOGLE SHEETS SYNC ═══ */}
+            {activeTab === "sheets" && (
+              <div className="settings-section">
+                <div className="sec-header">
+                  <h3>📊 Google Sheets Sync & Live Records (गूगल शीट इंटीग्रेशन)</h3>
+                  <p>Customer Logins, Registrations aur Tyre Service Bookings ko real-time me apni Google Sheet me save karein.</p>
+                </div>
+
+                {/* Connection Status Card */}
+                <div style={{
+                  background: sheetUrl ? "#eafaf1" : "#fef9e7",
+                  border: `1.5px solid ${sheetUrl ? "#2ecc71" : "#f1c40f"}`,
+                  borderRadius: "10px",
+                  padding: "16px",
+                  marginBottom: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "12px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <FileSpreadsheet size={24} color={sheetUrl ? "#27ae60" : "#d35400"} />
+                    <div>
+                      <strong style={{ fontSize: "14px", color: "#2c3e50" }}>
+                        {sheetUrl ? "✅ Google Sheet Live Sync Connected" : "⚠️ Google Sheet Not Configured"}
+                      </strong>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#666" }}>
+                        {sheetUrl ? "Logins aur Bookings automatic aapki sheet me sync ho rahe hain." : "Niche apna Web App URL paste karein aur Save karein."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {sheetUrl && (
+                    <button
+                      type="button"
+                      onClick={handleTestSheet}
+                      disabled={testingSheet}
+                      style={{
+                        background: "#27ae60",
+                        color: "#fff",
+                        border: "none",
+                        padding: "8px 14px",
+                        borderRadius: "6px",
+                        fontWeight: "700",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      {testingSheet ? <RefreshCw size={14} className="spin" /> : "🧪 Test Live Connection"}
+                    </button>
+                  )}
+                </div>
+
+                {/* Test Result Message */}
+                {sheetTestResult && (
+                  <div style={{
+                    background: sheetTestResult.type === "success" ? "#d4edda" : "#f8d7da",
+                    border: `1px solid ${sheetTestResult.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
+                    color: sheetTestResult.type === "success" ? "#155724" : "#721c24",
+                    padding: "12px 14px",
+                    borderRadius: "8px",
+                    marginBottom: "16px",
+                    fontSize: "13px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
+                    {sheetTestResult.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                    <span>{sheetTestResult.message}</span>
+                  </div>
+                )}
+
+                {/* URL Input Form */}
+                <div className="security-box-card" style={{ marginBottom: "24px" }}>
+                  <div className="set-field-group">
+                    <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span>Google Apps Script Web App URL (वेब ऐप यूआरएल)</span>
+                      {sheetUrl && <span style={{ color: "#27ae60", fontSize: "11px", fontWeight: "700" }}>ACTIVE</span>}
+                    </label>
+                    <input
+                      type="url"
+                      value={sheetUrl}
+                      onChange={(e) => setSheetUrl(e.target.value)}
+                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                      style={{ fontFamily: "monospace", fontSize: "13px" }}
+                    />
+                    <small style={{ color: "#7f8c8d", marginTop: "4px", display: "block" }}>
+                      Aapka Google Sheet Apps Script Web App URL yahan daalein.
+                    </small>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGoogleSheetUrl(sheetUrl);
+                        alert("✅ Google Sheet URL save ho gaya!");
+                      }}
+                      style={{
+                        background: "#c0392b",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: "6px",
+                        fontWeight: "700",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <Save size={15} /> Save Sheet URL
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTestSheet}
+                      disabled={testingSheet}
+                      style={{
+                        background: "#f0f2f5",
+                        color: "#2c3e50",
+                        border: "1px solid #ccc",
+                        padding: "8px 14px",
+                        borderRadius: "6px",
+                        fontWeight: "600",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      {testingSheet ? <RefreshCw size={14} className="spin" /> : "🧪 Test Signal"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Step-by-Step Instructions */}
+                <div style={{
+                  background: "var(--bg-card, #ffffff)",
+                  border: "1px solid var(--border-color, #e0e0e0)",
+                  borderRadius: "10px",
+                  padding: "20px"
+                }}>
+                  <h4 style={{ margin: "0 0 12px", color: "#2c3e50", fontSize: "15px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Sparkles size={16} color="#c0392b" />
+                    Google Sheet Setup Kaise Karein? (सिर्फ 2 मिनट में)
+                  </h4>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "13px", color: "#444" }}>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>1</span>
+                      <div>
+                        <strong>Nayi Google Sheet Banayein:</strong>
+                        <p style={{ margin: "2px 0 4px" }}>
+                          <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" style={{ color: "#c0392b", fontWeight: "700" }}>
+                            sheets.new ↗
+                          </a> par jakar nayi sheet banayein. Niche do tabs banayein: <code>Logins</code> aur <code>Bookings</code>.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>2</span>
+                      <div>
+                        <strong>Apps Script Code Dalein:</strong>
+                        <p style={{ margin: "2px 0 6px" }}>
+                          Sheet me <strong>Extensions</strong> &gt; <strong>Apps Script</strong> kholein aur ye code paste karein:
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleCopyAppsScript}
+                          style={{
+                            background: copiedScript ? "#27ae60" : "#2c3e50",
+                            color: "#fff",
+                            border: "none",
+                            padding: "6px 12px",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                        >
+                          {copiedScript ? <Check size={14} /> : <Copy size={14} />}
+                          {copiedScript ? "✅ Code Copied!" : "📋 Copy Apps Script Code"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>3</span>
+                      <div>
+                        <strong>Deploy Web App:</strong>
+                        <p style={{ margin: "2px 0 0" }}>
+                          Apps Script me <strong>Deploy</strong> &gt; <strong>New deployment</strong> &gt; <strong>Web app</strong> chunein.
+                          <br />
+                          <strong>Execute as:</strong> <code>Me</code> | <strong>Who has access:</strong> <code>Anyone</code> select karein aur mila hua URL upar paste karein!
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -754,6 +1030,13 @@ export default function Settings() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>

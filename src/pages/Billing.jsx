@@ -33,78 +33,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, o
 import { SERVICE_TYPES, MEGA_MENU_BRANDS } from "../config/tyreCatalog";
 import { exportInvoicesToExcel } from "../utils/excelExport";
 
-const INITIAL_DEMO_INVOICES = [
-  {
-    id: "TS-INV-1001",
-    invoiceNo: "TS-INV-1001",
-    date: "2026-08-18",
-    customerName: "Ahamad Raza",
-    customerPhone: "9876543210",
-    vehicleName: "Swift Dzire",
-    vehicleNumber: "KA 05 MN 4589",
-    shopName: "ABC Tyre & Service Center",
-    items: [
-      { id: "1", name: "MRF Zapper FX 100/90-17 Tubeless Tyre", type: "tyre", qty: 2, rate: 2100, amount: 4200 },
-      { id: "2", name: "Tyre Cut & Sidewall Repair (सर्विस)", type: "service", qty: 1, rate: 350, amount: 350 },
-      { id: "3", name: "Nitrogen Air Fill (4 Tyres)", type: "service", qty: 1, rate: 100, amount: 100 }
-    ],
-    subtotal: 4650,
-    discount: 150,
-    taxType: "none", // none, gst18, gst28
-    taxAmount: 0,
-    grandTotal: 4500,
-    paymentMode: "upi", // cash, upi, card, khata
-    paymentStatus: "paid", // paid, pending
-    notes: "5 Years manufacturer warranty on tyres. Free air check for 6 months.",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "TS-INV-1002",
-    invoiceNo: "TS-INV-1002",
-    date: "2026-08-18",
-    customerName: "Pooja Verma",
-    customerPhone: "98440-99887",
-    vehicleName: "Hyundai Creta",
-    vehicleNumber: "KA 01 AB 8877",
-    shopName: "TyreSaathi Partner Hub",
-    items: [
-      { id: "1", name: "3D Wheel Alignment & Balancing", type: "service", qty: 1, rate: 450, amount: 450 },
-      { id: "2", name: "Tubeless Puncture Fix (2 Plugs)", type: "service", qty: 2, rate: 100, amount: 200 }
-    ],
-    subtotal: 650,
-    discount: 50,
-    taxType: "none",
-    taxAmount: 0,
-    grandTotal: 600,
-    paymentMode: "cash",
-    paymentStatus: "paid",
-    notes: "Alignment report given. Next checkup after 5000 km.",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "TS-INV-1003",
-    invoiceNo: "TS-INV-1003",
-    date: "2026-08-17",
-    customerName: "Anil Kumar",
-    customerPhone: "99001-22334",
-    vehicleName: "Royal Enfield Classic 350",
-    vehicleNumber: "KA 04 EQ 1234",
-    shopName: "TyreSaathi Partner Hub",
-    items: [
-      { id: "1", name: "CEAT Secura Zoom 3.00-18 Bike Tyre", type: "tyre", qty: 1, rate: 1850, amount: 1850 },
-      { id: "2", name: "Doorstep Emergency Assistance", type: "service", qty: 1, rate: 499, amount: 499 }
-    ],
-    subtotal: 2349,
-    discount: 99,
-    taxType: "none",
-    taxAmount: 0,
-    grandTotal: 2250,
-    paymentMode: "khata",
-    paymentStatus: "pending",
-    notes: "Remaining payment promised by tomorrow evening.",
-    createdAt: new Date().toISOString(),
-  }
-];
+const INITIAL_DEMO_INVOICES = [];
 
 const PRESET_SERVICES = [
   { name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 350, type: "service" },
@@ -123,7 +52,14 @@ export default function Billing() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("create"); // 'create' or 'history'
-  const [invoices, setInvoices] = useState(INITIAL_DEMO_INVOICES);
+  const [invoices, setInvoices] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_invoices");
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");

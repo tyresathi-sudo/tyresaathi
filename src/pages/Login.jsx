@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Lock, Mail, Store, User, Sparkles, Eye, EyeOff, AlertTriangle, KeyRound, UserPlus } from "lucide-react";
+import { logUserActivityToSheet } from "../utils/googleSheets";
 
 export function friendlyError(code) {
   if (typeof code === "string" && (code.includes("offline") || code.includes("unavailable"))) {
@@ -46,7 +47,13 @@ export default function Login() {
     const cleanEmail = email.trim().toLowerCase();
 
     try {
-      await login(cleanEmail, password);
+      const userCred = await login(cleanEmail, password);
+      // Log login event to Google Sheet in background
+      logUserActivityToSheet({
+        email: cleanEmail,
+        name: userCred?.user?.displayName || cleanEmail.split("@")[0],
+        action: "login",
+      });
       navigate("/", { replace: true });
     } catch (err) {
       console.warn("Firebase Login Error:", err);

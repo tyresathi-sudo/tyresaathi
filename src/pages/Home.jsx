@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Search, 
@@ -10,7 +10,12 @@ import {
   Star, 
   ChevronRight, 
   Calendar, 
-  Phone 
+  Phone,
+  MessageSquare,
+  Flame,
+  Sparkles,
+  Megaphone,
+  CheckCircle2
 } from "lucide-react";
 import { 
   MEGA_MENU_BRANDS, 
@@ -19,11 +24,37 @@ import {
   SAMPLE_SHOPS, 
   SERVICE_TYPES 
 } from "../config/tyreCatalog";
+import { INITIAL_SHOP_ADS } from "../config/shopAdsData";
+import { db } from "../firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function Home() {
   const navigate = useNavigate();
   const [searchSize, setSearchSize] = useState("");
   const [searchBrand, setSearchBrand] = useState("all");
+  const [shopAds, setShopAds] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_shop_ads");
+      return local ? JSON.parse(local) : INITIAL_SHOP_ADS;
+    } catch {
+      return INITIAL_SHOP_ADS;
+    }
+  });
+
+  useEffect(() => {
+    async function fetchAds() {
+      try {
+        const snap = await getDocs(collection(db, "shop_ads"));
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setShopAds(list);
+        }
+      } catch (err) {
+        console.warn("Firestore ads load fallback:", err);
+      }
+    }
+    fetchAds();
+  }, []);
 
   const handleHeroSearch = (e) => {
     e.preventDefault();
@@ -32,6 +63,8 @@ export default function Home() {
     if (searchBrand !== "all") url += `brand=${encodeURIComponent(searchBrand)}&`;
     navigate(url);
   };
+
+  const activeAds = shopAds.filter((a) => a.isActive !== false);
 
   return (
     <div className="home-page-container">
@@ -115,6 +148,102 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* 📢 2.5 Featured Partner Shop Offers & Sponsored Ads */}
+      {activeAds.length > 0 && (
+        <section className="home-section shop-ads-section">
+          <div className="section-header-row">
+            <div>
+              <div className="ads-section-tag">
+                <Flame size={14} color="#ff4757" />
+                <span>SPONSORED PARTNER DEALS</span>
+              </div>
+              <h2 className="section-main-title">Featured Tyre Shops & Exclusive Offers (दुकानदार ऑफर्स)</h2>
+              <p className="section-sub-title">Nearest verified partner hubs offering special discounts, free fitment & doorstep service</p>
+            </div>
+            <a
+              href={`https://wa.me/918877277757?text=${encodeURIComponent("Namaste TyreSaathi, mujhe apni tyre shop ka advertisement / offer home page par lagwana hai.")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-promote-shop-top"
+            >
+              <Megaphone size={14} /> Promote Your Shop Here →
+            </a>
+          </div>
+
+          <div className="shop-ads-grid">
+            {activeAds.map((ad) => (
+              <div
+                key={ad.id}
+                className="shop-ad-card"
+                style={{ background: ad.gradient || "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
+              >
+                <div className="ad-card-top">
+                  <div className="ad-shop-header">
+                    <span className="ad-shop-badge">
+                      <ShieldCheck size={13} color="#2ed573" /> Verified Partner
+                    </span>
+                    <span className="ad-city-tag">📍 {ad.city}</span>
+                  </div>
+                  <span
+                    className="ad-offer-pill"
+                    style={{ background: ad.badgeColor || "#ff4757" }}
+                  >
+                    {ad.offerBadge}
+                  </span>
+                </div>
+
+                <div className="ad-card-body">
+                  <h3 className="ad-shop-name">{ad.shopName}</h3>
+                  <h4 className="ad-tagline">{ad.tagline}</h4>
+                  <p className="ad-desc">{ad.description}</p>
+                  {ad.address && <div className="ad-address-snippet">🏠 {ad.address}</div>}
+                </div>
+
+                <div className="ad-card-actions">
+                  {ad.phone && (
+                    <a href={`tel:${ad.phone}`} className="btn-ad-call">
+                      <Phone size={14} /> Call Shop
+                    </a>
+                  )}
+                  {ad.whatsapp && (
+                    <a
+                      href={`https://wa.me/91${ad.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Namaste ${ad.shopName}, maine TyreSaathi par aapka offer (${ad.offerBadge}) dekha, mujhe details chahiye.`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-ad-whatsapp"
+                    >
+                      <MessageSquare size={14} /> WhatsApp Inquiry
+                    </a>
+                  )}
+                  <Link to="/bookings" className="btn-ad-book">
+                    📅 Book Slot
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Shopkeeper Promo Banner */}
+          <div className="partner-ad-join-strip">
+            <div className="join-strip-left">
+              <span className="join-strip-icon">📢</span>
+              <div>
+                <strong>Kya aap tyre shop owner hain?</strong>
+                <p>Apni dukan ke offers aur advertisement TyreSaathi home page par dikhayein aur hazaron naye customers payein.</p>
+              </div>
+            </div>
+            <a
+              href={`https://wa.me/918877277757?text=${encodeURIComponent("Namaste TyreSaathi Team, mujhe apni tyre shop ka offer add karwana hai.")}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-join-ad-banner"
+            >
+              💬 WhatsApp Par Ad Lagwayein (8877277757)
+            </a>
+          </div>
+        </section>
+      )}
 
       {/* 🌟 3. Popular Brands Row (Matching Reference Photo) */}
       <section className="home-section brands-section">
@@ -647,6 +776,241 @@ export default function Home() {
           text-decoration: none;
           font-size: 13.5px;
         }
+
+        /* 📢 Shop Ads Section Styles */
+        .shop-ads-section {
+          margin: 36px 0;
+        }
+        .ads-section-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #fff0f1;
+          color: #ff4757;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 3px 10px;
+          border-radius: 20px;
+          margin-bottom: 6px;
+          letter-spacing: 0.5px;
+        }
+        .btn-promote-shop-top {
+          background: #ff4757;
+          color: white;
+          text-decoration: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .btn-promote-shop-top:hover {
+          background: #e03646;
+          transform: translateY(-1px);
+        }
+        .shop-ads-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 1024px) {
+          .shop-ads-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 650px) {
+          .shop-ads-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .shop-ad-card {
+          border-radius: 14px;
+          padding: 22px;
+          color: white;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+          position: relative;
+          overflow: hidden;
+          transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .shop-ad-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 14px 30px rgba(0,0,0,0.2);
+        }
+        .ad-card-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+        .ad-shop-header {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .ad-shop-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          font-weight: 700;
+          background: rgba(255, 255, 255, 0.2);
+          padding: 3px 8px;
+          border-radius: 4px;
+          width: fit-content;
+        }
+        .ad-city-tag {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.85);
+          font-weight: 600;
+        }
+        .ad-offer-pill {
+          color: white;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 5px 10px;
+          border-radius: 20px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          white-space: nowrap;
+        }
+        .ad-card-body {
+          margin-bottom: 18px;
+        }
+        .ad-shop-name {
+          font-size: 18px;
+          font-weight: 800;
+          margin: 0 0 6px;
+          color: #ffffff;
+          line-height: 1.25;
+        }
+        .ad-tagline {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #ffc145;
+          margin: 0 0 8px;
+          line-height: 1.35;
+        }
+        .ad-desc {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.85);
+          margin: 0 0 10px;
+          line-height: 1.45;
+        }
+        .ad-address-snippet {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.7);
+          background: rgba(0, 0, 0, 0.15);
+          padding: 4px 8px;
+          border-radius: 4px;
+        }
+        .ad-card-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: auto;
+          border-top: 1px solid rgba(255, 255, 255, 0.15);
+          padding-top: 14px;
+        }
+        .btn-ad-call {
+          background: #27ae60;
+          color: white;
+          text-decoration: none;
+          padding: 7px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex: 1;
+          justify-content: center;
+          transition: background 0.15s ease;
+        }
+        .btn-ad-call:hover { background: #219653; }
+        .btn-ad-whatsapp {
+          background: #25d366;
+          color: white;
+          text-decoration: none;
+          padding: 7px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex: 1.2;
+          justify-content: center;
+          transition: background 0.15s ease;
+        }
+        .btn-ad-whatsapp:hover { background: #1ebd5a; }
+        .btn-ad-book {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          text-decoration: none;
+          padding: 7px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s ease;
+        }
+        .btn-ad-book:hover { background: rgba(255, 255, 255, 0.35); }
+
+        /* Partner Promo Banner Strip */
+        .partner-ad-join-strip {
+          background: #fdf2e9;
+          border: 1.5px dashed #e67e22;
+          border-radius: 12px;
+          padding: 16px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .join-strip-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .join-strip-icon {
+          font-size: 28px;
+        }
+        .join-strip-left strong {
+          display: block;
+          font-size: 14px;
+          color: #d35400;
+          margin-bottom: 2px;
+        }
+        .join-strip-left p {
+          margin: 0;
+          font-size: 12.5px;
+          color: #7f8c8d;
+        }
+        .btn-join-ad-banner {
+          background: #e67e22;
+          color: white;
+          text-decoration: none;
+          padding: 9px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.15s ease;
+          white-space: nowrap;
+        }
+        .btn-join-ad-banner:hover { background: #d35400; }
       `}</style>
     </div>
   );

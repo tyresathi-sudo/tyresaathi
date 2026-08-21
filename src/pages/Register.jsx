@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { friendlyError } from "./Login.jsx";
+import { logUserActivityToSheet } from "../utils/googleSheets";
 
 export default function Register() {
   const { register } = useAuth();
@@ -37,6 +38,16 @@ export default function Register() {
         role,
         shopName: shopName.trim(),
       });
+
+      // Log new registration to Google Sheet
+      logUserActivityToSheet({
+        email: email.trim().toLowerCase(),
+        name: name.trim(),
+        phone: phone.trim(),
+        role: role === ROLES.SHOP_OWNER ? `Shop Owner (${shopName.trim()})` : "Customer",
+        action: "register",
+      });
+
       navigate("/", { replace: true });
     } catch (err) {
       console.warn("Registration Error:", err);

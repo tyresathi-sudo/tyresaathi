@@ -32,67 +32,13 @@ import {
 } from "lucide-react";
 import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
+import { logBookingToSheet } from "../utils/googleSheets";
 
-const INITIAL_DEMO_BOOKINGS = [
-  {
-    id: "booking-101",
-    customerName: "Ahamad Raza",
-    customerPhone: "9876543210",
-    customerEmail: "ahamad@example.com",
-    serviceId: "cut_repair",
-    serviceName: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)",
-    vehicleType: "Car (Swift Dzire)",
-    vehicleNumber: "KA 05 MN 4589",
-    shopId: "shop-blr-central",
-    shopName: "TyreSaathi Partner Hub — Central",
-    shopPhone: "",
-    date: "2026-08-18",
-    timeSlot: "11:00 AM - 12:00 PM",
-    notes: "Left rear tyre got cut from side on highway, need urgent repair.",
-    status: "pending", // pending, accepted, rejected, in_progress, completed
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "booking-102",
-    customerName: "Pooja Verma",
-    customerPhone: "98440-99887",
-    customerEmail: "pooja@example.com",
-    serviceId: "alignment",
-    serviceName: "3D Wheel Alignment & Balancing (अलाइनमेंट)",
-    vehicleType: "SUV (Hyundai Creta)",
-    vehicleNumber: "KA 01 AB 8877",
-    shopId: "shop-blr-central",
-    shopName: "TyreSaathi Partner Hub — Central",
-    shopPhone: "",
-    date: "2026-08-18",
-    timeSlot: "03:00 PM - 04:00 PM",
-    notes: "Steering vibrating at 80 km/h, alignment needed.",
-    status: "accepted",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "booking-103",
-    customerName: "Anil Kumar",
-    customerPhone: "99001-22334",
-    customerEmail: "anil@example.com",
-    serviceId: "doorstep",
-    serviceName: "Doorstep Emergency Assistance (घर/रास्ते पर सर्विस)",
-    vehicleType: "Bike (Royal Enfield Classic 350)",
-    vehicleNumber: "KA 04 EQ 1234",
-    shopId: "shop-blr-south",
-    shopName: "TyreSaathi Express Center — South",
-    shopPhone: "",
-    date: "2026-08-17",
-    timeSlot: "06:00 PM - 07:00 PM",
-    notes: "Flat tyre at home parking, need puncture fix and tube check.",
-    status: "completed",
-    createdAt: new Date().toISOString(),
-  }
-];
+const INITIAL_DEMO_BOOKINGS = [];
 
 export default function Bookings() {
   const { user, profile, isVendor } = useAuth();
-  const [bookings, setBookings] = useState(INITIAL_DEMO_BOOKINGS);
+  const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -105,7 +51,7 @@ export default function Bookings() {
     shopName: SAMPLE_SHOPS[0].name,
     shopPhone: SAMPLE_SHOPS[0].phone,
     customerName: profile?.name || "",
-    customerPhone: profile?.phone || "",
+    customerPhone: profile?.phone || "8877277757",
     vehicleType: "Car / SUV",
     vehicleNumber: "",
     date: new Date().toISOString().split("T")[0],
@@ -121,9 +67,16 @@ export default function Bookings() {
         if (!snap.empty) {
           const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           setBookings(fetched);
+        } else {
+          const local = localStorage.getItem("tyresaathi_user_bookings");
+          if (local) setBookings(JSON.parse(local));
+          else setBookings([]);
         }
       } catch (e) {
         console.warn("Using local bookings state:", e);
+        const local = localStorage.getItem("tyresaathi_user_bookings");
+        if (local) setBookings(JSON.parse(local));
+        else setBookings([]);
       }
     }
     loadBookings();
@@ -141,6 +94,15 @@ export default function Bookings() {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
+      // Also log update to Google Sheet
+      const existing = bookings.find((b) => b.id === bookingId);
+      if (existing) {
+        logBookingToSheet({
+          ...existing,
+          bookingId,
+          status: newStatus,
+        });
+      }
     } catch (e) {
       console.warn("Firestore update notice:", e);
     }
@@ -168,10 +130,18 @@ export default function Bookings() {
         ...bookingData,
         createdAtServer: serverTimestamp(),
       });
-      setBookings((prev) => [{ id: docRef.id, ...bookingData }, ...prev]);
+      const finalBooking = { id: docRef.id, ...bookingData };
+      setBookings((prev) => [finalBooking, ...prev]);
+
+      // Automatically log to Google Sheet
+      logBookingToSheet(finalBooking);
     } catch (err) {
       console.warn("Local fallback save for booking:", err);
-      setBookings((prev) => [{ id: "b-" + Date.now(), ...bookingData }, ...prev]);
+      const fallbackBooking = { id: "b-" + Date.now(), ...bookingData };
+      setBookings((prev) => [fallbackBooking, ...prev]);
+      
+      // Also log to Google Sheet in fallback mode
+      logBookingToSheet(fallbackBooking);
     } finally {
       setLoading(false);
       setModalOpen(false);

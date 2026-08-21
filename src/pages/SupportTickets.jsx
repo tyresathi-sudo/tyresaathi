@@ -21,38 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 
-const INITIAL_DEMO_TICKETS = [
-  {
-    id: "TS-TCK-701",
-    ticketNo: "TS-TCK-701",
-    category: "Booking Issue",
-    priority: "high",
-    subject: "Doorstep emergency mechanic late by 25 mins",
-    description: "Maine highway par puncture assistance book kiya tha, shopkeeper se contact nahi ho pa raha tha. Please check.",
-    status: "resolved", // open, in_progress, resolved, closed
-    userName: "Ahamad Raza",
-    userEmail: "ahamad@example.com",
-    userPhone: "9876543210",
-    vehicleNumber: "KA 05 MN 4589",
-    adminReply: "Humne partner shop se baat ki hai aur mechanic aapki location par reach kar chuka hai. Delay ke liye khed hai.",
-    createdAt: "2026-08-18",
-  },
-  {
-    id: "TS-TCK-702",
-    ticketNo: "TS-TCK-702",
-    category: "Tyre Warranty Claim",
-    priority: "medium",
-    subject: "Apollo tyre sidewall bulge within 3 months",
-    description: "Apollo tyre me side me bubble aa gaya hai. Iska company warranty replacement process kaise hoga?",
-    status: "in_progress",
-    userName: "Pooja Verma",
-    userEmail: "pooja@example.com",
-    userPhone: "98440-99887",
-    vehicleNumber: "KA 01 AB 8877",
-    adminReply: "Aapka claim register ho gaya hai. Kripya dukan par bill aur tyre ka inspection karayein, Apollo officer inspect karega.",
-    createdAt: "2026-08-17",
-  }
-];
+const INITIAL_DEMO_TICKETS = [];
 
 const TICKET_CATEGORIES = [
   "Booking & Service Issue (बुकिंग समस्या)",
@@ -66,13 +35,47 @@ const TICKET_CATEGORIES = [
 
 export default function SupportTickets() {
   const { user, profile, isVendor } = useAuth();
-  const [tickets, setTickets] = useState(INITIAL_DEMO_TICKETS);
+  const [tickets, setTickets] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [successAlert, setSuccessAlert] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Fetch tickets from Firestore or fallback
+  useEffect(() => {
+    async function loadTickets() {
+      setLoading(true);
+      try {
+        const q = collection(db, "support_tickets");
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setTickets(list);
+        } else {
+          // Check localStorage
+          const local = localStorage.getItem("tyresaathi_user_tickets");
+          if (local) {
+            setTickets(JSON.parse(local));
+          } else {
+            setTickets([]);
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore tickets load fallback:", err);
+        const local = localStorage.getItem("tyresaathi_user_tickets");
+        if (local) {
+          setTickets(JSON.parse(local));
+        } else {
+          setTickets([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadTickets();
+  }, [user]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -80,7 +83,7 @@ export default function SupportTickets() {
     priority: "medium", // low, medium, high, urgent
     subject: "",
     description: "",
-    userPhone: profile?.phone || "",
+    userPhone: profile?.phone || "8877277757",
     vehicleNumber: "",
   });
 
@@ -117,7 +120,11 @@ export default function SupportTickets() {
       console.warn("Firestore support ticket fallback:", err);
     }
 
-    setTickets((prev) => [newTicket, ...prev]);
+    setTickets((prev) => {
+      const updated = [newTicket, ...prev];
+      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updated));
+      return updated;
+    });
     setSubmitting(false);
     setModalOpen(false);
     setSuccessAlert(true);
@@ -129,7 +136,7 @@ export default function SupportTickets() {
       priority: "medium",
       subject: "",
       description: "",
-      userPhone: profile?.phone || "",
+      userPhone: profile?.phone || "8877277757",
       vehicleNumber: "",
     });
   };
@@ -169,16 +176,36 @@ export default function SupportTickets() {
         <div className="channel-card wa-channel">
           <div className="channel-icon">💬</div>
           <div>
-            <h4>Instant WhatsApp Helpdesk</h4>
-            <p>Direct TyreSaathi support executive se WhatsApp par chat karein.</p>
-            <a
-              href={`https://wa.me/919876543210?text=${encodeURIComponent("Namaste TyreSaathi, mujhe support aur help ki zaroorat hai.")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="channel-link wa-link"
-            >
-              Chat on WhatsApp →
-            </a>
+            <h4>Instant WhatsApp Helpdesk (+91 88772 77757)</h4>
+            <p>Direct TyreSaathi official support executive se WhatsApp par chat karein.</p>
+            <div style={{ display: "flex", gap: "10px", marginTop: "8px", flexWrap: "wrap" }}>
+              <a
+                href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur help ki zaroorat hai.")}`}
+                target="_blank"
+                rel="noreferrer"
+                className="channel-link wa-link"
+              >
+                💬 Chat on WhatsApp (8877277757) →
+              </a>
+              <a
+                href="tel:8877277757"
+                className="channel-link phone-link"
+                style={{
+                  background: "#2c3e50",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: "6px",
+                  textDecoration: "none",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+              >
+                📞 Call: 8877277757
+              </a>
+            </div>
           </div>
         </div>
 
@@ -187,7 +214,7 @@ export default function SupportTickets() {
           <div>
             <h4>TyreSaathi Resolution Guarantee</h4>
             <p>100% Genuine Tyres, Authorized Fitment & Quick Warranty Settlement.</p>
-            <span className="channel-badge">Support Hours: 24x7 Assistance</span>
+            <span className="channel-badge">Support Hours: 24x7 Assistance (8877277757)</span>
           </div>
         </div>
       </div>
