@@ -26,7 +26,7 @@ import { MEGA_MENU_BRANDS, TYRE_CATEGORIES } from "../config/tyreCatalog";
 
 export default function Navbar({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
-  const { user, profile, logout, isVendor } = useAuth();
+  const { user, profile, logout, isVendor, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
