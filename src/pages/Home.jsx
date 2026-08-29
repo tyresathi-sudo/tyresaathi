@@ -348,11 +348,11 @@ export default function Home() {
               Connect with verified local partner tyre shops with 3D Wheel Alignment machines, Nitrogen filling, and genuine brand tyre stocks.
             </p>
             <div className="store-sample-pills">
-              <span>📍 Muzaffarpur</span>
-              <span>📍 Patna</span>
+              <span>📍 Raipur (Rawabhatha)</span>
+              <span>📍 Bhilai & Durg</span>
+              <span>📍 Bilaspur</span>
               <span>📍 Delhi NCR</span>
               <span>📍 Mumbai</span>
-              <span>📍 Hyderabad</span>
             </div>
             <Link to="/store-location" className="btn-store-explore">
               Open Interactive Store Locator →

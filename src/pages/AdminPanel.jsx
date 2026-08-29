@@ -54,8 +54,8 @@ const SAMPLE_ADMIN_SHOPS = [
     role: "admin",
     shopName: "TyreSaathi Central Headquarters",
     shopApproved: true,
-    city: "Muzaffarpur, Bihar",
-    address: "Motijheel Commercial Hub",
+    city: "Raipur, Chhattisgarh",
+    address: "Transport Nagar, Rawabhatha, Raipur, Chhattisgarh",
     createdAt: "2026-08-01"
   }
 ];
@@ -83,13 +83,16 @@ export function getAdScheduleStatus(ad) {
 }
 
 const POPULAR_CITIES = [
-  "Muzaffarpur",
-  "Patna",
+  "Raipur",
+  "Bhilai & Durg",
+  "Bilaspur",
   "Delhi NCR",
-  "Bengaluru",
   "Mumbai",
+  "Bengaluru",
   "Pune",
   "Hyderabad",
+  "Patna",
+  "Muzaffarpur",
   "Chennai",
   "Kolkata",
   "Ahmedabad",
@@ -97,13 +100,8 @@ const POPULAR_CITIES = [
   "Lucknow",
   "Chandigarh",
   "Indore",
-  "Kochi",
-  "Coimbatore",
-  "Erode",
-  "Surat",
-  "Bhopal",
   "Nagpur",
-  "Visakhapatnam",
+  "Bhopal",
   "Other"
 ];
 
@@ -136,7 +134,7 @@ export default function AdminPanel() {
     description: "",
     phone: "",
     whatsapp: "",
-    city: "Muzaffarpur",
+    city: "Raipur",
     customCity: "",
     address: "",
     startDate: new Date().toISOString().split("T")[0],
@@ -291,7 +289,7 @@ export default function AdminPanel() {
       description: "",
       phone: "",
       whatsapp: "",
-      city: "Muzaffarpur",
+      city: "Raipur",
       customCity: "",
       address: "",
       startDate: today,
@@ -320,7 +318,7 @@ export default function AdminPanel() {
       description: ad.description || "",
       phone: ad.phone || "",
       whatsapp: ad.whatsapp || "",
-      city: isCityInList ? (ad.city || "Muzaffarpur") : "Other",
+      city: isCityInList ? (ad.city || "Raipur") : "Other",
       customCity: !isCityInList ? (ad.city || "") : "",
       address: ad.address || "",
       startDate: ad.startDate || today,

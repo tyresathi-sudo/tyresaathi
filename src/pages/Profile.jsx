@@ -323,7 +323,7 @@ export default function Profile() {
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="e.g. Muzaffarpur / Patna / Delhi"
+                      placeholder="e.g. Raipur / Bhilai / Bilaspur"
                     />
                   </div>
 

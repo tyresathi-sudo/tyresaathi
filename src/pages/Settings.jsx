@@ -340,7 +340,7 @@ export default function Settings() {
                     type="text"
                     value={settings.city}
                     onChange={(e) => setSettings({ ...settings, city: e.target.value })}
-                    placeholder="उदा: Muzaffarpur, Bihar / Patna, Bihar"
+                    placeholder="उदा: Transport Nagar, Rawabhatha, Raipur, Chhattisgarh"
                   />
                 </div>
 
