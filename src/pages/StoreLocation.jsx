@@ -181,7 +181,7 @@ export default function StoreLocation() {
               height="100%"
               style={{ border: 0 }}
               loading="lazy"
-              src={`https://maps.google.com/maps?q=${selectedShop ? encodeURIComponent(selectedShop.address) : "Bengaluru"}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
+              src={`https://maps.google.com/maps?q=${selectedShop ? encodeURIComponent(selectedShop.address) : "Muzaffarpur, Bihar"}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
             />
           </div>
         </div>

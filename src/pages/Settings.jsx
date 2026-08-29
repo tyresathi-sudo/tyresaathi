@@ -23,11 +23,14 @@ import {
   ExternalLink,
   Check,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
+  Scale
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   getGoogleSheetUrl, 
   setGoogleSheetUrl, 
@@ -36,13 +39,17 @@ import {
 } from "../utils/googleSheets";
 
 export default function Settings() {
-  const { user, profile, updateUserProfile, resetPassword, isVendor, isAdmin } = useAuth();
+  const { user, profile, updateUserProfile, resetPassword, isVendor, isAdmin, deleteAccount } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("shop"); // 'shop', 'billing', 'notifications', 'security', 'sheets'
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Google Sheets state
   const [sheetUrl, setSheetUrl] = useState(() => getGoogleSheetUrl());
@@ -113,6 +120,20 @@ export default function Settings() {
     navigator.clipboard.writeText(APPS_SCRIPT_TEMPLATE);
     setCopiedScript(true);
     setTimeout(() => setCopiedScript(false), 3000);
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount();
+      alert("Aapka account aur associated records successfully delete ho gaye hain.");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      alert("Account deletion error: " + err.message + "\nKripya re-login karke try karein.");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+    }
   };
 
   const handleTestSheet = async () => {
@@ -237,6 +258,18 @@ export default function Settings() {
             </div>
           </button>
 
+          <button
+            type="button"
+            className={`nav-tab-btn ${activeTab === "legal" ? "tab-btn-active" : ""}`}
+            onClick={() => setActiveTab("legal")}
+          >
+            <Scale size={18} color="#8e44ad" />
+            <div>
+              <strong>Legal, IP & Privacy</strong>
+              <small>ट्रेडमार्क, नीतियां व नियम</small>
+            </div>
+          </button>
+
           <div className="quick-help-link-box">
             <HelpCircle size={18} color="#c0392b" />
             <div>
@@ -307,7 +340,7 @@ export default function Settings() {
                     type="text"
                     value={settings.city}
                     onChange={(e) => setSettings({ ...settings, city: e.target.value })}
-                    placeholder="उदा: Bengaluru, Karnataka / New Delhi, Delhi NCR"
+                    placeholder="उदा: Muzaffarpur, Bihar / Patna, Bihar"
                   />
                 </div>
 
@@ -477,6 +510,25 @@ export default function Settings() {
                         🛡️ Open Master Admin Panel
                       </Link>
                     )}
+                  </div>
+
+                  {/* Google Play Mandatory: Danger Zone */}
+                  <div className="sec-item-row danger-zone-row" style={{ marginTop: "24px", borderColor: "rgba(231,76,60,0.3)", background: "rgba(231,76,60,0.03)" }}>
+                    <div>
+                      <strong style={{ color: "#e74c3c", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <AlertTriangle size={15} /> Delete Account & Data (खाता हटाएं)
+                      </strong>
+                      <p style={{ color: "#888" }}>
+                        Google Play Store data privacy guidelines ke anusar aap apna account aur sabhi personal records permanently delete kar sakte hain.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-danger-del"
+                      onClick={() => setShowDeleteModal(true)}
+                    >
+                      <Trash2 size={14} /> Delete Account
+                    </button>
                   </div>
                 </div>
               </div>
@@ -695,6 +747,79 @@ export default function Settings() {
               </div>
             )}
 
+            {/* ═══ TAB 6: LEGAL, TRADEMARK & PRIVACY COMPLIANCE ═══ */}
+            {activeTab === "legal" && (
+              <div className="settings-section">
+                <div className="sec-header">
+                  <h3>⚖️ Legal, Trademark & Data Privacy Policies (कानूनी नीतियां व अस्वीकरण)</h3>
+                  <p>TyreSaathi ke sabhi statutory compliances, trademark protections aur user data privacy rules.</p>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
+                  {/* 1. Trademark Fair Use */}
+                  <div style={{ background: "rgba(142, 68, 173, 0.05)", border: "1px solid rgba(142, 68, 173, 0.25)", borderRadius: "12px", padding: "18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <Scale size={18} color="#8e44ad" />
+                      <strong style={{ color: "#8e44ad", fontSize: "15px" }}>
+                        Trade Marks Act, 1999 — Section 30 (Nominative Fair Use Protection)
+                      </strong>
+                    </div>
+                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
+                      All brand names, trademarks, logos, and registered trade names (such as MRF, Apollo, CEAT, Bridgestone, Michelin, Goodyear, JK Tyre, Continental, Yokohama, TVS Eurogrip, Maruti Suzuki, Hyundai, etc.) displayed on TyreSaathi are property of their respective trademark holders. Their mention is strictly for descriptive compatibility and genuine product identification under Section 30 of the Indian Trade Marks Act 1999, and does not imply direct sponsorship or endorsement.
+                    </p>
+                    <Link to="/disclaimer" style={{ color: "#8e44ad", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
+                      Full Trademark & IP Policy Document ↗
+                    </Link>
+                  </div>
+
+                  {/* 2. Terms of Service & Warranty */}
+                  <div style={{ background: "rgba(41, 128, 185, 0.05)", border: "1px solid rgba(41, 128, 185, 0.25)", borderRadius: "12px", padding: "18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <ShieldCheck size={18} color="#2980b9" />
+                      <strong style={{ color: "#2980b9", fontSize: "15px" }}>
+                        Terms of Service & 100% Genuine Manufacturer Warranty
+                      </strong>
+                    </div>
+                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
+                      All tyre products purchased through TyreSaathi partner retail shops come with official brand warranty cards issued directly by the respective manufacturers. Garage and fitment services are facilitated by verified partner hubs.
+                    </p>
+                    <Link to="/terms" style={{ color: "#2980b9", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
+                      Read User Agreement & Terms of Service ↗
+                    </Link>
+                  </div>
+
+                  {/* 3. Google Play Data Safety & Privacy */}
+                  <div style={{ background: "rgba(39, 174, 96, 0.05)", border: "1px solid rgba(39, 174, 96, 0.25)", borderRadius: "12px", padding: "18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <Lock size={18} color="#27ae60" />
+                      <strong style={{ color: "#27ae60", fontSize: "15px" }}>
+                        Google Play Data Safety & Privacy Policy
+                      </strong>
+                    </div>
+                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
+                      Compliant with Google Play Store Developer Guidelines and India Digital Personal Data Protection standards. Camera, storage, and location permissions are used strictly with user consent for profile pictures, receipt uploads, and finding nearby tyre fitment shops.
+                    </p>
+                    <Link to="/privacy-policy" style={{ color: "#27ae60", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
+                      Read Complete Privacy Policy (Data Safety) ↗
+                    </Link>
+                  </div>
+
+                  {/* 4. Grievance Redressal */}
+                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px" }}>
+                    <strong style={{ fontSize: "14px", display: "block", marginBottom: "6px" }}>
+                      📞 Grievance Redressal & Safe Harbor Intermediary (IT Act 2000 Section 79)
+                    </strong>
+                    <p style={{ fontSize: "12.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>
+                      Grievance Officer: <strong>TyreSaathi Compliance Team</strong> | Email: <code>tyresathi@gmail.com</code> | Phone: <code>+91 8877277757</code>
+                    </p>
+                    <Link to="/support" style={{ color: "#c0392b", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
+                      Raise a Grievance / Support Ticket →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bottom Save Button */}
             <div className="settings-bottom-actions">
               <button type="submit" className="btn-save-settings" disabled={saving}>
@@ -704,6 +829,70 @@ export default function Settings() {
           </form>
         </main>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-backdrop-st">
+          <div className="delete-modal-box-st">
+            <div style={{ textAlign: "center", marginBottom: "12px" }}>
+              <AlertTriangle size={36} color="#e74c3c" />
+            </div>
+            <h3 style={{ margin: "0 0 8px", color: "#1e293b", textAlign: "center" }}>Delete Account Permanently?</h3>
+            <p style={{ fontSize: "13.5px", color: "#64748b", lineHeight: "1.55", textAlign: "center", margin: "0 0 16px" }}>
+              Kya aap sach me apna TyreSaathi account aur saara data delete karna chahte hain? Iske baad aapke sabhi records permanently purge ho jayenge aur recover nahi honge.
+            </p>
+
+            <div style={{ marginBottom: "18px", textAlign: "left" }}>
+              <label style={{ fontSize: "12px", fontWeight: "700", color: "#e74c3c", display: "block", marginBottom: "6px" }}>
+                Galti se delete hone se rokne ke liye niche "DELETE" type karein:
+              </label>
+              <input 
+                type="text"
+                placeholder="Type DELETE here"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "8px",
+                  border: "1.5px solid #e74c3c",
+                  fontSize: "14px",
+                  fontWeight: "700",
+                  letterSpacing: "1px",
+                  color: "#e74c3c",
+                  outline: "none"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button 
+                type="button"
+                className="btn-cancel-modal-st"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText("");
+                }}
+                disabled={isDeleting}
+              >
+                Cancel (रद्द करें)
+              </button>
+              <button 
+                type="button"
+                className="btn-confirm-delete-st"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
+                style={{
+                  opacity: deleteConfirmText.trim().toUpperCase() === "DELETE" ? 1 : 0.45,
+                  cursor: deleteConfirmText.trim().toUpperCase() === "DELETE" ? "pointer" : "not-allowed"
+                }}
+              >
+                {isDeleting ? "Deleting..." : "Permanently Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .settings-page-container {
@@ -1030,6 +1219,67 @@ export default function Settings() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
+        }
+        .btn-danger-del {
+          background: transparent;
+          border: 1.5px solid #e74c3c;
+          color: #e74c3c;
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-weight: 700;
+          font-size: 12.5px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+        .btn-danger-del:hover {
+          background: #e74c3c;
+          color: white;
+        }
+        .modal-backdrop-st {
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.65);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          padding: 20px;
+        }
+        .delete-modal-box-st {
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 16px;
+          padding: 28px 24px;
+          max-width: 440px;
+          width: 100%;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .btn-cancel-modal-st {
+          flex: 1;
+          background: var(--surface-2, #f1f5f9);
+          border: 1px solid var(--border, #cbd5e1);
+          color: var(--text, #334155);
+          padding: 10px;
+          border-radius: 8px;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .btn-confirm-delete-st {
+          flex: 1.2;
+          background: #e74c3c;
+          border: none;
+          color: white;
+          padding: 10px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 13px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
         }
         .spin {
           animation: spin 1s linear infinite;

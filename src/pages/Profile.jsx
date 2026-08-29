@@ -16,7 +16,8 @@ import {
   User, 
   PlusCircle, 
   CheckCircle2, 
-  Calendar 
+  Calendar,
+  Settings as SettingsIcon
 } from "lucide-react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "../firebase";
@@ -24,7 +25,7 @@ import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
 
 const ROLE_LABEL = {
-  [ROLES.CUSTOMER]: "👤 Customer",
+  [ROLES.CUSTOMER]: "👤 Customer (ग्राहक)",
   [ROLES.SHOP_OWNER]: "🏪 Shop Owner (दुकानदार)",
   [ROLES.ADMIN]: "🛡️ Admin",
 };
@@ -322,7 +323,7 @@ export default function Profile() {
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="e.g. Bengaluru / Delhi / Mumbai"
+                      placeholder="e.g. Muzaffarpur / Patna / Delhi"
                     />
                   </div>
 
@@ -381,18 +382,15 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Settings Row */}
-      <div className="settings-row">
-        <span>Theme & Dark Mode</span>
-        <button className="theme-switch" onClick={toggleTheme}>
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          {theme === "dark" ? "Light Mode" : "Dark Mode"}
+      {/* Profile Actions: Settings & Logout */}
+      <div className="profile-actions-row">
+        <Link to="/settings" className="profile-settings-btn">
+          <SettingsIcon size={16} /> App & Account Settings (सेटिंग्स)
+        </Link>
+        <button className="logout-btn-clean" onClick={handleLogout}>
+          <LogOut size={16} /> Logout from Account (लॉगआउट)
         </button>
       </div>
-
-      <button className="logout-btn-full" onClick={handleLogout}>
-        <LogOut size={16} /> Logout from Account
-      </button>
 
       <style>{`
         .profile-page-wrap {
@@ -755,6 +753,54 @@ export default function Profile() {
           align-items: center;
           justify-content: center;
           gap: 6px;
+        }
+
+        .profile-actions-row {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 20px;
+        }
+        .profile-settings-btn {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          color: var(--text);
+          border-radius: 12px;
+          padding: 13px 18px;
+          font-weight: 700;
+          font-size: 14px;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .profile-settings-btn:hover {
+          background: var(--surface-2);
+          border-color: #c0392b;
+          color: #c0392b;
+        }
+        .logout-btn-clean {
+          width: 100%;
+          background: var(--surface-2);
+          color: #e74c3c;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 13px;
+          font-weight: 700;
+          font-size: 14px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.2s ease;
+        }
+        .logout-btn-clean:hover {
+          background: #fdedec;
+          border-color: #e74c3c;
         }
       `}</style>
     </div>

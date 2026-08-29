@@ -336,7 +336,7 @@ export default function SupportTickets() {
                   <label>Contact Mobile Number *</label>
                   <input
                     type="tel"
-                    placeholder="9876543210"
+                    placeholder="10-digit Mobile No."
                     value={formData.userPhone}
                     onChange={(e) => setFormData({ ...formData, userPhone: e.target.value })}
                     required

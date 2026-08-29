@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import Sidebar from "./Sidebar.jsx";
 import BottomNav from "./BottomNav.jsx";
+import Footer from "./Footer.jsx";
 import { MessageSquare } from "lucide-react";
 
 export default function Layout() {
@@ -18,21 +19,22 @@ export default function Layout() {
             {/* Nested routes render here */}
             <Outlet />
           </div>
+          <Footer />
         </main>
       </div>
       <BottomNav />
 
-      {/* 💬 Global Floating WhatsApp Support Widget (8877277757) */}
+      {/* 💬 Global Floating WhatsApp / Support Widget */}
       <a
         href={`https://wa.me/918877277757?text=${encodeURIComponent("Namaste TyreSaathi, mujhe support aur jaankari chahiye.")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="floating-whatsapp-btn"
-        title="WhatsApp Support: 8877277757"
-        aria-label="Chat on WhatsApp"
+        title="24x7 Customer & Shop Support"
+        aria-label="Support Assistance"
       >
         <span className="wa-icon-glow">💬</span>
-        <span className="wa-btn-text">Support (8877277757)</span>
+        <span className="wa-btn-text">Support</span>
       </a>
 
       <style>{`
@@ -65,10 +67,16 @@ export default function Layout() {
         }
         @media (max-width: 900px) {
           .floating-whatsapp-btn {
-            bottom: 72px; /* Above mobile bottom navigation bar */
-            right: 16px;
-            padding: 8px 12px;
-            font-size: 12px;
+            bottom: 74px; /* Clearly above mobile bottom navigation bar */
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
           }
           .wa-btn-text {
             display: none; /* Icon-only on small mobile screens */

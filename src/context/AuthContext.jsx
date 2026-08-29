@@ -6,9 +6,10 @@ import {
   signOut, 
   onAuthStateChanged, 
   sendPasswordResetEmail,
-  updateProfile
+  updateProfile,
+  deleteUser
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 export const ROLES = {
   CUSTOMER: "customer",
@@ -118,6 +119,23 @@ export function AuthProvider({ children }) {
     return sendPasswordResetEmail(auth, email);
   }
 
+  // Delete User Account and associated profile data (Google Play requirement)
+  async function deleteAccount() {
+    if (!currentUser) return;
+    const uid = currentUser.uid;
+    try {
+      // 1. Delete Firestore user document
+      await deleteDoc(doc(db, "users", uid));
+    } catch (err) {
+      console.warn("Could not delete user firestore record:", err);
+    }
+    // 2. Delete Firebase Auth Account
+    await deleteUser(currentUser);
+    setUserData(null);
+    setRole(ROLES.CUSTOMER);
+    setCurrentUser(null);
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
@@ -177,11 +195,11 @@ export function AuthProvider({ children }) {
     signup,
     updateUserProfile,
     logout,
+    deleteAccount,
     isAdmin: 
-      role === "admin" || 
-      role === ROLES.ADMIN || 
       currentUser?.email?.toLowerCase() === "tyresathi@gmail.com" || 
-      currentUser?.email?.toLowerCase() === "ucanmail195@gmail.com",
+      role === "admin" || 
+      role === ROLES.ADMIN,
     isVendor: 
       role === "vendor" || 
       role === "shop_owner" || 

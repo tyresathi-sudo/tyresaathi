@@ -127,7 +127,7 @@ export default function Navbar({ onMenuClick }) {
                       <Link to="/support" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                         <LifeBuoy size={14} /> Help & Support Tickets
                       </Link>
-                      {(isAdmin || isVendor) && (
+                      {isAdmin && (
                         <Link to="/admin" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                           <ShieldCheck size={14} color="#c0392b" /> Master Admin Panel
                         </Link>
@@ -335,7 +335,7 @@ export default function Navbar({ onMenuClick }) {
           font-size: 11.5px;
         }
         @media (max-width: 768px) {
-          .top-timing { display: none; }
+          .top-utility-bar { display: none !important; }
         }
         .top-right-tools {
           display: flex;

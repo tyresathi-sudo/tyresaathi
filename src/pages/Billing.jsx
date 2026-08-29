@@ -372,7 +372,7 @@ export default function Billing() {
                       <Phone size={15} />
                       <input
                         type="tel"
-                        placeholder="e.g. 9876543210"
+                        placeholder="10-digit Mobile No."
                         value={invoice.customerPhone}
                         onChange={(e) => setInvoice({ ...invoice, customerPhone: e.target.value })}
                         required

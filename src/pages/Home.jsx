@@ -64,7 +64,13 @@ export default function Home() {
     navigate(url);
   };
 
-  const activeAds = shopAds.filter((a) => a.isActive !== false);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const activeAds = shopAds.filter((a) => {
+    if (a.isActive === false) return false;
+    if (a.startDate && a.startDate > todayStr) return false;
+    if (a.endDate && a.endDate < todayStr) return false;
+    return true;
+  });
 
   return (
     <div className="home-page-container">
@@ -114,7 +120,7 @@ export default function Home() {
               <ShieldCheck size={18} color="#27ae60" /> 100% Genuine Warranty
             </div>
             <div className="feature-item">
-              <MapPin size={18} color="#c0392b" /> 500+ Verified Stores
+              <MapPin size={18} color="#c0392b" /> Verified Partner Stores
             </div>
             <div className="feature-item">
               <Truck size={18} color="#ffc145" /> Doorstep Mobile Van
@@ -201,23 +207,25 @@ export default function Home() {
                 </div>
 
                 <div className="ad-card-actions">
-                  {ad.phone && (
-                    <a href={`tel:${ad.phone}`} className="btn-ad-call">
-                      <Phone size={14} /> Call Shop
-                    </a>
-                  )}
-                  {ad.whatsapp && (
-                    <a
-                      href={`https://wa.me/91${ad.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Namaste ${ad.shopName}, maine TyreSaathi par aapka offer (${ad.offerBadge}) dekha, mujhe details chahiye.`)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-ad-whatsapp"
-                    >
-                      <MessageSquare size={14} /> WhatsApp Inquiry
-                    </a>
-                  )}
+                  <div className="ad-action-top-row">
+                    {ad.phone && (
+                      <a href={`tel:${ad.phone}`} className="btn-ad-call">
+                        <Phone size={13} /> Call Shop
+                      </a>
+                    )}
+                    {ad.whatsapp && (
+                      <a
+                        href={`https://wa.me/91${ad.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Namaste ${ad.shopName}, maine TyreSaathi par aapka offer (${ad.offerBadge}) dekha, mujhe details chahiye.`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-ad-whatsapp"
+                      >
+                        <MessageSquare size={13} /> WhatsApp Inquiry
+                      </a>
+                    )}
+                  </div>
                   <Link to="/bookings" className="btn-ad-book">
-                    📅 Book Slot
+                    📅 Book Fitment Slot
                   </Link>
                 </div>
               </div>
@@ -239,7 +247,7 @@ export default function Home() {
               rel="noreferrer"
               className="btn-join-ad-banner"
             >
-              💬 WhatsApp Par Ad Lagwayein (8877277757)
+              💬 WhatsApp Par Ad Lagwayein
             </a>
           </div>
         </section>
@@ -337,13 +345,13 @@ export default function Home() {
           <div className="store-cta-text">
             <h2>📍 Find a TyreSaathi Authorized Store Near You</h2>
             <p>
-              Over 500+ verified tyre shops with 3D Wheel Alignment machines, Nitrogen filling, and genuine tyre stocks.
+              Connect with verified local partner tyre shops with 3D Wheel Alignment machines, Nitrogen filling, and genuine brand tyre stocks.
             </p>
             <div className="store-sample-pills">
-              <span>📍 Bengaluru</span>
+              <span>📍 Muzaffarpur</span>
+              <span>📍 Patna</span>
               <span>📍 Delhi NCR</span>
               <span>📍 Mumbai</span>
-              <span>📍 Erode</span>
               <span>📍 Hyderabad</span>
             </div>
             <Link to="/store-location" className="btn-store-explore">
@@ -912,24 +920,28 @@ export default function Home() {
         }
         .ad-card-actions {
           display: flex;
+          flex-direction: column;
           gap: 8px;
-          flex-wrap: wrap;
           margin-top: auto;
           border-top: 1px solid rgba(255, 255, 255, 0.15);
           padding-top: 14px;
+        }
+        .ad-action-top-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
         }
         .btn-ad-call {
           background: #27ae60;
           color: white;
           text-decoration: none;
-          padding: 7px 12px;
-          border-radius: 6px;
+          padding: 8px 10px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          flex: 1;
+          gap: 6px;
           justify-content: center;
           transition: background 0.15s ease;
         }
@@ -938,32 +950,34 @@ export default function Home() {
           background: #25d366;
           color: white;
           text-decoration: none;
-          padding: 7px 12px;
-          border-radius: 6px;
+          padding: 8px 10px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          flex: 1.2;
+          gap: 6px;
           justify-content: center;
           transition: background 0.15s ease;
         }
         .btn-ad-whatsapp:hover { background: #1ebd5a; }
         .btn-ad-book {
+          width: 100%;
           background: rgba(255, 255, 255, 0.2);
           color: white;
           text-decoration: none;
-          padding: 7px 10px;
-          border-radius: 6px;
+          padding: 8px 12px;
+          border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 6px;
           transition: background 0.15s ease;
+          box-sizing: border-box;
         }
-        .btn-ad-book:hover { background: rgba(255, 255, 255, 0.35); }
+        .btn-ad-book:hover { background: rgba(255, 255, 255, 0.32); }
 
         /* Partner Promo Banner Strip */
         .partner-ad-join-strip {

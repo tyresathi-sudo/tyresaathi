@@ -27,7 +27,10 @@ import {
   Edit3,
   PlusCircle,
   Phone,
-  Power
+  Power,
+  Rocket,
+  FileText,
+  X
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -51,39 +54,58 @@ const SAMPLE_ADMIN_SHOPS = [
     role: "admin",
     shopName: "TyreSaathi Central Headquarters",
     shopApproved: true,
-    city: "Bengaluru, Karnataka",
-    address: "MG Road Commercial Hub",
+    city: "Muzaffarpur, Bihar",
+    address: "Motijheel Commercial Hub",
     createdAt: "2026-08-01"
-  },
-  {
-    uid: "shop-02",
-    name: "Rajesh Kumar",
-    email: "rajesh.tyres@gmail.com",
-    phone: "98450-11223",
-    role: "vendor",
-    shopName: "Star Tyre & Alignment Hub",
-    shopApproved: true,
-    city: "Mumbai, Maharashtra",
-    address: "Andheri East Link Road",
-    createdAt: "2026-08-05"
-  },
-  {
-    uid: "shop-03",
-    name: "Amit Sharma",
-    email: "amit.auto@gmail.com",
-    phone: "99112-33445",
-    role: "vendor",
-    shopName: "Highway Tyre Care & Puncture Center",
-    shopApproved: false, // Pending verification
-    city: "New Delhi, Delhi NCR",
-    address: "NH-48 Mahipalpur Bypass",
-    createdAt: "2026-08-16"
   }
 ];
 
 const SAMPLE_GLOBAL_BOOKINGS = [];
 const SAMPLE_ADMIN_INVOICES = [];
 const SAMPLE_ADMIN_TICKETS = [];
+
+export function getAdScheduleStatus(ad) {
+  if (ad.isActive === false) {
+    return { status: "paused", label: "⚪ Paused / Inactive", color: "#64748b" };
+  }
+  const today = new Date().toISOString().split("T")[0];
+  if (ad.startDate && ad.startDate > today) {
+    return { status: "scheduled", label: `🟡 Starts on ${ad.startDate}`, color: "#f39c12" };
+  }
+  if (ad.endDate) {
+    if (ad.endDate < today) {
+      return { status: "expired", label: `🔴 Expired (${ad.endDate})`, color: "#e74c3c" };
+    }
+    const diffDays = Math.ceil((new Date(ad.endDate) - new Date(today)) / (1000 * 60 * 60 * 24));
+    return { status: "active", label: `🟢 Live (${diffDays}d left)`, color: "#27ae60" };
+  }
+  return { status: "active", label: "🟢 Live (Permanent)", color: "#27ae60" };
+}
+
+const POPULAR_CITIES = [
+  "Muzaffarpur",
+  "Patna",
+  "Delhi NCR",
+  "Bengaluru",
+  "Mumbai",
+  "Pune",
+  "Hyderabad",
+  "Chennai",
+  "Kolkata",
+  "Ahmedabad",
+  "Jaipur",
+  "Lucknow",
+  "Chandigarh",
+  "Indore",
+  "Kochi",
+  "Coimbatore",
+  "Erode",
+  "Surat",
+  "Bhopal",
+  "Nagpur",
+  "Visakhapatnam",
+  "Other"
+];
 
 export default function AdminPanel() {
   const { user, profile, isAdmin } = useAuth();
@@ -112,15 +134,38 @@ export default function AdminPanel() {
     tagline: "",
     offerBadge: "🔥 20% OFF + FREE FITMENT",
     description: "",
-    phone: "8877277757",
-    whatsapp: "8877277757",
-    city: "Bengaluru",
+    phone: "",
+    whatsapp: "",
+    city: "Muzaffarpur",
+    customCity: "",
     address: "",
+    startDate: new Date().toISOString().split("T")[0],
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     gradient: AD_THEMES[0].gradient,
     badgeColor: AD_THEMES[0].badgeColor,
     isActive: true,
     featured: true,
   });
+
+  // Custom Color State
+  const [customColor1, setCustomColor1] = useState("#1e3c72");
+  const [customColor2, setCustomColor2] = useState("#2a5298");
+  const [customBadgeColor, setCustomBadgeColor] = useState("#ff4757");
+  const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+
+  const handleCustomColorChange = (c1, c2, badge) => {
+    const col1 = c1 !== undefined ? c1 : customColor1;
+    const col2 = c2 !== undefined ? c2 : customColor2;
+    const bColor = badge !== undefined ? badge : customBadgeColor;
+    if (c1 !== undefined) setCustomColor1(c1);
+    if (c2 !== undefined) setCustomColor2(c2);
+    if (badge !== undefined) setCustomBadgeColor(badge);
+    setAdForm((prev) => ({
+      ...prev,
+      gradient: `linear-gradient(135deg, ${col1} 0%, ${col2} 100%)`,
+      badgeColor: bColor,
+    }));
+  };
 
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
@@ -138,6 +183,16 @@ export default function AdminPanel() {
         }
       } catch (err) {
         console.warn("Firestore ads load:", err);
+      }
+
+      try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        if (!usersSnap.empty) {
+          const list = usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+          setUsers(list);
+        }
+      } catch (err) {
+        console.warn("Firestore users load:", err);
       }
 
       try {
@@ -161,10 +216,33 @@ export default function AdminPanel() {
     loadAdminData();
   }, []);
 
+  // Delete User / Shop
+  const handleDeleteUser = async (uid) => {
+    if (window.confirm("Kya aap sach me is user/shop account ko delete karna chahte hain?")) {
+      try {
+        await deleteDoc(doc(db, "users", uid));
+      } catch (e) {
+        console.warn("Firestore user delete:", e);
+      }
+      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+    }
+  };
+
   // Toggle Shop Verification Badge
-  const handleToggleShopApproval = (uid) => {
+  const handleToggleShopApproval = async (uid) => {
     setUsers((prev) =>
-      prev.map((u) => (u.uid === uid ? { ...u, shopApproved: !u.shopApproved } : u))
+      prev.map((u) => {
+        if (u.uid === uid) {
+          const newStatus = !u.shopApproved;
+          try {
+            updateDoc(doc(db, "users", uid), { shopApproved: newStatus });
+          } catch (e) {
+            console.warn("Firestore update:", e);
+          }
+          return { ...u, shopApproved: newStatus };
+        }
+        return u;
+      })
     );
   };
 
@@ -204,35 +282,49 @@ export default function AdminPanel() {
   // Open Create Ad Modal
   const handleOpenCreateAd = () => {
     setEditingAdId(null);
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     setAdForm({
       shopName: "",
       tagline: "",
       offerBadge: "🔥 20% OFF + FREE FITMENT",
       description: "",
-      phone: "8877277757",
-      whatsapp: "8877277757",
-      city: "Bengaluru",
+      phone: "",
+      whatsapp: "",
+      city: "Muzaffarpur",
+      customCity: "",
       address: "",
+      startDate: today,
+      endDate: nextWeek,
       gradient: AD_THEMES[0].gradient,
       badgeColor: AD_THEMES[0].badgeColor,
       isActive: true,
       featured: true,
     });
+    setShowCustomColorPicker(false);
     setAdModalOpen(true);
   };
 
   // Open Edit Ad Modal
   const handleOpenEditAd = (ad) => {
     setEditingAdId(ad.id);
+    const today = new Date().toISOString().split("T")[0];
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const isPreset = AD_THEMES.some((t) => t.gradient === ad.gradient);
+    const isCityInList = POPULAR_CITIES.includes(ad.city);
+    setShowCustomColorPicker(!isPreset);
     setAdForm({
       shopName: ad.shopName || "",
       tagline: ad.tagline || "",
       offerBadge: ad.offerBadge || "🔥 20% OFF",
       description: ad.description || "",
-      phone: ad.phone || "8877277757",
-      whatsapp: ad.whatsapp || "8877277757",
-      city: ad.city || "Bengaluru",
+      phone: ad.phone || "",
+      whatsapp: ad.whatsapp || "",
+      city: isCityInList ? (ad.city || "Muzaffarpur") : "Other",
+      customCity: !isCityInList ? (ad.city || "") : "",
       address: ad.address || "",
+      startDate: ad.startDate || today,
+      endDate: ad.endDate || (ad.endDate === "" ? "" : nextWeek),
       gradient: ad.gradient || AD_THEMES[0].gradient,
       badgeColor: ad.badgeColor || AD_THEMES[0].badgeColor,
       isActive: ad.isActive !== false,
@@ -241,24 +333,45 @@ export default function AdminPanel() {
     setAdModalOpen(true);
   };
 
-  // Save Ad (Create or Update)
-  const handleSaveAd = (e) => {
-    e.preventDefault();
+  // Quick Preset Helper for Ad Duration
+  const setAdDurationPreset = (days) => {
+    const start = adForm.startDate || new Date().toISOString().split("T")[0];
+    if (days === null) {
+      setAdForm((prev) => ({ ...prev, startDate: start, endDate: "" }));
+    } else {
+      const end = new Date(new Date(start).getTime() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      setAdForm((prev) => ({ ...prev, startDate: start, endDate: end }));
+    }
+  };
+
+  // Save Ad (Publish Live or Save as Draft)
+  const handleSaveAd = (e, asDraft = false) => {
+    if (e) e.preventDefault();
     if (!adForm.shopName.trim() || !adForm.tagline.trim()) {
       alert("Kripya Shop Name aur Offer Tagline zaroor bharein!");
       return;
     }
 
+    const finalCity = adForm.city === "Other" 
+      ? (adForm.customCity.trim() || "Local") 
+      : adForm.city;
+
+    const payload = {
+      ...adForm,
+      city: finalCity,
+      isActive: asDraft ? false : true,
+    };
+
     if (editingAdId) {
       setAds((prev) => {
-        const updated = prev.map((a) => (a.id === editingAdId ? { ...a, ...adForm } : a));
+        const updated = prev.map((a) => (a.id === editingAdId ? { ...a, ...payload } : a));
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
         return updated;
       });
     } else {
       const newAdItem = {
         id: `ad-${Date.now()}`,
-        ...adForm,
+        ...payload,
         views: 0,
         clicks: 0,
         createdAt: new Date().toISOString().split("T")[0],
@@ -269,6 +382,7 @@ export default function AdminPanel() {
         return updated;
       });
     }
+
     setAdModalOpen(false);
   };
 
@@ -288,6 +402,23 @@ export default function AdminPanel() {
       a.offerBadge?.toLowerCase().includes(term)
     );
   });
+
+  if (!isAdmin) {
+    return (
+      <div style={{ maxWidth: "560px", margin: "60px auto", padding: "40px 24px", textAlign: "center", background: "var(--surface, #fff)", borderRadius: "16px", border: "1px solid var(--border, #eee)", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}>
+        <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#fdedec", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <ShieldCheck size={36} color="#c0392b" />
+        </div>
+        <h2 style={{ color: "#c0392b", margin: "0 0 10px", fontSize: "22px" }}>Access Restricted / अनधिकृत प्रवेश</h2>
+        <p style={{ color: "var(--text-muted, #64748b)", fontSize: "14px", lineHeight: "1.6", margin: "0 0 20px" }}>
+          Ye Master Admin Panel sirf authorized super admin email (<strong>tyresathi@gmail.com</strong>) ke liye reserved hai.
+        </p>
+        <Link to="/" style={{ display: "inline-block", background: "#c0392b", color: "#fff", padding: "10px 22px", borderRadius: "8px", textDecoration: "none", fontWeight: "700", fontSize: "13.5px" }}>
+          ← Back to Home
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page-container">
@@ -516,15 +647,24 @@ export default function AdminPanel() {
                           <span className="text-muted">Customer</span>
                         )}
                       </td>
-                      <td>
+                      <td style={{ whiteSpace: "nowrap" }}>
                         {(u.role === "vendor" || u.role === "admin") && (
                           <button
                             className={`btn-approval-toggle ${u.shopApproved ? "btn-unapprove" : "btn-approve"}`}
                             onClick={() => handleToggleShopApproval(u.uid)}
+                            style={{ marginRight: "6px" }}
                           >
                             {u.shopApproved ? "Revoke Verification" : "✅ Approve Shop"}
                           </button>
                         )}
+                        <button
+                          className="btn-icon-ad"
+                          onClick={() => handleDeleteUser(u.uid)}
+                          title="Delete User / Shop Record"
+                          style={{ verticalAlign: "middle" }}
+                        >
+                          <Trash2 size={15} color="#c0392b" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -861,34 +1001,52 @@ export default function AdminPanel() {
                 <p>Upar "Naya Shop Ad Banayein" button dabayein aur kisi bhi dukan ka offer homepage par dikhayein.</p>
               </div>
             ) : (
-              filteredAds.map((ad) => (
-                <div key={ad.id} className="admin-ad-card-item">
-                  {/* Status & Featured Badge */}
-                  <div className="ad-item-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span className={`ad-status-pill ${ad.isActive !== false ? "status-active" : "status-paused"}`}>
-                        {ad.isActive !== false ? "🟢 Live on Home" : "⚪ Inactive / Paused"}
-                      </span>
-                      {ad.featured && <span className="ad-featured-pill">⭐ Featured</span>}
-                    </div>
+              filteredAds.map((ad) => {
+                const scheduleInfo = getAdScheduleStatus(ad);
+                return (
+                  <div key={ad.id} className="admin-ad-card-item">
+                    {/* Status & Featured Badge */}
+                    <div className="ad-item-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <span 
+                          className="ad-status-pill"
+                          style={{
+                            background: scheduleInfo.status === "active" ? "#eafaf1" : (scheduleInfo.status === "scheduled" ? "#fef9e7" : "#fdf2f2"),
+                            color: scheduleInfo.color,
+                            border: `1px solid ${scheduleInfo.color}`,
+                            padding: "3px 8px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: "700"
+                          }}
+                        >
+                          {scheduleInfo.label}
+                        </span>
+                        {ad.featured && <span className="ad-featured-pill">⭐ Featured</span>}
+                        {ad.startDate && (
+                          <span style={{ fontSize: "11px", color: "#888" }}>
+                            📅 {ad.startDate} {ad.endDate ? `to ${ad.endDate}` : "(Permanent)"}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="ad-item-top-btns">
-                      <button
-                        className="btn-icon-ad"
-                        title="Edit Ad"
-                        onClick={() => handleOpenEditAd(ad)}
-                      >
-                        <Edit3 size={15} color="#2980b9" />
-                      </button>
-                      <button
-                        className="btn-icon-ad"
-                        title="Delete Ad"
-                        onClick={() => handleDeleteAd(ad.id)}
-                      >
-                        <Trash2 size={15} color="#c0392b" />
-                      </button>
+                      <div className="ad-item-top-btns">
+                        <button
+                          className="btn-icon-ad"
+                          title="Edit Ad"
+                          onClick={() => handleOpenEditAd(ad)}
+                        >
+                          <Edit3 size={15} color="#2980b9" />
+                        </button>
+                        <button
+                          className="btn-icon-ad"
+                          title="Delete Ad"
+                          onClick={() => handleDeleteAd(ad.id)}
+                        >
+                          <Trash2 size={15} color="#c0392b" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
                   {/* Live Homepage Visual Preview */}
                   <div
@@ -934,8 +1092,9 @@ export default function AdminPanel() {
                     </div>
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })
+          )}
           </div>
         </div>
       )}
@@ -946,17 +1105,31 @@ export default function AdminPanel() {
       {adModalOpen && (
         <div className="modal-backdrop" onClick={() => setAdModalOpen(false)}>
           <div className="modal-card ad-modal-wide" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingAdId ? "✏️ Shop Ad Edit Karein" : "➕ Naya Shop Ad / Banner Banayein"}</h3>
-              <button className="modal-close" onClick={() => setAdModalOpen(false)}>✕</button>
+            <div className="modal-header ad-modal-header-styled">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#fdedec", display: "flex", alignItems: "center", justifyContent: "center", color: "#c0392b", flexShrink: 0 }}>
+                  <Megaphone size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "var(--heading, #1e293b)" }}>
+                    {editingAdId ? "✏️ Shop Ad Edit Karein" : "📢 Naya Shop Ad / Banner Banayein"}
+                  </h3>
+                  <small style={{ color: "var(--text-muted, #64748b)", fontSize: "12px" }}>
+                    Homepage par live customer offer dikhane ke liye details bharein
+                  </small>
+                </div>
+              </div>
+              <button type="button" className="btn-modal-close-icon" onClick={() => setAdModalOpen(false)} aria-label="Close modal">
+                <X size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveAd}>
+            <form onSubmit={(e) => handleSaveAd(e, false)}>
               <div className="ad-modal-grid">
                 {/* Form Inputs */}
                 <div className="ad-form-inputs">
                   <div className="modal-field">
-                    <label>Shop / Business Name (दुकान का नाम) *</label>
+                    <label>🏪 Shop / Business Name (दुकान का नाम) *</label>
                     <input
                       type="text"
                       required
@@ -967,7 +1140,7 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="modal-field">
-                    <label>Offer Badge (डिस्काउंट या ऑफर टैग) *</label>
+                    <label>🏷️ Offer Badge (डिस्काउंट या ऑफर टैग) *</label>
                     <input
                       type="text"
                       required
@@ -978,7 +1151,7 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="modal-field">
-                    <label>Main Tagline / Offer Headline *</label>
+                    <label>✨ Main Tagline / Offer Headline *</label>
                     <input
                       type="text"
                       required
@@ -989,7 +1162,7 @@ export default function AdminPanel() {
                   </div>
 
                   <div className="modal-field">
-                    <label>Offer Description / Details</label>
+                    <label>📝 Offer Description / Details</label>
                     <textarea
                       rows={3}
                       placeholder="e.g. Authorized MRF, Apollo, CEAT dealer with 5-year warranty..."
@@ -1000,19 +1173,19 @@ export default function AdminPanel() {
 
                   <div className="form-row-2col">
                     <div className="modal-field">
-                      <label>Calling Phone Number</label>
+                      <label>📞 Calling Phone Number</label>
                       <input
                         type="text"
-                        placeholder="8877277757"
+                        placeholder="10-digit Calling No."
                         value={adForm.phone}
                         onChange={(e) => setAdForm({ ...adForm, phone: e.target.value })}
                       />
                     </div>
                     <div className="modal-field">
-                      <label>WhatsApp Number</label>
+                      <label>💬 WhatsApp Number</label>
                       <input
                         type="text"
-                        placeholder="8877277757"
+                        placeholder="10-digit WhatsApp No."
                         value={adForm.whatsapp}
                         onChange={(e) => setAdForm({ ...adForm, whatsapp: e.target.value })}
                       />
@@ -1021,16 +1194,28 @@ export default function AdminPanel() {
 
                   <div className="form-row-2col">
                     <div className="modal-field">
-                      <label>City (शहर)</label>
-                      <input
-                        type="text"
-                        placeholder="Bengaluru / Delhi / Mumbai"
+                      <label>📍 City / Location (शहर चुनें)</label>
+                      <select
                         value={adForm.city}
                         onChange={(e) => setAdForm({ ...adForm, city: e.target.value })}
-                      />
+                        style={{ width: "100%", background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "8px", padding: "9px 12px", fontSize: "13.5px", color: "var(--text)", boxSizing: "border-box" }}
+                      >
+                        {POPULAR_CITIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      {adForm.city === "Other" && (
+                        <input
+                          type="text"
+                          placeholder="Type your city name (शहर का नाम लिखें)..."
+                          value={adForm.customCity}
+                          onChange={(e) => setAdForm({ ...adForm, customCity: e.target.value })}
+                          style={{ marginTop: "6px" }}
+                        />
+                      )}
                     </div>
                     <div className="modal-field">
-                      <label>Address / Landmark</label>
+                      <label>🏠 Address / Landmark</label>
                       <input
                         type="text"
                         placeholder="Near Auto Market, Ring Road"
@@ -1040,22 +1225,141 @@ export default function AdminPanel() {
                     </div>
                   </div>
 
-                  {/* Gradient Theme Presets */}
+                  {/* ⏰ Date & Time Schedule & Auto-Expiry */}
+                  <div className="modal-field" style={{ background: "rgba(0,0,0,0.03)", padding: "14px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+                    <label style={{ fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "var(--heading, #1e293b)", marginBottom: "8px" }}>
+                      <Clock size={15} color="#c0392b" /> ⏰ Ad Schedule & Auto-Expiry (तारीख व वैधता)
+                    </label>
+                    
+                    {/* Duration Presets */}
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" }}>
+                      <button type="button" className="btn-ad-preset" onClick={() => setAdDurationPreset(3)}>⚡ 3 Days</button>
+                      <button type="button" className="btn-ad-preset" onClick={() => setAdDurationPreset(7)}>🔥 7 Days</button>
+                      <button type="button" className="btn-ad-preset" onClick={() => setAdDurationPreset(15)}>💎 15 Days</button>
+                      <button type="button" className="btn-ad-preset" onClick={() => setAdDurationPreset(30)}>👑 30 Days</button>
+                      <button type="button" className="btn-ad-preset" onClick={() => setAdDurationPreset(null)}>♾️ Lifetime</button>
+                    </div>
+
+                    <div className="form-row-2col">
+                      <div>
+                        <label style={{ fontSize: "11px", fontWeight: "600", color: "#64748b", display: "block", marginBottom: "3px" }}>Start Date (शुरू होने की तारीख)</label>
+                        <input
+                          type="date"
+                          value={adForm.startDate || ""}
+                          onChange={(e) => setAdForm({ ...adForm, startDate: e.target.value })}
+                          style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: "11px", fontWeight: "600", color: "#64748b", display: "block", marginBottom: "3px" }}>Expiry Date (समाप्त होने की तारीख)</label>
+                        <input
+                          type="date"
+                          value={adForm.endDate || ""}
+                          onChange={(e) => setAdForm({ ...adForm, endDate: e.target.value })}
+                          style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px" }}
+                        />
+                      </div>
+                    </div>
+                    <small style={{ color: "#64748b", fontSize: "11.5px", marginTop: "4px", display: "block" }}>
+                      * Expiry date aate hi ye ad automatic Home page se hat jayega.
+                    </small>
+                  </div>
+
+                  {/* Gradient Theme Presets & Custom Color Picker */}
                   <div className="modal-field">
-                    <label>🎨 Banner Color Theme</label>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ margin: 0, fontWeight: "700" }}>🎨 Banner Color Theme</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !showCustomColorPicker;
+                          setShowCustomColorPicker(next);
+                          if (next) {
+                            handleCustomColorChange(customColor1, customColor2, customBadgeColor);
+                          }
+                        }}
+                        style={{
+                          background: showCustomColorPicker ? "#c0392b" : "var(--surface-2, #f1f5f9)",
+                          color: showCustomColorPicker ? "#ffffff" : "var(--text, #1e293b)",
+                          border: "1px solid var(--border)",
+                          padding: "5px 12px",
+                          borderRadius: "8px",
+                          fontSize: "11.5px",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px"
+                        }}
+                      >
+                        🎨 Custom Color (कस्टम रंग) {showCustomColorPicker ? "▲" : "▼"}
+                      </button>
+                    </div>
+
+                    {/* Presets */}
                     <div className="theme-pills-row">
                       {AD_THEMES.map((theme) => (
                         <button
                           key={theme.id}
                           type="button"
-                          className={`theme-pill ${adForm.gradient === theme.gradient ? "theme-pill-selected" : ""}`}
+                          className={`theme-pill ${!showCustomColorPicker && adForm.gradient === theme.gradient ? "theme-pill-selected" : ""}`}
                           style={{ background: theme.gradient }}
-                          onClick={() => setAdForm({ ...adForm, gradient: theme.gradient, badgeColor: theme.badgeColor })}
+                          onClick={() => {
+                            setShowCustomColorPicker(false);
+                            setAdForm({ ...adForm, gradient: theme.gradient, badgeColor: theme.badgeColor });
+                          }}
                         >
                           {theme.name}
                         </button>
                       ))}
                     </div>
+
+                    {/* Custom Color Palette Controls */}
+                    {showCustomColorPicker && (
+                      <div style={{ marginTop: "12px", background: "rgba(0,0,0,0.03)", border: "1.5px dashed #c0392b", padding: "12px", borderRadius: "10px" }}>
+                        <div style={{ fontSize: "12px", fontWeight: "700", color: "#c0392b", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span>🎨 Custom Gradient & Badge Colors (अपनी पसंद का रंग चुनें)</span>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                          {/* Start Color */}
+                          <div style={{ textAlign: "center", background: "var(--surface)", padding: "8px 6px", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                            <label style={{ fontSize: "11px", fontWeight: "600", color: "#64748b", display: "block", marginBottom: "4px" }}>Start Color</label>
+                            <input
+                              type="color"
+                              value={customColor1}
+                              onChange={(e) => handleCustomColorChange(e.target.value, undefined, undefined)}
+                              style={{ width: "100%", height: "32px", border: "none", borderRadius: "4px", cursor: "pointer", background: "none" }}
+                            />
+                            <span style={{ fontSize: "10.5px", fontFamily: "monospace", color: "#475569", display: "block", marginTop: "2px" }}>{customColor1}</span>
+                          </div>
+
+                          {/* End Color */}
+                          <div style={{ textAlign: "center", background: "var(--surface)", padding: "8px 6px", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                            <label style={{ fontSize: "11px", fontWeight: "600", color: "#64748b", display: "block", marginBottom: "4px" }}>End Color</label>
+                            <input
+                              type="color"
+                              value={customColor2}
+                              onChange={(e) => handleCustomColorChange(undefined, e.target.value, undefined)}
+                              style={{ width: "100%", height: "32px", border: "none", borderRadius: "4px", cursor: "pointer", background: "none" }}
+                            />
+                            <span style={{ fontSize: "10.5px", fontFamily: "monospace", color: "#475569", display: "block", marginTop: "2px" }}>{customColor2}</span>
+                          </div>
+
+                          {/* Badge Color */}
+                          <div style={{ textAlign: "center", background: "var(--surface)", padding: "8px 6px", borderRadius: "8px", border: "1px solid var(--border)" }}>
+                            <label style={{ fontSize: "11px", fontWeight: "600", color: "#64748b", display: "block", marginBottom: "4px" }}>Offer Badge</label>
+                            <input
+                              type="color"
+                              value={customBadgeColor}
+                              onChange={(e) => handleCustomColorChange(undefined, undefined, e.target.value)}
+                              style={{ width: "100%", height: "32px", border: "none", borderRadius: "4px", cursor: "pointer", background: "none" }}
+                            />
+                            <span style={{ fontSize: "10.5px", fontFamily: "monospace", color: "#475569", display: "block", marginTop: "2px" }}>{customBadgeColor}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Active Toggle Checkbox */}
@@ -1112,13 +1416,19 @@ export default function AdminPanel() {
                 </div>
               </div>
 
-              <div className="modal-actions" style={{ marginTop: "20px" }}>
-                <button type="button" className="btn-cancel" onClick={() => setAdModalOpen(false)}>
-                  Cancel
+              {/* Bottom Actions Bar */}
+              <div className="ad-modal-actions-bar">
+                <button type="button" className="btn-ad-act-cancel" onClick={() => setAdModalOpen(false)}>
+                  Cancel (रद्द करें)
                 </button>
-                <button type="submit" className="btn-submit-ticket">
-                  💾 {editingAdId ? "Update Ad" : "Save & Publish Ad to Home"}
-                </button>
+                <div className="ad-modal-right-btns">
+                  <button type="button" className="btn-ad-act-draft" onClick={(e) => handleSaveAd(e, true)}>
+                    <FileText size={15} /> 📝 Save as Draft (ड्राफ्ट में रखें)
+                  </button>
+                  <button type="submit" className="btn-ad-act-publish">
+                    <Rocket size={15} /> {editingAdId ? "Update & Publish" : "🚀 Save & Publish Ad to Home"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1758,18 +2068,73 @@ export default function AdminPanel() {
           color: var(--text-muted);
         }
 
-        /* Ad Create / Edit Modal */
+        /* Modern Ad Create / Edit Modal */
         .ad-modal-wide {
-          max-width: 900px;
+          max-width: 960px;
           width: 95%;
+          max-height: 90vh;
+          overflow-y: auto;
+          border-radius: 16px;
+          padding: 24px;
+        }
+        .ad-modal-header-styled {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 16px;
+          margin-bottom: 20px;
+        }
+        .btn-modal-close-icon {
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          border-radius: 50%;
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: var(--text-muted);
+          transition: all 0.15s ease;
+        }
+        .btn-modal-close-icon:hover {
+          background: #fdedec;
+          color: #c0392b;
+          border-color: #c0392b;
         }
         .ad-modal-grid {
           display: grid;
           grid-template-columns: 1.2fr 1fr;
           gap: 24px;
         }
-        @media (max-width: 768px) {
-          .ad-modal-grid { grid-template-columns: 1fr; }
+        .ad-form-inputs .modal-field {
+          margin-bottom: 14px;
+        }
+        .ad-form-inputs .modal-field label {
+          display: block;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--heading, #1e293b);
+          margin-bottom: 6px;
+        }
+        .ad-form-inputs .modal-field input,
+        .ad-form-inputs .modal-field textarea {
+          width: 100%;
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #cbd5e1);
+          border-radius: 8px;
+          padding: 9px 12px;
+          font-size: 13.5px;
+          color: var(--text, #1e293b);
+          outline: none;
+          transition: all 0.2s ease;
+          box-sizing: border-box;
+        }
+        .ad-form-inputs .modal-field input:focus,
+        .ad-form-inputs .modal-field textarea:focus {
+          border-color: #c0392b;
+          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.12);
         }
         .form-row-2col {
           display: grid;
@@ -1792,6 +2157,22 @@ export default function AdminPanel() {
           cursor: pointer;
           transition: transform 0.15s ease;
         }
+        .btn-ad-preset {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--text);
+          font-size: 11.5px;
+          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .btn-ad-preset:hover {
+          background: var(--surface-2);
+          border-color: #c0392b;
+          color: #c0392b;
+        }
         .theme-pill-selected {
           border-color: #ffffff;
           box-shadow: 0 0 0 2px #ff4757;
@@ -1799,6 +2180,10 @@ export default function AdminPanel() {
         }
         .modal-checkbox-row {
           margin-top: 14px;
+          background: rgba(0,0,0,0.02);
+          padding: 10px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
         }
         .modal-checkbox-row label {
           display: flex;
@@ -1812,7 +2197,120 @@ export default function AdminPanel() {
         .ad-modal-preview-col h4 {
           margin: 0 0 12px;
           font-size: 13.5px;
-          color: var(--text-muted);
+          font-weight: 700;
+          color: var(--heading, #1e293b);
+        }
+        .ad-modal-actions-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-top: 1px solid var(--border);
+          padding-top: 18px;
+          margin-top: 24px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .ad-modal-right-btns {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .btn-ad-act-publish {
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
+          transition: all 0.2s ease;
+        }
+        .btn-ad-act-publish:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(192, 57, 43, 0.45);
+        }
+        .btn-ad-act-draft {
+          background: var(--surface-2, #f1f5f9);
+          border: 1.5px solid var(--border, #cbd5e1);
+          color: var(--text, #334155);
+          padding: 9px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.15s ease;
+        }
+        .btn-ad-act-draft:hover {
+          background: #e2e8f0;
+          border-color: #94a3b8;
+          color: #0f172a;
+        }
+        .btn-ad-act-cancel {
+          background: transparent;
+          border: 1px solid var(--border, #cbd5e1);
+          color: var(--text-muted, #64748b);
+          padding: 9px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .btn-ad-act-cancel:hover {
+          background: var(--surface-2);
+          color: var(--text);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+          .ad-modal-wide {
+            padding: 16px;
+            width: 96%;
+          }
+          .ad-modal-grid {
+            grid-template-columns: 1fr;
+          }
+          .form-row-2col {
+            grid-template-columns: 1fr;
+          }
+          .ad-modal-actions-bar {
+            flex-direction: column;
+            gap: 10px;
+          }
+          .ad-modal-actions-bar button,
+          .ad-modal-right-btns,
+          .ad-modal-right-btns button {
+            width: 100%;
+            justify-content: center;
+          }
+          .admin-stats-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+          }
+          .admin-nav-tabs {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 6px;
+          }
+          .admin-tab {
+            flex-shrink: 0;
+            font-size: 12px;
+            padding: 8px 12px;
+          }
+        }
+        @media (max-width: 480px) {
+          .admin-stats-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

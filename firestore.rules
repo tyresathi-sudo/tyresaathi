@@ -2,27 +2,65 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Phase 2 — Authentication. Ab jo bhi Firebase Auth se login hai,
-    // wahi apna users/{uid} profile padh/likh sakta hai. Koi doosre
-    // user ka profile edit nahi kar sakta.
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      // "role" field ko user khud change nahi kar sakta (admin promotion
-      // sirf Firebase Console se manually honi chahiye).
-      allow update: if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.data.role == resource.data.role;
+    // Helper functions for auth & admin checks
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Purane Bazaar/Kaam collections abhi bhi khule hain kyunki naya
-    // roadmap (Phase 3/4 me) inhe replace karega. Tab tak in par
-    // touch nahi kiya — koi impact nahi Phase 2 ke changes ka.
-    match /products/{productId} {
-      allow read, create, update, delete: if true;
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'tyresathi@gmail.com'
+      );
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin(); // Required for Google Play Account Deletion
+    }
+
+    // 2. Products / Tyre Inventory Collection
+    match /products/{productId} {
+      allow read: if true; // Public catalogue search
+      allow create, update, delete: if isAuthenticated() || isAdmin();
+    }
+
+    // 3. Shop Advertisements / Promotions Collection
+    match /shop_ads/{adId} {
+      allow read: if true; // Public homepage banner ads
+      allow create, update, delete: if isAdmin() || isAuthenticated();
+    }
+
+    // 4. Service & Alignment Bookings Collection
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() || isAdmin();
+    }
+
+    // 5. Shop Invoices & Billing Collection
+    match /invoices/{invoiceId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() || isAdmin();
+    }
+
+    // 6. Support Tickets Collection
+    match /support_tickets/{ticketId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() || isAdmin();
+    }
+
+    // 7. Legacy Jobs Collection
     match /jobs/{jobId} {
-      allow read, create, update, delete: if true;
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated() || isAdmin();
     }
   }
 }
