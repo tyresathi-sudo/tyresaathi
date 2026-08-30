@@ -1,11 +1,11 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
-import { X, ShieldCheck } from "lucide-react";
+import { NavLink, Link } from "react-router-dom";
+import { X, ShieldCheck, User } from "lucide-react";
 import { MAIN_NAV_ITEMS, SHOP_NAV_ITEMS, ACCOUNT_NAV_ITEMS } from "../config/navItems.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Sidebar({ open, onClose }) {
-  const { isAdmin, isVendor } = useAuth();
+  const { user, profile, isAdmin, isVendor } = useAuth();
 
   return (
     <>
@@ -27,6 +27,31 @@ export default function Sidebar({ open, onClose }) {
             <X size={20} />
           </button>
         </div>
+
+        {/* User Card in Mobile Drawer */}
+        {user ? (
+          <Link to="/profile" className="drawer-user-card" onClick={onClose}>
+            <div className="drawer-avatar">
+              {profile?.photoURL ? (
+                <img src={profile.photoURL} alt="User" className="drawer-avatar-img" />
+              ) : (
+                <span className="drawer-avatar-text">{profile?.name ? profile.name.charAt(0).toUpperCase() : "U"}</span>
+              )}
+            </div>
+            <div className="drawer-user-info">
+              <strong className="drawer-user-name">{profile?.name || "TyreSaathi User"}</strong>
+              <span className="drawer-user-role">
+                {profile?.role === "shop_owner" ? "🏪 Shop Owner" : (isAdmin ? "🛡️ Super Admin" : "👤 Customer")}
+              </span>
+            </div>
+          </Link>
+        ) : (
+          <div className="drawer-auth-cta">
+            <Link to="/login" className="drawer-login-btn" onClick={onClose}>
+              <User size={15} /> Login / Register
+            </Link>
+          </div>
+        )}
 
         <nav className="sidebar-nav">
           {/* 1. Main Navigation */}
@@ -86,7 +111,7 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         <div className="sidebar-footer">
-          <span>TyreSaathi</span>
+          <span>TyreSaathi • India's Verified Tyre Hub</span>
         </div>
       </aside>
 
@@ -95,22 +120,23 @@ export default function Sidebar({ open, onClose }) {
           position: fixed;
           inset: 0;
           background: rgba(0,0,0,0.5);
-          z-index: 39;
-          backdrop-filter: blur(2px);
+          z-index: 1040;
+          backdrop-filter: blur(3px);
         }
         .sidebar {
           position: fixed;
           top: 0;
           left: 0;
           bottom: 0;
-          width: 250px;
+          width: 270px;
           background: var(--surface);
           border-right: 1px solid var(--border);
-          z-index: 40;
+          z-index: 1050;
           transform: translateX(-100%);
-          transition: transform 0.22s ease;
+          transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex;
           flex-direction: column;
+          box-shadow: 4px 0 24px rgba(0,0,0,0.15);
         }
         .sidebar-open { transform: translateX(0); }
         .sidebar-header {
@@ -135,14 +161,85 @@ export default function Sidebar({ open, onClose }) {
         .sidebar-title { 
           font-size: 20px; 
           font-weight: 800;
-          color: var(--heading, #1e293b);
+          color: var(--text);
           letter-spacing: 0.5px;
         }
-        .sidebar-close { display: flex; }
+        .sidebar-close { 
+          display: flex; 
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 4px;
+        }
         
+        .drawer-user-card {
+          margin: 12px 12px 4px;
+          padding: 10px 12px;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          color: var(--text);
+        }
+        .drawer-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #c0392b;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 15px;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .drawer-avatar-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .drawer-user-info {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .drawer-user-name {
+          font-size: 13px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .drawer-user-role {
+          font-size: 11px;
+          color: var(--orange);
+          font-weight: 700;
+        }
+        .drawer-auth-cta {
+          padding: 12px 12px 4px;
+        }
+        .drawer-login-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: #c0392b;
+          color: white;
+          padding: 9px 12px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
         .sidebar-nav { 
           flex: 1; 
-          padding: 12px 10px; 
+          padding: 8px 10px; 
           display: flex; 
           flex-direction: column; 
           gap: 2px;
@@ -152,10 +249,10 @@ export default function Sidebar({ open, onClose }) {
         .nav-section-label {
           font-size: 10.5px;
           font-weight: 800;
-          color: var(--text-muted, #94a3b8);
+          color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          padding: 6px 12px 2px;
+          padding: 8px 12px 3px;
         }
 
         .sidebar-link {
@@ -164,15 +261,15 @@ export default function Sidebar({ open, onClose }) {
           gap: 12px;
           padding: 10px 12px;
           border-radius: 10px;
-          color: var(--text-muted, #64748b);
+          color: var(--text-muted);
           text-decoration: none;
           font-weight: 600;
           font-size: 13.5px;
           transition: all 0.15s ease;
         }
         .sidebar-link:hover { 
-          background: var(--surface-2, #f1f5f9); 
-          color: var(--text, #1e293b);
+          background: var(--surface-2); 
+          color: var(--text);
         }
         .sidebar-link-active { 
           background: #c0392b !important; 
@@ -185,10 +282,10 @@ export default function Sidebar({ open, onClose }) {
         }
         
         .sidebar-footer {
-          padding: 14px 16px;
-          font-size: 12px;
+          padding: 12px 16px;
+          font-size: 11px;
           font-weight: 700;
-          color: var(--text-muted, #94a3b8);
+          color: var(--text-muted);
           border-top: 1px solid var(--border);
           text-align: center;
         }
@@ -201,8 +298,14 @@ export default function Sidebar({ open, onClose }) {
             transform: none;
             top: 58px;
             height: calc(100vh - 58px);
+            z-index: 10;
+            box-shadow: none;
           }
           .sidebar-close { display: none; }
+          .drawer-user-card,
+          .drawer-auth-cta {
+            display: none;
+          }
         }
       `}</style>
     </>

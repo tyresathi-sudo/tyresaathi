@@ -1579,10 +1579,28 @@ export default function AdminPanel() {
           margin-bottom: 24px;
         }
         @media (max-width: 1000px) {
-          .admin-stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px) {
-          .admin-stats-grid { grid-template-columns: 1fr; }
+          .admin-stats-grid { 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 10px;
+            margin-bottom: 18px;
+          }
+          .admin-metric-card {
+            padding: 12px 10px !important;
+            gap: 10px !important;
+          }
+          .metric-icon-wrap {
+            width: 38px !important;
+            height: 38px !important;
+          }
+          .metric-val {
+            font-size: 16px !important;
+          }
+          .metric-lbl {
+            font-size: 11px !important;
+          }
+          .metric-note {
+            font-size: 10px !important;
+          }
         }
         .admin-metric-card {
           background: var(--surface);
@@ -2270,6 +2288,24 @@ export default function AdminPanel() {
 
         /* Mobile Responsiveness */
         @media (max-width: 768px) {
+          .admin-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .admin-header-actions {
+            width: 100%;
+          }
+          .btn-excel-top-action {
+            width: 100%;
+            justify-content: center;
+          }
+          .admin-page-title {
+            font-size: 18px !important;
+          }
+          .admin-page-sub {
+            font-size: 12px !important;
+          }
           .ad-modal-wide {
             padding: 16px;
             width: 96%;
@@ -2291,23 +2327,23 @@ export default function AdminPanel() {
             justify-content: center;
           }
           .admin-stats-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
           }
           .admin-nav-tabs {
             overflow-x: auto;
             flex-wrap: nowrap;
             padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .admin-nav-tabs::-webkit-scrollbar {
+            display: none;
           }
           .admin-tab {
             flex-shrink: 0;
             font-size: 12px;
             padding: 8px 12px;
-          }
-        }
-        @media (max-width: 480px) {
-          .admin-stats-grid {
-            grid-template-columns: 1fr;
           }
         }
       `}</style>

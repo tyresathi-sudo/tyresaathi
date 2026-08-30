@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck, Heart } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -48,12 +48,12 @@ export default function Footer() {
 
       <style>{`
         .ts-compact-footer {
-          background: var(--surface, #ffffff);
-          border-top: 1px solid var(--border, #e2e8f0);
-          padding: 16px 20px;
-          margin-top: 30px;
-          color: var(--text-muted, #64748b);
-          font-size: 12.5px;
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          padding: 20px 24px;
+          margin-top: 40px;
+          color: var(--text-muted);
+          font-size: 13px;
         }
         .footer-inner-wrap {
           max-width: 1280px;
@@ -74,28 +74,28 @@ export default function Footer() {
           align-items: center;
           gap: 6px;
           font-weight: 800;
-          color: var(--heading, #1e293b);
+          color: var(--text);
           font-size: 15px;
         }
         .footer-logo-small {
-          width: 20px;
-          height: 20px;
+          width: 22px;
+          height: 22px;
           object-fit: contain;
           border-radius: 4px;
         }
         .footer-cr-text {
           margin: 0;
           font-size: 12px;
-          color: var(--text-muted, #94a3b8);
+          color: var(--text-muted);
         }
         .footer-center-links {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .footer-center-links a {
-          color: var(--text-muted, #64748b);
+          color: var(--text-muted);
           text-decoration: none;
           font-weight: 600;
           transition: color 0.15s ease;
@@ -104,7 +104,7 @@ export default function Footer() {
           color: #c0392b;
         }
         .dot-sep {
-          color: var(--border, #cbd5e1);
+          color: var(--border);
         }
         .footer-right-sec {
           display: flex;
@@ -114,39 +114,25 @@ export default function Footer() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: var(--surface-2, #f8fafc);
-          border: 1px solid var(--border, #e2e8f0);
-          padding: 5px 10px;
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          padding: 5px 12px;
           border-radius: 20px;
-          color: var(--text, #334155);
+          color: var(--text);
           text-decoration: none;
-          font-size: 11.5px;
+          font-size: 12px;
           font-weight: 700;
           transition: all 0.15s ease;
         }
         .footer-badge-link:hover {
           border-color: #27ae60;
-          background: #eafaf1;
           color: #27ae60;
         }
 
-        @media (max-width: 768px) {
+        /* Hide footer on mobile screens to give native app feel */
+        @media (max-width: 899px) {
           .ts-compact-footer {
-            padding: 16px 14px 74px; /* Space above mobile bottom bar */
-          }
-          .footer-inner-wrap {
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 12px;
-          }
-          .footer-left-sec {
-            flex-direction: column;
-            gap: 4px;
-          }
-          .footer-center-links {
-            justify-content: center;
-            gap: 8px;
+            display: none !important;
           }
         }
       `}</style>

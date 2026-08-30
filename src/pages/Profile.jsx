@@ -396,13 +396,14 @@ export default function Profile() {
         .profile-page-wrap {
           max-width: 740px;
           margin: 0 auto;
-          padding: 10px 10px 40px;
+          padding: 0 0 40px;
         }
         .profile-header-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
           margin-bottom: 16px;
+          gap: 10px;
         }
         .page-title {
           font-size: 24px;
@@ -421,6 +422,7 @@ export default function Profile() {
           display: flex;
           align-items: center;
           gap: 6px;
+          white-space: nowrap;
         }
         .btn-cancel-edit {
           background: var(--surface-2);
@@ -434,6 +436,7 @@ export default function Profile() {
           display: flex;
           align-items: center;
           gap: 6px;
+          white-space: nowrap;
         }
         .save-success-banner {
           background: #eafaf1;
@@ -562,11 +565,6 @@ export default function Profile() {
           border-radius: 12px;
           margin-bottom: 20px;
         }
-        @media (max-width: 600px) {
-          .profile-info-grid {
-            grid-template-columns: 1fr;
-          }
-        }
         .info-item {
           display: flex;
           flex-direction: column;
@@ -587,6 +585,7 @@ export default function Profile() {
           font-size: 14px;
           font-weight: 700;
           color: var(--text);
+          word-break: break-word;
         }
         .verified-text {
           color: #27ae60;
@@ -615,6 +614,32 @@ export default function Profile() {
           background: var(--surface-2);
           color: var(--text);
           border: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+          .profile-header-bar {
+            margin-bottom: 12px;
+          }
+          .page-title {
+            font-size: 18px;
+          }
+          .profile-card {
+            padding: 18px 14px;
+            border-radius: 12px;
+          }
+          .profile-name-text {
+            font-size: 19px;
+          }
+          .profile-info-grid {
+            grid-template-columns: 1fr;
+            padding: 14px 12px;
+            gap: 12px;
+            border-radius: 10px;
+          }
+          .shop-quick-actions {
+            flex-direction: column;
+            gap: 8px;
+          }
         }
 
         /* ✏️ Edit Form */

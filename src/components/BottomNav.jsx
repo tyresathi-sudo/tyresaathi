@@ -12,8 +12,10 @@ export default function BottomNav() {
           end={end}
           className={({ isActive }) => "bottom-nav-btn" + (isActive ? " bottom-nav-btn-active" : "")}
         >
-          <Icon size={19} />
-          <span>{label}</span>
+          <div className="icon-wrapper">
+            <Icon size={20} />
+          </div>
+          <span className="btn-label">{label}</span>
         </NavLink>
       ))}
 
@@ -24,11 +26,12 @@ export default function BottomNav() {
           right: 0;
           bottom: 0;
           display: flex;
-          background: var(--surface, #ffffff);
-          border-top: 1px solid var(--border, #e2e8f0);
-          box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          box-shadow: 0 -4px 18px rgba(0,0,0,0.06);
           z-index: 1000;
-          padding-bottom: max(4px, env(safe-area-inset-bottom));
+          padding-bottom: max(6px, env(safe-area-inset-bottom));
+          padding-top: 4px;
         }
         .bottom-nav-btn {
           flex: 1;
@@ -36,23 +39,43 @@ export default function BottomNav() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 3px;
-          padding: 8px 0 6px;
+          gap: 2px;
+          padding: 6px 0 4px;
           font-size: 11px;
           font-weight: 700;
-          color: var(--text-muted, #64748b);
+          color: var(--text-muted);
           text-decoration: none;
-          transition: color 0.15s ease, transform 0.15s ease;
+          transition: all 0.18s ease;
+          position: relative;
+        }
+        .icon-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 24px;
+          border-radius: 12px;
+          transition: all 0.2s ease;
+        }
+        .bottom-nav-btn:active {
+          transform: scale(0.92);
         }
         .bottom-nav-btn-active {
           color: #c0392b !important;
         }
+        .bottom-nav-btn-active .icon-wrapper {
+          background: color-mix(in srgb, #c0392b 12%, transparent);
+        }
         .bottom-nav-btn-active svg {
           stroke: #c0392b;
+          stroke-width: 2.3px;
+        }
+        .btn-label {
+          letter-spacing: 0.2px;
         }
 
         @media (min-width: 900px) {
-          .bottom-nav { display: none; }
+          .bottom-nav { display: none !important; }
         }
       `}</style>
     </nav>

@@ -559,10 +559,37 @@ export default function Bookings() {
           justify-content: space-between;
           margin-bottom: 20px;
           gap: 16px;
+          flex-wrap: wrap;
         }
         @media (max-width: 768px) {
           .bookings-header-row {
             flex-direction: column;
+            gap: 12px;
+            margin-bottom: 14px;
+          }
+          .bookings-header-row > div:last-child {
+            width: 100%;
+          }
+          .book-service-cta {
+            flex: 1;
+            justify-content: center;
+            padding: 9px 12px !important;
+            font-size: 13px !important;
+          }
+          .page-heading {
+            font-size: 18px !important;
+          }
+          .page-sub {
+            font-size: 12px !important;
+          }
+          .booking-item-card {
+            padding: 14px 12px !important;
+            border-radius: 10px !important;
+          }
+          .booking-meta-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
+            padding: 10px !important;
           }
         }
         .page-heading {
@@ -600,21 +627,27 @@ export default function Bookings() {
           display: flex;
           gap: 8px;
           overflow-x: auto;
-          padding-bottom: 8px;
-          margin-bottom: 20px;
+          padding-bottom: 6px;
+          margin-bottom: 18px;
           border-bottom: 1px solid var(--border);
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .booking-filter-tabs::-webkit-scrollbar {
+          display: none;
         }
         .filter-tab {
-          padding: 8px 14px;
+          padding: 7px 14px;
           border-radius: 20px;
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--text);
-          font-size: 13px;
-          font-weight: 600;
+          font-size: 12.5px;
+          font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
           transition: all 0.15s ease;
+          flex-shrink: 0;
         }
         .tab-active {
           background: #1e1e24;

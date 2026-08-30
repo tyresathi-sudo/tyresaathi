@@ -544,6 +544,46 @@ export default function StoreLocation() {
           text-align: center;
           color: var(--text-muted);
         }
+
+        @media (max-width: 900px) {
+          .breadcrumbs-bar {
+            margin-bottom: 8px;
+            font-size: 11.5px;
+          }
+          .store-locator-container {
+            border-radius: 12px;
+            min-height: auto;
+          }
+          .store-sidebar {
+            padding: 14px 12px;
+          }
+          .store-main-title {
+            font-size: 18px;
+            margin-bottom: 12px;
+          }
+          .city-pill-row {
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .city-pill-row::-webkit-scrollbar {
+            display: none;
+          }
+          .store-map-wrapper {
+            min-height: 300px;
+          }
+          .interactive-map-canvas {
+            min-height: 300px;
+          }
+          .map-info-popup {
+            position: relative;
+            top: 0;
+            left: 0;
+            max-width: 100%;
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+          }
+        }
       `}</style>
     </div>
   );

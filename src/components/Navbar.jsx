@@ -74,8 +74,8 @@ export default function Navbar({ onMenuClick }) {
 
   return (
     <header className="main-site-header">
-      {/* 📞 Top Utility Bar (Matching Reference Photo) */}
-      <div className="top-utility-bar">
+      {/* 📞 Top Utility Bar (Desktop Only) */}
+      <div className="top-utility-bar hide-on-mobile">
         <div className="utility-container">
           <div className="top-left-info">
             <span className="top-phone">
@@ -165,24 +165,29 @@ export default function Navbar({ onMenuClick }) {
         </div>
       </div>
 
-      {/* 🚗 Main Navigation Bar (Logo + Links + Mega Menu) */}
+      {/* 🚗 Main Navigation Bar (Dual Mode: Desktop Navigation vs Mobile App Bar) */}
       <div className="main-nav-bar">
         <div className="nav-container">
           {/* Mobile Menu Hamburger */}
           <button className="mobile-hamburger-btn" onClick={onMenuClick} aria-label="Toggle Menu">
-            <Menu size={24} />
+            <Menu size={22} />
           </button>
 
-          {/* Logo Section with Generated TyreSaathi Logo Badge */}
+          {/* Logo Section */}
           <Link to="/" className="site-brand-logo">
-            <img src="/logo.png" alt="TyreSaathi Logo" className="logo-img" onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }} />
+            <img 
+              src="/logo.png" 
+              alt="TyreSaathi Logo" 
+              className="logo-img" 
+              onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }} 
+            />
             <div className="logo-text-group">
               <span className="brand-primary-name">TYRE<span className="brand-highlight">SAATHI</span></span>
               <span className="brand-tagline">India's Trusted Tyre & Service Network</span>
             </div>
           </Link>
 
-          {/* Navigation Links */}
+          {/* Desktop Navigation Links */}
           <nav className="desktop-nav-links">
             <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
               HOME
@@ -202,11 +207,11 @@ export default function Navbar({ onMenuClick }) {
                 CATEGORIES <ChevronDown size={14} className={`chevron-icon ${megaMenuOpen ? "chevron-open" : ""}`} />
               </button>
 
-              {/* 🌟 Full Mega Menu Box (Photo 1 Look) */}
+              {/* Mega Menu Box */}
               {megaMenuOpen && (
                 <div className="mega-menu-panel">
                   <div className="mega-menu-inner">
-                    {/* Left Quick Category Types Bar */}
+                    {/* Left Category Types */}
                     <div className="mega-categories-sidebar">
                       <h4 className="mega-col-title">Vehicle Types</h4>
                       <ul className="cat-type-list">
@@ -220,7 +225,7 @@ export default function Navbar({ onMenuClick }) {
                       </ul>
                     </div>
 
-                    {/* Multi-Column Brands Grid (Photo 1 Look) */}
+                    {/* Multi-Column Brands Grid */}
                     <div className="mega-brands-grid-wrap">
                       <div className="mega-brands-header">
                         <h4 className="mega-col-title">Popular Tyre & Wheel Brands</h4>
@@ -266,13 +271,13 @@ export default function Navbar({ onMenuClick }) {
             </NavLink>
           </nav>
 
-          {/* Right Action Section */}
-          <div className="nav-right-actions">
+          {/* Desktop Right Action Section */}
+          <div className="nav-right-actions desktop-actions">
             {/* Quick Search Bar */}
             <form onSubmit={handleSearchSubmit} className="nav-search-form">
               <input
                 type="text"
-                placeholder="Search tyres, sizes (e.g. 185/65 R15)..."
+                placeholder="Search tyres, sizes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -281,13 +286,28 @@ export default function Navbar({ onMenuClick }) {
               </button>
             </form>
 
-            {/* Shop Owner Add Product CTA */}
+            {/* Shop Owner Add Product CTA (Desktop) */}
             {isVendor && (
               <Link to="/shop/add-product" className="nav-add-product-btn" title="Add Product to Shop">
                 <PlusCircle size={15} />
                 <span>Add Product</span>
               </Link>
             )}
+          </div>
+
+          {/* Mobile Right Action Group (Clean, balanced app-bar buttons) */}
+          <div className="mobile-right-actions">
+            {isVendor && (
+              <Link to="/shop/add-product" className="mobile-icon-btn" title="Add Product" aria-label="Add Product">
+                <PlusCircle size={20} color="#c0392b" />
+              </Link>
+            )}
+            <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
+              {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            </button>
+            <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
+              <User size={19} />
+            </Link>
           </div>
         </div>
       </div>
@@ -297,11 +317,11 @@ export default function Navbar({ onMenuClick }) {
           position: sticky;
           top: 0;
           z-index: 100;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.06);
           background: var(--surface);
         }
         
-        /* Top Utility Bar */
+        /* Top Utility Bar (Desktop) */
         .top-utility-bar {
           background: #1e1e24;
           color: #e0e0e0;
@@ -333,9 +353,6 @@ export default function Navbar({ onMenuClick }) {
         .top-timing {
           color: #a8acb3;
           font-size: 11.5px;
-        }
-        @media (max-width: 768px) {
-          .top-utility-bar { display: none !important; }
         }
         .top-right-tools {
           display: flex;
@@ -451,7 +468,7 @@ export default function Navbar({ onMenuClick }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
+          gap: 12px;
         }
         .mobile-hamburger-btn {
           display: none;
@@ -459,11 +476,48 @@ export default function Navbar({ onMenuClick }) {
           border: none;
           color: var(--text);
           cursor: pointer;
-          padding: 4px;
+          padding: 6px;
+          border-radius: 8px;
         }
-        @media (max-width: 900px) {
-          .mobile-hamburger-btn { display: block; }
+        .mobile-right-actions {
+          display: none;
+          align-items: center;
+          gap: 8px;
+        }
+        .mobile-icon-btn {
+          background: none;
+          border: none;
+          color: var(--text);
+          cursor: pointer;
+          padding: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          text-decoration: none;
+        }
+        .mobile-icon-btn:active {
+          background: var(--surface-2);
+          transform: scale(0.92);
+        }
+
+        @media (max-width: 899px) {
+          .mobile-hamburger-btn { display: flex; }
+          .mobile-right-actions { display: flex; }
           .desktop-nav-links { display: none !important; }
+          .desktop-actions { display: none !important; }
+          .nav-container {
+            padding: 6px 12px;
+          }
+          .logo-img {
+            height: 38px !important;
+          }
+          .brand-primary-name {
+            font-size: 19px !important;
+          }
+          .brand-tagline {
+            font-size: 8.5px !important;
+          }
         }
 
         /* Logo Styling */
@@ -475,7 +529,7 @@ export default function Navbar({ onMenuClick }) {
           color: var(--text);
         }
         .logo-img {
-          height: 48px;
+          height: 46px;
           width: auto;
           object-fit: contain;
           border-radius: 6px;
@@ -538,7 +592,7 @@ export default function Navbar({ onMenuClick }) {
           transform: rotate(180deg);
         }
 
-        /* 🌟 Mega Menu Dropdown (Photo 1 Multi-Column Layout) */
+        /* Mega Menu Dropdown */
         .categories-mega-wrap {
           position: static;
         }
@@ -665,7 +719,7 @@ export default function Navbar({ onMenuClick }) {
         }
 
         /* Right Search & CTA */
-        .nav-right-actions {
+        .desktop-actions {
           display: flex;
           align-items: center;
           gap: 12px;
@@ -700,9 +754,6 @@ export default function Navbar({ onMenuClick }) {
           padding: 2px;
           display: flex;
           align-items: center;
-        }
-        @media (max-width: 600px) {
-          .nav-search-form { display: none; }
         }
         .nav-add-product-btn {
           display: inline-flex;

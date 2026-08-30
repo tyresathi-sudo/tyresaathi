@@ -1025,6 +1025,39 @@ export default function Home() {
           white-space: nowrap;
         }
         .btn-join-ad-banner:hover { background: #d35400; }
+
+        @media (max-width: 768px) {
+          .hero-banner-section {
+            padding: 24px 14px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+          }
+          .hero-search-card {
+            padding: 12px;
+            border-radius: 10px;
+          }
+          .categories-card-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+          }
+          .cat-box-card {
+            padding: 12px 10px !important;
+          }
+          .brands-logo-row {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+          .home-products-grid {
+            grid-template-columns: 1fr !important;
+            gap: 14px !important;
+          }
+          .service-cta-banner {
+            padding: 16px 14px;
+          }
+          .store-locator-cta-banner {
+            padding: 20px 14px;
+          }
+        }
       `}</style>
     </div>
   );

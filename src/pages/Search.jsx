@@ -257,29 +257,29 @@ export default function Search() {
         .search-page-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 10px 10px 40px;
+          padding: 0 0 40px;
         }
         .search-hero-bar {
           background: var(--surface);
           border: 1px solid var(--border);
           border-radius: 16px;
           padding: 24px;
-          margin-bottom: 24px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+          margin-bottom: 20px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
         }
         .search-page-title {
-          font-size: 24px;
+          font-size: 22px;
           font-weight: 800;
           color: var(--text);
           margin: 0 0 6px;
         }
         .search-page-sub {
-          font-size: 13.5px;
+          font-size: 13px;
           color: var(--text-muted);
           margin: 0 0 16px;
         }
         .search-input-row {
-          margin-bottom: 16px;
+          margin-bottom: 14px;
         }
         .search-bar-wrap {
           position: relative;
@@ -293,12 +293,12 @@ export default function Search() {
         }
         .search-bar-wrap input {
           width: 100%;
-          padding: 14px 44px 14px 44px;
+          padding: 12px 40px 12px 42px;
           border-radius: 10px;
-          border: 2px solid var(--border);
+          border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 600;
           outline: none;
           transition: border-color 0.2s ease;
@@ -318,7 +318,7 @@ export default function Search() {
         .search-filters-row {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           flex-wrap: wrap;
         }
         .filter-select-wrap {
@@ -327,11 +327,11 @@ export default function Search() {
           gap: 6px;
           background: var(--bg);
           border: 1px solid var(--border);
-          padding: 6px 12px;
+          padding: 6px 10px;
           border-radius: 8px;
         }
         .filter-select-wrap label {
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 700;
           color: var(--text-muted);
         }
@@ -339,7 +339,7 @@ export default function Search() {
           border: none;
           background: none;
           color: var(--text);
-          font-size: 13px;
+          font-size: 12.5px;
           font-weight: 600;
           outline: none;
           cursor: pointer;
@@ -348,9 +348,9 @@ export default function Search() {
           background: var(--surface-2);
           border: 1px solid var(--border);
           color: #c0392b;
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 700;
-          padding: 8px 14px;
+          padding: 7px 12px;
           border-radius: 8px;
           cursor: pointer;
         }
@@ -367,9 +367,11 @@ export default function Search() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
           border-bottom: 1px solid var(--border);
           padding-bottom: 12px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
         .header-left {
           display: flex;
@@ -377,22 +379,22 @@ export default function Search() {
           gap: 8px;
         }
         .nearest-flame-icon {
-          font-size: 22px;
-        }
-        .other-shops-icon {
           font-size: 20px;
         }
-        .group-title {
+        .other-shops-icon {
           font-size: 18px;
+        }
+        .group-title {
+          font-size: 17px;
           font-weight: 800;
           color: var(--text);
           margin: 0;
         }
         .group-count-tag {
-          font-size: 12px;
+          font-size: 11.5px;
           background: #27ae60;
           color: white;
-          padding: 4px 10px;
+          padding: 3px 8px;
           border-radius: 12px;
           font-weight: 700;
         }
@@ -401,16 +403,11 @@ export default function Search() {
         .products-card-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
-        }
-        @media (max-width: 600px) {
-          .products-card-grid {
-            grid-template-columns: 1fr;
-          }
+          gap: 16px;
         }
 
         .no-results-card {
-          padding: 80px 20px;
+          padding: 60px 16px;
           text-align: center;
           background: var(--surface);
           border: 1px dashed var(--border);
@@ -418,14 +415,61 @@ export default function Search() {
           color: var(--text-muted);
         }
         .btn-browse-all {
-          margin-top: 16px;
+          margin-top: 14px;
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 20px;
+          padding: 9px 18px;
           border-radius: 8px;
           font-weight: 700;
           cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+          .search-hero-bar {
+            padding: 14px 12px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+          }
+          .search-page-title {
+            font-size: 17px;
+          }
+          .search-page-sub {
+            font-size: 12px;
+            margin-bottom: 12px;
+          }
+          .search-filters-row {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .search-filters-row::-webkit-scrollbar {
+            display: none;
+          }
+          .filter-select-wrap {
+            flex-shrink: 0;
+          }
+          .reset-all-filters-btn {
+            flex-shrink: 0;
+          }
+          .results-group-section {
+            padding: 14px 10px;
+            border-radius: 12px;
+          }
+          .group-section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+          }
+          .group-title {
+            font-size: 15px;
+          }
+          .products-card-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
         }
       `}</style>
     </div>

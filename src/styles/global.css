@@ -1,6 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
 
-/* ---------- Theme tokens ---------- */
+/* ---------- Theme tokens (Preserving original colors) ---------- */
 :root,
 [data-theme="light"] {
   --bg: #F0EDE6;
@@ -14,6 +14,8 @@
   --green: #2F9E44;
   --danger: #C0392B;
   --shadow: rgba(0, 0, 0, 0.12);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 [data-theme="dark"] {
@@ -28,16 +30,19 @@
   --green: #3EBE57;
   --danger: #E0574A;
   --shadow: rgba(0, 0, 0, 0.5);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
@@ -46,6 +51,9 @@ body {
   color: var(--text);
   font-family: "Inter", "Noto Sans Devanagari", sans-serif;
   transition: background 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 button,
@@ -54,6 +62,15 @@ select,
 textarea {
   font-family: inherit;
   color: inherit;
+}
+
+button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 a {
@@ -72,31 +89,68 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .app-body {
   flex: 1;
   display: flex;
   min-height: 0;
+  width: 100%;
 }
 
+/* Mobile Default: tight, breathable padding with room for native bottom nav */
 .app-main {
   flex: 1;
   min-width: 0;
-  padding: 20px;
-  padding-bottom: 90px; /* room for bottom nav on mobile */
+  width: 100%;
+  padding: 12px 14px;
+  padding-bottom: calc(84px + var(--safe-bottom));
 }
 
+/* Desktop: spacious padding with sidebar */
 @media (min-width: 900px) {
   .app-main {
-    padding: 28px 32px;
-    padding-bottom: 32px; /* sidebar handles nav on desktop */
+    padding: 24px 32px;
+    padding-bottom: 32px;
   }
 }
 
 .page-pad {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
+  width: 100%;
+}
+
+/* ---------- Utility Classes for Mobile vs PC ---------- */
+.show-on-mobile-only {
+  display: block;
+}
+.hide-on-mobile {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .show-on-mobile-only {
+    display: none !important;
+  }
+  .hide-on-mobile {
+    display: block !important;
+  }
+}
+
+/* ---------- Touch friendly smooth scroll horizontal chips ---------- */
+.horizontal-chip-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+.horizontal-chip-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 /* ---------- Auth pages (Login / Register / Forgot Password) ---------- */
@@ -105,32 +159,39 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 30px 16px;
+  padding: 20px 14px;
 }
 .auth-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 28px 24px;
+  padding: 24px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+@media (min-width: 600px) {
+  .auth-card {
+    padding: 32px 28px;
+  }
 }
 .auth-title {
-  font-size: 24px;
+  font-size: 22px;
   margin: 0 0 4px;
+  font-weight: 800;
 }
 .auth-sub {
   color: var(--text-muted);
-  font-size: 13.5px;
-  margin: 0 0 20px;
+  font-size: 13px;
+  margin: 0 0 18px;
 }
 .auth-field {
   margin-bottom: 14px;
 }
 .auth-field label {
   display: block;
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 5px;
 }
@@ -143,6 +204,7 @@ a {
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
+  box-sizing: border-box;
 }
 .auth-field input:focus,
 .auth-field select:focus {
@@ -162,14 +224,15 @@ a {
   background: var(--bg);
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 12.5px;
+  font-size: 12px;
   cursor: pointer;
   text-align: center;
+  transition: all 0.15s ease;
 }
 .role-btn-active {
   border-color: var(--orange);
   color: var(--orange);
-  background: color-mix(in srgb, var(--orange) 10%, var(--bg));
+  background: color-mix(in srgb, var(--orange) 12%, var(--bg));
 }
 .auth-btn {
   width: 100%;
@@ -179,9 +242,10 @@ a {
   border-radius: 10px;
   padding: 12px;
   font-weight: 700;
-  font-size: 14.5px;
+  font-size: 14px;
   cursor: pointer;
   margin-top: 4px;
+  transition: opacity 0.2s ease, transform 0.15s ease;
 }
 .auth-btn:disabled {
   opacity: 0.6;
