@@ -316,9 +316,10 @@ export default function Navbar({ onMenuClick }) {
         .main-site-header {
           position: sticky;
           top: 0;
-          z-index: 100;
+          z-index: 50;
           box-shadow: 0 2px 10px rgba(0,0,0,0.06);
           background: var(--surface);
+          padding-top: env(safe-area-inset-top, 0px);
         }
         
         /* Top Utility Bar (Desktop) */
@@ -502,12 +503,16 @@ export default function Navbar({ onMenuClick }) {
         }
 
         @media (max-width: 899px) {
+          .main-site-header {
+            padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+            z-index: 50;
+          }
           .mobile-hamburger-btn { display: flex; }
           .mobile-right-actions { display: flex; }
           .desktop-nav-links { display: none !important; }
           .desktop-actions { display: none !important; }
           .nav-container {
-            padding: 4px 10px;
+            padding: 4px 10px 6px;
           }
           .logo-img {
             height: 34px !important;

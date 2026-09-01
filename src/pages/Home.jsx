@@ -365,7 +365,7 @@ export default function Home() {
         .home-page-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 0 4px 30px;
+          padding: 4px 4px 30px;
         }
 
         /* Hero Banner */
@@ -374,6 +374,7 @@ export default function Home() {
           color: white;
           border-radius: 14px;
           padding: 24px 16px;
+          margin-top: 6px;
           margin-bottom: 24px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.15);
         }
@@ -381,6 +382,7 @@ export default function Home() {
           .hero-banner-section {
             padding: 36px 28px;
             border-radius: 16px;
+            margin-top: 10px;
           }
         }
         .hero-content {

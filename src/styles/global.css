@@ -198,9 +198,12 @@ a {
 /* ---------- App shell / responsive layout ---------- */
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 .app-body {
@@ -210,13 +213,13 @@ a {
   width: 100%;
 }
 
-/* Mobile Default: tight, breathable padding with room for native bottom nav */
+/* Mobile Default: tight, breathable padding with room for native bottom nav and safe bottom */
 .app-main {
   flex: 1;
   min-width: 0;
   width: 100%;
   padding: 10px 12px;
-  padding-bottom: calc(76px + var(--safe-bottom));
+  padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Desktop: spacious padding with sidebar */
@@ -231,6 +234,14 @@ a {
   max-width: 1280px;
   margin: 0 auto;
   width: 100%;
+}
+
+/* Safe Area Inset Helpers */
+.pt-safe {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+}
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 /* ---------- Utility Classes for Mobile vs PC ---------- */

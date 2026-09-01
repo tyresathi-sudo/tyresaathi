@@ -137,6 +137,7 @@ export default function Sidebar({ open, onClose }) {
           display: flex;
           flex-direction: column;
           box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+          padding-top: env(safe-area-inset-top, 0px);
         }
         .sidebar-open { transform: translateX(0); }
         .sidebar-header {
