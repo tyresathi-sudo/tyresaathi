@@ -507,16 +507,16 @@ export default function Navbar({ onMenuClick }) {
           .desktop-nav-links { display: none !important; }
           .desktop-actions { display: none !important; }
           .nav-container {
-            padding: 6px 12px;
+            padding: 4px 10px;
           }
           .logo-img {
-            height: 38px !important;
+            height: 34px !important;
           }
           .brand-primary-name {
-            font-size: 19px !important;
+            font-size: 1.15rem !important;
           }
           .brand-tagline {
-            font-size: 8.5px !important;
+            font-size: 0.55rem !important;
           }
         }
 
@@ -524,12 +524,12 @@ export default function Navbar({ onMenuClick }) {
         .site-brand-logo {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           text-decoration: none;
           color: var(--text);
         }
         .logo-img {
-          height: 46px;
+          height: 42px;
           width: auto;
           object-fit: contain;
           border-radius: 6px;
@@ -540,7 +540,7 @@ export default function Navbar({ onMenuClick }) {
         }
         .brand-primary-name {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 24px;
+          font-size: 1.45rem;
           font-weight: 800;
           letter-spacing: 0.5px;
           line-height: 1;
@@ -549,7 +549,7 @@ export default function Navbar({ onMenuClick }) {
           color: #c0392b;
         }
         .brand-tagline {
-          font-size: 10px;
+          font-size: 0.625rem;
           color: var(--text-muted);
           font-weight: 600;
           letter-spacing: 0.2px;

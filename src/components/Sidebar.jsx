@@ -159,7 +159,7 @@ export default function Sidebar({ open, onClose }) {
           border-radius: 6px;
         }
         .sidebar-title { 
-          font-size: 20px; 
+          font-size: 1.15rem; /* text-lg */
           font-weight: 800;
           color: var(--text);
           letter-spacing: 0.5px;
@@ -174,20 +174,20 @@ export default function Sidebar({ open, onClose }) {
         }
         
         .drawer-user-card {
-          margin: 12px 12px 4px;
-          padding: 10px 12px;
+          margin: 10px 10px 4px;
+          padding: 8px 10px;
           background: var(--surface-2);
           border: 1px solid var(--border);
-          border-radius: 12px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           text-decoration: none;
           color: var(--text);
         }
         .drawer-avatar {
-          width: 36px;
-          height: 36px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
           background: #c0392b;
           color: white;
@@ -195,7 +195,7 @@ export default function Sidebar({ open, onClose }) {
           align-items: center;
           justify-content: center;
           font-weight: 800;
-          font-size: 15px;
+          font-size: 0.875rem;
           overflow: hidden;
           flex-shrink: 0;
         }
@@ -210,18 +210,18 @@ export default function Sidebar({ open, onClose }) {
           min-width: 0;
         }
         .drawer-user-name {
-          font-size: 13px;
+          font-size: 0.8125rem;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .drawer-user-role {
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--orange);
           font-weight: 700;
         }
         .drawer-auth-cta {
-          padding: 12px 12px 4px;
+          padding: 10px 10px 4px;
         }
         .drawer-login-btn {
           display: flex;
@@ -230,16 +230,16 @@ export default function Sidebar({ open, onClose }) {
           gap: 6px;
           background: #c0392b;
           color: white;
-          padding: 9px 12px;
-          border-radius: 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 0.75rem;
           font-weight: 700;
         }
 
         .sidebar-nav { 
           flex: 1; 
-          padding: 8px 10px; 
+          padding: 6px 8px; 
           display: flex; 
           flex-direction: column; 
           gap: 2px;
@@ -247,24 +247,24 @@ export default function Sidebar({ open, onClose }) {
         }
 
         .nav-section-label {
-          font-size: 10.5px;
+          font-size: 0.6875rem;
           font-weight: 800;
           color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          padding: 8px 12px 3px;
+          padding: 6px 10px 2px;
         }
 
         .sidebar-link {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 10px 12px;
-          border-radius: 10px;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: 8px;
           color: var(--text-muted);
           text-decoration: none;
           font-weight: 600;
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           transition: all 0.15s ease;
         }
         .sidebar-link:hover { 
@@ -282,8 +282,8 @@ export default function Sidebar({ open, onClose }) {
         }
         
         .sidebar-footer {
-          padding: 12px 16px;
-          font-size: 11px;
+          padding: 10px 12px;
+          font-size: 0.6875rem;
           font-weight: 700;
           color: var(--text-muted);
           border-top: 1px solid var(--border);

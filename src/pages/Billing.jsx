@@ -1068,52 +1068,57 @@ export default function Billing() {
         .billing-page-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 10px 10px 40px;
+          padding: 6px 4px 30px;
         }
         .billing-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 12px;
+          margin-bottom: 14px;
         }
         @media (max-width: 800px) {
-          .billing-header-row { flex-direction: column; }
+          .billing-header-row { flex-direction: column; gap: 10px; }
         }
         .billing-title {
-          font-size: 24px;
+          font-size: 1.25rem; /* text-xl on mobile */
           font-weight: 800;
           color: var(--text);
           margin: 0 0 4px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          line-height: 1.25;
+        }
+        @media (min-width: 640px) {
+          .billing-title { font-size: 1.5rem; }
         }
         .billing-sub {
-          font-size: 13.5px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
           margin: 0;
+          line-height: 1.35;
         }
         .billing-nav-pills {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           background: var(--surface);
           border: 1px solid var(--border);
-          padding: 4px;
-          border-radius: 10px;
+          padding: 3px;
+          border-radius: 8px;
         }
         .pill-btn {
           background: none;
           border: none;
-          padding: 8px 14px;
-          border-radius: 8px;
+          padding: 6px 12px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           transition: all 0.15s ease;
         }
         .pill-btn-active {
@@ -1125,21 +1130,21 @@ export default function Billing() {
           background: #eafaf1;
           border: 1.5px solid #2ecc71;
           color: #27ae60;
-          padding: 12px 16px;
-          border-radius: 10px;
+          padding: 10px 12px;
+          border-radius: 8px;
           font-weight: 600;
-          font-size: 13.5px;
+          font-size: 0.78rem;
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 20px;
+          gap: 6px;
+          margin-bottom: 14px;
         }
 
         /* Workspace Grid */
         .billing-workspace-grid {
           display: grid;
-          grid-template-columns: 1fr 380px;
-          gap: 24px;
+          grid-template-columns: 1fr 340px;
+          gap: 16px;
           align-items: start;
         }
         @media (max-width: 1050px) {
@@ -1150,54 +1155,62 @@ export default function Billing() {
         .billing-form-card {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 14px;
         }
         .form-sub-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 20px;
+          border-radius: 10px;
+          padding: 14px 12px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+        @media (min-width: 640px) {
+          .form-sub-card {
+            padding: 18px 20px;
+            border-radius: 12px;
+          }
         }
         .card-section-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 10px;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 6px;
         }
         .card-section-title {
-          font-size: 15px;
-          font-weight: 800;
+          font-size: 0.95rem; /* text-base or text-sm */
+          font-weight: 700;
           color: var(--text);
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 14px;
+          gap: 6px;
+          margin-bottom: 10px;
+          line-height: 1.3;
         }
         .card-section-title span {
           background: #c0392b;
           color: white;
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-size: 12px;
+          font-size: 11px;
+          flex-shrink: 0;
         }
         .quick-add-actions {
           display: flex;
-          gap: 6px;
+          gap: 4px;
         }
         .btn-quick-add {
           background: var(--surface-2);
           border: 1px solid var(--border);
           color: var(--text);
-          padding: 5px 10px;
+          padding: 4px 8px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 0.72rem;
           font-weight: 700;
           cursor: pointer;
         }
@@ -1208,16 +1221,16 @@ export default function Billing() {
         .presets-bar {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           flex-wrap: wrap;
-          margin-bottom: 14px;
-          padding: 8px 12px;
+          margin-bottom: 10px;
+          padding: 6px 10px;
           background: var(--bg);
-          border-radius: 8px;
+          border-radius: 6px;
           border: 1px dashed var(--border);
         }
         .preset-label {
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           font-weight: 700;
           color: #c0392b;
         }
@@ -1225,8 +1238,8 @@ export default function Billing() {
           background: var(--surface);
           border: 1px solid var(--border);
           color: var(--text);
-          font-size: 11.5px;
-          padding: 4px 8px;
+          font-size: 0.6875rem;
+          padding: 3px 6px;
           border-radius: 4px;
           cursor: pointer;
           font-weight: 600;
@@ -1241,24 +1254,24 @@ export default function Billing() {
         .form-grid-3 {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 14px;
+          gap: 10px;
         }
         .form-grid-2 {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
+          gap: 10px;
         }
         @media (max-width: 700px) {
-          .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+          .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; gap: 8px; }
         }
 
         .form-input-group {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
         .form-input-group label {
-          font-size: 12px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--text-muted);
         }
@@ -1269,19 +1282,21 @@ export default function Billing() {
         }
         .input-with-icon svg {
           position: absolute;
-          left: 12px;
+          left: 10px;
           color: var(--text-muted);
           pointer-events: none;
           z-index: 1;
+          width: 16px;
+          height: 16px;
         }
         .input-with-icon input {
           width: 100%;
-          padding: 10px 14px 10px 42px !important;
-          border-radius: 8px;
+          padding: 8px 10px 8px 32px !important;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           outline: none;
         }
         .input-with-icon input:focus,
@@ -1291,26 +1306,26 @@ export default function Billing() {
         }
         .form-input-group input,
         .form-input-group select {
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           outline: none;
         }
 
         .payment-status-toggle {
           display: flex;
-          gap: 8px;
+          gap: 6px;
         }
         .status-toggle-btn {
           flex: 1;
-          padding: 10px 8px;
-          border-radius: 8px;
+          padding: 8px 6px;
+          border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--bg);
-          font-size: 12px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--text-muted);
           cursor: pointer;
@@ -1329,81 +1344,83 @@ export default function Billing() {
         /* Items Entry Table */
         .items-table-wrapper {
           overflow-x: auto;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .items-entry-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: 0.75rem;
         }
         .items-entry-table th {
           background: var(--surface-2);
-          padding: 8px 10px;
+          padding: 6px 8px;
           text-align: left;
           font-weight: 700;
           color: var(--text-muted);
           border-bottom: 1px solid var(--border);
+          font-size: 0.72rem;
         }
         .items-entry-table td {
-          padding: 8px 6px;
+          padding: 6px 4px;
           border-bottom: 1px solid var(--border);
         }
         .item-name-input {
           width: 100%;
-          padding: 8px 10px;
+          padding: 6px 8px;
           border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13px;
+          font-size: 0.75rem;
         }
         .item-type-select {
           width: 100%;
-          padding: 8px 4px;
+          padding: 6px 4px;
           border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 12px;
+          font-size: 0.72rem;
         }
         .item-qty-input,
         .item-rate-input {
           width: 100%;
-          padding: 8px 6px;
+          padding: 6px 6px;
           border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13px;
+          font-size: 0.75rem;
           text-align: right;
         }
         .item-amount-col {
           font-weight: 800;
           color: #c0392b;
           text-align: right;
-          padding-right: 10px;
+          padding-right: 8px;
+          font-size: 0.78rem;
         }
         .btn-remove-row {
           background: none;
           border: none;
           color: #c0392b;
           cursor: pointer;
-          padding: 4px;
+          padding: 3px;
         }
         .btn-add-row-full {
           width: 100%;
           background: var(--surface-2);
           border: 1.5px dashed var(--border);
           color: var(--text);
-          padding: 9px;
-          border-radius: 8px;
+          padding: 7px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 0.75rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 4px;
         }
         .btn-add-row-full:hover {
           background: var(--border);
@@ -1411,17 +1428,18 @@ export default function Billing() {
 
         .billing-action-buttons {
           display: flex;
-          gap: 14px;
-          margin-top: 10px;
+          gap: 10px;
+          margin-top: 8px;
         }
         .btn-reset-bill {
           flex: 1;
           background: var(--surface-2);
           border: 1px solid var(--border);
           color: var(--text);
-          padding: 12px;
-          border-radius: 8px;
+          padding: 10px;
+          border-radius: 6px;
           font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
         }
         .btn-generate-bill {
@@ -1429,15 +1447,15 @@ export default function Billing() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 12px 20px;
-          border-radius: 8px;
+          padding: 10px 16px;
+          border-radius: 6px;
           font-weight: 800;
-          font-size: 15px;
+          font-size: 0.875rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
         }
         .btn-generate-bill:hover {
@@ -1448,9 +1466,9 @@ export default function Billing() {
         .live-receipt-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 20px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+          border-radius: 10px;
+          padding: 16px 14px;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.05);
           position: sticky;
           top: 80px;
         }
@@ -1458,62 +1476,62 @@ export default function Billing() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .brand-badge {
-          font-size: 11px;
+          font-size: 0.6875rem;
           font-weight: 800;
           color: #c0392b;
           letter-spacing: 0.5px;
         }
         .receipt-inv-num {
-          font-size: 12px;
+          font-size: 0.72rem;
           font-weight: 700;
           color: var(--text-muted);
         }
         .receipt-shop-meta h3 {
-          font-size: 16px;
+          font-size: 0.95rem;
           font-weight: 800;
           margin: 0 0 2px;
           color: var(--text);
         }
         .receipt-shop-meta p {
-          font-size: 11.5px;
+          font-size: 0.72rem;
           color: var(--text-muted);
           margin: 0;
         }
         .receipt-shop-meta small {
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
         }
         .receipt-divider {
           height: 1px;
           background: var(--border);
-          margin: 12px 0;
+          margin: 10px 0;
         }
         .receipt-customer-details {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 12.5px;
+          gap: 3px;
+          font-size: 0.75rem;
         }
         .meta-lbl {
           color: var(--text-muted);
           display: inline-block;
-          width: 70px;
+          width: 65px;
         }
         .receipt-items-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          max-height: 180px;
+          gap: 6px;
+          max-height: 160px;
           overflow-y: auto;
         }
         .receipt-item-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          font-size: 12.5px;
+          font-size: 0.75rem;
         }
         .it-left {
           display: flex;
@@ -1526,7 +1544,7 @@ export default function Billing() {
         }
         .it-qty {
           color: var(--text-muted);
-          font-size: 11px;
+          font-size: 0.6875rem;
         }
         .it-amt {
           font-weight: 700;
@@ -1535,8 +1553,8 @@ export default function Billing() {
         .receipt-calc-table {
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          font-size: 13px;
+          gap: 4px;
+          font-size: 0.75rem;
         }
         .calc-row {
           display: flex;
@@ -1547,53 +1565,53 @@ export default function Billing() {
         .tax-row { color: #8e44ad; font-weight: 600; }
         .grand-total-row {
           border-top: 1.5px dashed var(--border);
-          padding-top: 8px;
-          margin-top: 4px;
+          padding-top: 6px;
+          margin-top: 2px;
           font-weight: 800;
-          font-size: 16px;
+          font-size: 0.95rem;
           color: var(--text);
         }
         .grand-amount {
           color: #c0392b;
-          font-size: 18px;
+          font-size: 1.15rem;
         }
         .receipt-payment-tag {
           display: flex;
           align-items: center;
           justify-content: space-between;
           background: var(--bg);
-          padding: 8px 12px;
+          padding: 6px 10px;
           border-radius: 6px;
-          font-size: 12px;
-          margin: 12px 0 16px;
+          font-size: 0.72rem;
+          margin: 10px 0 12px;
         }
         .badge-paid {
           background: #eafaf1;
           color: #27ae60;
-          padding: 2px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 700;
         }
         .badge-pending {
           background: #fef9e7;
           color: #d35400;
-          padding: 2px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 700;
         }
         .receipt-actions-grid {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
         .btn-print-preview {
           background: #2c3e50;
           color: white;
           border: none;
-          padding: 10px;
+          padding: 8px;
           border-radius: 6px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 0.78rem;
           cursor: pointer;
           display: flex;
           align-items: center;

@@ -191,14 +191,14 @@ export default function StoreLocation() {
         .store-location-page {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 10px 15px 40px;
+          padding: 6px 4px 30px;
         }
         .breadcrumbs-bar {
-          font-size: 13px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
-          margin-bottom: 16px;
+          margin-bottom: 12px;
           display: flex;
-          gap: 6px;
+          gap: 4px;
         }
         .breadcrumbs-bar span:last-child {
           color: var(--text);
@@ -206,23 +206,25 @@ export default function StoreLocation() {
         }
         .store-locator-container {
           display: flex;
-          gap: 24px;
+          gap: 16px;
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 16px;
+          border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-          min-height: 720px;
+          min-height: 640px;
         }
         @media (max-width: 900px) {
           .store-locator-container {
             flex-direction: column;
+            border-radius: 10px;
+            min-height: auto;
           }
         }
         .store-sidebar {
-          flex: 0 0 420px;
-          max-width: 450px;
-          padding: 24px;
+          flex: 0 0 380px;
+          max-width: 420px;
+          padding: 18px 14px;
           display: flex;
           flex-direction: column;
           border-right: 1px solid var(--border);
@@ -234,20 +236,26 @@ export default function StoreLocation() {
             max-width: 100%;
             border-right: none;
             border-bottom: 1px solid var(--border);
+            padding: 14px 10px;
           }
         }
         .store-main-title {
-          font-size: 26px;
+          font-size: 1.25rem; /* text-xl on mobile */
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 16px;
-          letter-spacing: -0.5px;
+          margin: 0 0 10px;
+          line-height: 1.25;
+        }
+        @media (min-width: 640px) {
+          .store-main-title {
+            font-size: 1.5rem;
+          }
         }
         .store-search-box {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          margin-bottom: 16px;
+          gap: 8px;
+          margin-bottom: 12px;
         }
         .search-input-wrapper {
           position: relative;
@@ -256,17 +264,19 @@ export default function StoreLocation() {
         }
         .search-icon-inside {
           position: absolute;
-          left: 12px;
+          left: 10px;
           color: var(--text-muted);
+          width: 16px;
+          height: 16px;
         }
         .search-input-wrapper input {
           width: 100%;
-          padding: 12px 14px 12px 38px;
+          padding: 8px 10px 8px 32px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 14px;
+          font-size: 0.8125rem;
           outline: none;
         }
         .search-input-wrapper input:focus {
@@ -276,10 +286,10 @@ export default function StoreLocation() {
           background: #631936;
           color: white;
           border: none;
-          padding: 12px;
-          border-radius: 8px;
+          padding: 8px 14px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.8125rem;
           cursor: pointer;
           transition: background 0.2s ease;
         }
@@ -288,18 +298,23 @@ export default function StoreLocation() {
         }
         .city-pill-row {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           overflow-x: auto;
-          padding-bottom: 8px;
-          margin-bottom: 12px;
+          padding-bottom: 6px;
+          margin-bottom: 10px;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .city-pill-row::-webkit-scrollbar {
+          display: none;
         }
         .city-pill {
-          padding: 6px 12px;
-          border-radius: 20px;
+          padding: 4px 10px;
+          border-radius: 16px;
           border: 1px solid var(--border);
           background: var(--surface-2);
           color: var(--text);
-          font-size: 12px;
+          font-size: 0.72rem;
           font-weight: 600;
           white-space: nowrap;
           cursor: pointer;
@@ -310,9 +325,9 @@ export default function StoreLocation() {
           border-color: #631936;
         }
         .store-count-badge {
-          font-size: 12px;
+          font-size: 0.72rem;
           color: var(--text-muted);
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           font-weight: 600;
         }
         .store-list-scroll {
@@ -320,13 +335,13 @@ export default function StoreLocation() {
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 14px;
-          padding-right: 4px;
-          max-height: 520px;
+          gap: 10px;
+          padding-right: 2px;
+          max-height: 480px;
         }
         .store-item-card {
-          padding: 16px;
-          border-radius: 10px;
+          padding: 12px 10px;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           cursor: pointer;
@@ -345,20 +360,21 @@ export default function StoreLocation() {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 8px;
-          margin-bottom: 6px;
+          gap: 6px;
+          margin-bottom: 4px;
         }
         .store-name {
-          font-size: 15.5px;
+          font-size: 0.875rem; /* text-sm */
           font-weight: 700;
           color: var(--text);
           margin: 0;
+          line-height: 1.25;
         }
         .nearest-tag {
-          font-size: 11px;
+          font-size: 0.6875rem;
           background: #e67e22;
           color: white;
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 4px;
           font-weight: 700;
           white-space: nowrap;
@@ -366,14 +382,14 @@ export default function StoreLocation() {
         .store-rating-row {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 12.5px;
-          margin-bottom: 8px;
+          gap: 6px;
+          font-size: 0.72rem;
+          margin-bottom: 6px;
         }
         .rating-badge {
           display: inline-flex;
           align-items: center;
-          gap: 3px;
+          gap: 2px;
           font-weight: 700;
           color: #d35400;
         }
@@ -386,22 +402,22 @@ export default function StoreLocation() {
           margin-left: auto;
         }
         .store-address {
-          font-size: 13px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
-          line-height: 1.4;
-          margin: 0 0 10px;
+          line-height: 1.35;
+          margin: 0 0 8px;
         }
         .store-services-chips {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
-          margin-bottom: 12px;
+          gap: 4px;
+          margin-bottom: 8px;
         }
         .svc-chip {
-          font-size: 11px;
+          font-size: 0.6875rem;
           background: var(--surface-2);
           color: var(--text);
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 600;
         }
@@ -409,18 +425,18 @@ export default function StoreLocation() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-top: 8px;
+          padding-top: 6px;
           border-top: 1px dashed var(--border);
         }
         .view-on-map-btn {
           background: none;
           border: none;
           color: #631936;
-          font-size: 12.5px;
+          font-size: 0.75rem;
           font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
           cursor: pointer;
           padding: 0;
         }
@@ -428,12 +444,12 @@ export default function StoreLocation() {
           text-decoration: underline;
         }
         .google-maps-link {
-          font-size: 12px;
+          font-size: 0.72rem;
           color: var(--text-muted);
           text-decoration: none;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
         }
         .google-maps-link:hover {
           color: #631936;
@@ -441,60 +457,59 @@ export default function StoreLocation() {
         .store-map-wrapper {
           flex: 1;
           position: relative;
-          min-height: 600px;
+          min-height: 500px;
           display: flex;
           flex-direction: column;
         }
         .interactive-map-canvas {
           flex: 1;
           width: 100%;
-          min-height: 600px;
+          min-height: 500px;
           background: #e8ecef;
         }
         .map-info-popup {
           position: absolute;
-          top: 20px;
-          left: 20px;
+          top: 14px;
+          left: 14px;
           z-index: 10;
           background: rgba(255, 255, 255, 0.96);
           backdrop-filter: blur(8px);
           border: 1px solid #ddd;
-          border-radius: 12px;
-          padding: 16px;
-          max-width: 360px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+          border-radius: 10px;
+          padding: 12px;
+          max-width: 320px;
+          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
           color: #222;
         }
         .popup-top {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 10px;
-          margin-bottom: 8px;
+          gap: 8px;
+          margin-bottom: 6px;
         }
         .popup-title {
-          margin: 0 0 4px;
-          font-size: 15px;
+          margin: 0 0 3px;
+          font-size: 0.875rem;
           font-weight: 700;
           color: #111;
         }
         .popup-address {
           margin: 0;
-          font-size: 12px;
+          font-size: 0.75rem;
           color: #555;
           line-height: 1.3;
         }
         .popup-external-icon {
           color: #631936;
-          padding: 4px;
-          border-radius: 4px;
+          padding: 2px;
         }
         .popup-rating {
           display: flex;
           align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          margin-bottom: 8px;
+          gap: 6px;
+          font-size: 0.72rem;
+          margin-bottom: 6px;
         }
         .star-num {
           font-weight: 700;
@@ -503,19 +518,19 @@ export default function StoreLocation() {
         .open-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
           color: #27ae60;
           font-weight: 600;
         }
         .popup-services {
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           color: #666;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
           line-height: 1.3;
         }
         .popup-action-buttons {
           display: flex;
-          gap: 8px;
+          gap: 6px;
         }
         .popup-call-btn,
         .popup-directions-btn {
@@ -523,10 +538,10 @@ export default function StoreLocation() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 8px 10px;
+          gap: 4px;
+          padding: 7px 8px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 0.75rem;
           font-weight: 700;
           text-decoration: none;
           text-align: center;
@@ -540,39 +555,18 @@ export default function StoreLocation() {
           color: white;
         }
         .no-stores-found {
-          padding: 40px 20px;
+          padding: 30px 16px;
           text-align: center;
           color: var(--text-muted);
+          font-size: 0.8125rem;
         }
 
         @media (max-width: 900px) {
-          .breadcrumbs-bar {
-            margin-bottom: 8px;
-            font-size: 11.5px;
-          }
-          .store-locator-container {
-            border-radius: 12px;
-            min-height: auto;
-          }
-          .store-sidebar {
-            padding: 14px 12px;
-          }
-          .store-main-title {
-            font-size: 18px;
-            margin-bottom: 12px;
-          }
-          .city-pill-row {
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
-          .city-pill-row::-webkit-scrollbar {
-            display: none;
-          }
           .store-map-wrapper {
-            min-height: 300px;
+            min-height: 280px;
           }
           .interactive-map-canvas {
-            min-height: 300px;
+            min-height: 280px;
           }
           .map-info-popup {
             position: relative;

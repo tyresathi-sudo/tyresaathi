@@ -549,32 +549,32 @@ export default function Profile() {
           gap: 6px;
           background: var(--surface-2);
           color: var(--text);
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 13px;
+          padding: 3px 10px;
+          border-radius: 16px;
+          font-size: 0.75rem;
           font-weight: 700;
         }
 
         .profile-info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 14px;
+          gap: 10px;
           text-align: left;
           background: var(--bg);
-          padding: 18px;
-          border-radius: 12px;
-          margin-bottom: 20px;
+          padding: 12px;
+          border-radius: 10px;
+          margin-bottom: 14px;
         }
         .info-item {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
         }
         .info-item.full-width {
           grid-column: 1 / -1;
         }
         .info-label {
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           font-weight: 700;
           color: var(--text-muted);
           display: flex;
@@ -582,7 +582,7 @@ export default function Profile() {
           gap: 4px;
         }
         .info-value {
-          font-size: 14px;
+          font-size: 0.8125rem;
           font-weight: 700;
           color: var(--text);
           word-break: break-word;
@@ -593,7 +593,7 @@ export default function Profile() {
 
         .shop-quick-actions {
           display: flex;
-          gap: 10px;
+          gap: 8px;
           justify-content: center;
         }
         .btn-shop-action {
@@ -601,14 +601,14 @@ export default function Profile() {
           background: #c0392b;
           color: white;
           text-decoration: none;
-          padding: 10px 14px;
-          border-radius: 8px;
-          font-size: 13px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 4px;
         }
         .btn-shop-action.secondary {
           background: var(--surface-2);
@@ -618,27 +618,27 @@ export default function Profile() {
 
         @media (max-width: 768px) {
           .profile-header-bar {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
           }
           .page-title {
-            font-size: 18px;
+            font-size: 1.25rem; /* text-xl */
           }
           .profile-card {
-            padding: 18px 14px;
-            border-radius: 12px;
+            padding: 14px 12px;
+            border-radius: 10px;
           }
           .profile-name-text {
-            font-size: 19px;
+            font-size: 1.1rem;
           }
           .profile-info-grid {
             grid-template-columns: 1fr;
-            padding: 14px 12px;
-            gap: 12px;
-            border-radius: 10px;
+            padding: 10px 8px;
+            gap: 8px;
+            border-radius: 8px;
           }
           .shop-quick-actions {
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
           }
         }
 
@@ -646,28 +646,28 @@ export default function Profile() {
         .profile-edit-form {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
           text-align: left;
         }
         .field-label-bold {
-          font-size: 13px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--text);
-          margin-bottom: 6px;
+          margin-bottom: 4px;
           display: block;
         }
         .role-toggle-row {
           display: flex;
-          gap: 10px;
+          gap: 6px;
         }
         .role-choice-btn {
           flex: 1;
-          padding: 10px;
-          border-radius: 8px;
+          padding: 8px;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13px;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -680,7 +680,7 @@ export default function Profile() {
         .form-two-col {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 8px;
         }
         @media (max-width: 600px) {
           .form-two-col {
@@ -690,20 +690,20 @@ export default function Profile() {
         .form-input-group {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
         }
         .form-input-group label {
-          font-size: 12px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--text-muted);
         }
         .form-input-group input {
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           outline: none;
         }
         .form-input-group input:focus {
@@ -712,17 +712,18 @@ export default function Profile() {
 
         .edit-action-buttons {
           display: flex;
-          gap: 10px;
-          margin-top: 10px;
+          gap: 8px;
+          margin-top: 8px;
         }
         .btn-form-cancel {
           flex: 1;
           background: var(--surface-2);
           color: var(--text);
           border: 1px solid var(--border);
-          padding: 12px;
-          border-radius: 8px;
+          padding: 9px 12px;
+          border-radius: 6px;
           font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
         }
         .btn-form-save {
@@ -730,10 +731,10 @@ export default function Profile() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 12px;
-          border-radius: 8px;
+          padding: 9px 12px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.8125rem;
           cursor: pointer;
           box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
         }
@@ -745,22 +746,22 @@ export default function Profile() {
           justify-content: space-between;
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 14px 16px;
-          margin-bottom: 14px;
+          border-radius: 10px;
+          padding: 10px 12px;
+          margin-bottom: 10px;
           font-weight: 600;
-          font-size: 14px;
+          font-size: 0.8125rem;
         }
         .theme-switch {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           background: var(--surface-2);
           border: none;
           border-radius: 100px;
-          padding: 7px 14px;
+          padding: 5px 10px;
           font-weight: 700;
-          font-size: 12.5px;
+          font-size: 0.72rem;
           cursor: pointer;
           color: var(--text);
         }
@@ -769,36 +770,36 @@ export default function Profile() {
           background: var(--surface-2);
           color: var(--danger);
           border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 12px;
+          border-radius: 8px;
+          padding: 10px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 4px;
         }
 
         .profile-actions-row {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          margin-top: 20px;
+          gap: 8px;
+          margin-top: 14px;
         }
         .profile-settings-btn {
           background: var(--surface);
           border: 1.5px solid var(--border);
           color: var(--text);
-          border-radius: 12px;
-          padding: 13px 18px;
+          border-radius: 10px;
+          padding: 10px 14px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.8125rem;
           text-decoration: none;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           transition: all 0.2s ease;
           box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
@@ -812,15 +813,15 @@ export default function Profile() {
           background: var(--surface-2);
           color: #e74c3c;
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 13px;
+          border-radius: 10px;
+          padding: 10px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           transition: all 0.2s ease;
         }
         .logout-btn-clean:hover {

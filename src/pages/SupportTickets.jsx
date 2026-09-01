@@ -399,38 +399,43 @@ export default function SupportTickets() {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 12px;
+          margin-bottom: 14px;
         }
         @media (max-width: 768px) {
-          .support-header-row { flex-direction: column; }
+          .support-header-row { flex-direction: column; gap: 10px; }
         }
         .support-title {
-          font-size: 24px;
+          font-size: 1.25rem; /* text-xl on mobile */
           font-weight: 800;
           color: var(--text);
           margin: 0 0 4px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
+          line-height: 1.25;
+        }
+        @media (min-width: 640px) {
+          .support-title { font-size: 1.5rem; }
         }
         .support-sub {
-          font-size: 13.5px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
           margin: 0;
+          line-height: 1.35;
         }
         .btn-raise-ticket {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 18px;
-          border-radius: 8px;
+          padding: 8px 14px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           white-space: nowrap;
           box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
         }
@@ -439,75 +444,82 @@ export default function SupportTickets() {
           background: #eafaf1;
           border: 1.5px solid #2ecc71;
           color: #27ae60;
-          padding: 12px 16px;
-          border-radius: 10px;
+          padding: 10px 12px;
+          border-radius: 8px;
           font-weight: 600;
-          font-size: 13.5px;
+          font-size: 0.78rem;
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 20px;
+          gap: 6px;
+          margin-bottom: 14px;
         }
 
         .support-channels-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-          margin-bottom: 24px;
+          grid-template-columns: 1fr;
+          gap: 10px;
+          margin-bottom: 16px;
         }
-        @media (max-width: 700px) {
-          .support-channels-grid { grid-template-columns: 1fr; }
+        @media (min-width: 700px) {
+          .support-channels-grid { grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
         }
         .channel-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 18px;
+          border-radius: 10px;
+          padding: 12px 10px;
           display: flex;
-          gap: 14px;
+          gap: 10px;
           align-items: center;
         }
         .channel-icon {
-          font-size: 32px;
+          font-size: 24px;
         }
         .channel-card h4 {
           margin: 0 0 2px;
-          font-size: 15px;
+          font-size: 0.875rem;
           color: var(--text);
         }
         .channel-card p {
-          margin: 0 0 8px;
-          font-size: 12.5px;
+          margin: 0 0 4px;
+          font-size: 0.72rem;
           color: var(--text-muted);
         }
         .channel-link {
-          font-size: 13px;
+          font-size: 0.75rem;
           font-weight: 700;
           text-decoration: none;
         }
         .wa-link { color: #25D366; }
         .channel-badge {
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           font-weight: 700;
           color: #c0392b;
         }
 
         .support-filter-tabs {
           display: flex;
-          gap: 8px;
-          margin-bottom: 20px;
+          gap: 6px;
+          margin-bottom: 14px;
           overflow-x: auto;
-          padding-bottom: 6px;
+          padding-bottom: 4px;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .support-filter-tabs::-webkit-scrollbar {
+          display: none;
         }
         .filter-pill {
           background: var(--surface);
           border: 1px solid var(--border);
-          padding: 8px 14px;
-          border-radius: 20px;
-          font-size: 13px;
+          padding: 5px 12px;
+          border-radius: 16px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 600;
           color: var(--text);
           cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .filter-active {
           background: #c0392b;
@@ -518,49 +530,49 @@ export default function SupportTickets() {
         .tickets-list-grid {
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 12px;
         }
         .ticket-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 20px;
+          border-radius: 10px;
+          padding: 14px 12px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         }
         .ticket-card-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 6px;
         }
         .ticket-title-wrap {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
         }
         .ticket-id-badge {
           font-weight: 800;
-          font-size: 12px;
+          font-size: 0.6875rem;
           color: #c0392b;
           background: var(--bg);
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
         }
         .ticket-category-chip {
           background: var(--surface-2);
-          font-size: 12px;
-          padding: 3px 8px;
+          font-size: 0.6875rem;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 600;
           color: var(--text-muted);
         }
         .priority-tag {
-          font-size: 11px;
+          font-size: 0.6875rem;
           font-weight: 800;
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 4px;
         }
         .priority-low { background: #ebf5fb; color: #2980b9; }
@@ -569,10 +581,10 @@ export default function SupportTickets() {
         .priority-urgent { background: #e74c3c; color: white; }
 
         .status-badge-ticket {
-          font-size: 12px;
+          font-size: 0.6875rem;
           font-weight: 700;
-          padding: 4px 10px;
-          border-radius: 6px;
+          padding: 3px 8px;
+          border-radius: 4px;
         }
         .status-open { background: #fef9e7; color: #d35400; }
         .status-in_progress { background: #ebf5fb; color: #2980b9; }
@@ -580,30 +592,31 @@ export default function SupportTickets() {
         .status-closed { background: #f2f3f4; color: #7f8c8d; }
 
         .ticket-subject {
-          font-size: 16px;
+          font-size: 0.95rem; /* text-base / text-sm */
           font-weight: 800;
-          margin: 0 0 6px;
+          margin: 0 0 4px;
           color: var(--text);
+          line-height: 1.25;
         }
         .ticket-description {
-          font-size: 13.5px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
-          line-height: 1.45;
-          margin: 0 0 14px;
+          line-height: 1.35;
+          margin: 0 0 10px;
         }
 
         .ticket-admin-reply-box {
           background: #f4fdf8;
           border-left: 3px solid #27ae60;
-          padding: 12px 14px;
-          border-radius: 0 8px 8px 0;
-          margin-bottom: 14px;
-          font-size: 13px;
+          padding: 8px 10px;
+          border-radius: 0 6px 6px 0;
+          margin-bottom: 10px;
+          font-size: 0.75rem;
         }
         .ticket-admin-reply-box strong {
           color: #27ae60;
           display: block;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         .ticket-admin-reply-box p {
           margin: 0;
@@ -613,23 +626,23 @@ export default function SupportTickets() {
         .ticket-footer-meta {
           display: flex;
           align-items: center;
-          gap: 16px;
-          font-size: 12px;
+          gap: 10px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
           border-top: 1px solid var(--border);
-          padding-top: 10px;
+          padding-top: 8px;
           flex-wrap: wrap;
         }
 
         .no-tickets-box {
           text-align: center;
-          padding: 40px;
+          padding: 30px 16px;
           background: var(--surface);
-          border-radius: 12px;
+          border-radius: 10px;
           border: 1px solid var(--border);
         }
-        .no-tickets-box h3 { margin: 12px 0 6px; }
-        .no-tickets-box p { color: var(--text-muted); font-size: 13.5px; margin: 0; }
+        .no-tickets-box h3 { margin: 8px 0 4px; font-size: 0.95rem; }
+        .no-tickets-box p { color: var(--text-muted); font-size: 0.75rem; margin: 0; }
 
         /* Modal */
         .modal-backdrop {
@@ -640,15 +653,15 @@ export default function SupportTickets() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 16px;
+          padding: 12px;
         }
         .modal-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          max-width: 550px;
+          border-radius: 10px;
+          max-width: 500px;
           width: 100%;
-          padding: 24px;
+          padding: 18px 16px;
           box-shadow: 0 16px 40px rgba(0,0,0,0.2);
           max-height: 90vh;
           overflow-y: auto;
@@ -657,52 +670,57 @@ export default function SupportTickets() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 12px;
+          padding-bottom: 8px;
         }
-        .modal-header h3 { margin: 0; font-size: 17px; }
-        .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-muted); }
-        .ticket-modal-form { display: flex; flex-direction: column; gap: 14px; }
-        .modal-field { display: flex; flex-direction: column; gap: 6px; }
-        .modal-field label { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+        .modal-header h3 { margin: 0; font-size: 1rem; }
+        .modal-close { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--text-muted); }
+        .ticket-modal-form { display: flex; flex-direction: column; gap: 10px; }
+        .modal-field { display: flex; flex-direction: column; gap: 4px; }
+        .modal-field label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); }
         .modal-field input, .modal-field select, .modal-field textarea {
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           outline: none;
           font-family: inherit;
         }
-        .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal-grid-2 { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        @media (min-width: 500px) {
+          .modal-grid-2 { grid-template-columns: 1fr 1fr; gap: 10px; }
+        }
         .modal-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 10px;
-          margin-top: 10px;
+          gap: 8px;
+          margin-top: 8px;
         }
         .btn-cancel {
           background: var(--surface-2);
           border: 1px solid var(--border);
           color: var(--text);
-          padding: 10px 16px;
-          border-radius: 8px;
+          padding: 8px 14px;
+          border-radius: 6px;
           font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
         }
         .btn-submit-ticket {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
+          padding: 8px 16px;
+          border-radius: 6px;
           font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
         }
       `}</style>
     </div>

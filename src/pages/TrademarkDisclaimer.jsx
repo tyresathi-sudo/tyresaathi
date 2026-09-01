@@ -100,11 +100,15 @@ export default function TrademarkDisclaimer() {
         }
         .legal-header-card {
           background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          border-radius: 12px;
+          padding: 18px 14px;
           color: white;
-          padding: 32px 24px;
-          border-radius: 16px;
-          margin-bottom: 28px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+          margin-bottom: 14px;
+          position: relative;
+          overflow: hidden;
+        }
+        @media (min-width: 640px) {
+          .legal-header-card { padding: 24px 20px; border-radius: 14px; margin-bottom: 18px; }
         }
         .btn-back-legal {
           display: inline-flex;
@@ -113,12 +117,12 @@ export default function TrademarkDisclaimer() {
           background: rgba(255,255,255,0.15);
           color: white;
           border: 1px solid rgba(255,255,255,0.25);
-          padding: 6px 14px;
-          border-radius: 8px;
-          font-size: 13px;
+          padding: 5px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
-          margin-bottom: 16px;
+          margin-bottom: 12px;
           transition: all 0.2s;
         }
         .btn-back-legal:hover {
@@ -127,60 +131,68 @@ export default function TrademarkDisclaimer() {
         .legal-badge {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           background: rgba(46, 204, 113, 0.2);
           border: 1px solid #2ecc71;
-          color: #2ed573;
-          font-size: 11px;
+          color: #2ecc71;
+          font-size: 0.6875rem;
           font-weight: 700;
-          padding: 3px 10px;
-          border-radius: 20px;
+          padding: 2px 8px;
+          border-radius: 16px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
         .legal-title {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 32px;
+          font-size: 1.35rem; /* text-xl on mobile */
           font-weight: 800;
-          margin: 0 0 8px;
+          margin: 0 0 4px;
           color: #ffffff;
+          line-height: 1.2;
+        }
+        @media (min-width: 640px) {
+          .legal-title { font-size: 1.85rem; }
         }
         .legal-sub {
-          font-size: 14.5px;
+          font-size: 0.75rem; /* text-xs */
           color: #cbd5e1;
-          margin: 0 0 10px;
+          margin: 0 0 8px;
+          line-height: 1.35;
         }
         .last-updated {
-          font-size: 12px;
+          font-size: 0.6875rem;
           color: #94a3b8;
         }
         .legal-body-content {
           background: var(--surface, #ffffff);
           border: 1px solid var(--border, #e2e8f0);
-          border-radius: 16px;
-          padding: 30px 24px;
+          border-radius: 12px;
+          padding: 18px 14px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.04);
         }
+        @media (min-width: 640px) {
+          .legal-body-content { padding: 24px 20px; border-radius: 14px; }
+        }
         .legal-section {
-          margin-bottom: 28px;
+          margin-bottom: 18px;
         }
         .legal-section h2 {
-          font-size: 18px;
+          font-size: 0.95rem; /* text-base */
           font-weight: 700;
           color: var(--heading, #1e293b);
-          margin: 0 0 10px;
-          border-left: 4px solid #2ed573;
-          padding-left: 10px;
+          margin: 0 0 8px;
+          border-left: 3px solid #2ed573;
+          padding-left: 8px;
         }
         .legal-section p, .legal-section li {
-          font-size: 14.5px;
-          line-height: 1.65;
+          font-size: 0.8125rem;
+          line-height: 1.5;
           color: var(--text-muted, #475569);
         }
         .legal-section ul {
-          padding-left: 20px;
-          margin: 8px 0;
+          padding-left: 18px;
+          margin: 6px 0;
         }
         .legal-section li {
           margin-bottom: 6px;
@@ -188,32 +200,33 @@ export default function TrademarkDisclaimer() {
         .highlight-box {
           background: rgba(46, 204, 113, 0.05);
           border: 1px solid rgba(46, 204, 113, 0.25);
-          border-radius: 12px;
-          padding: 16px 20px;
+          border-radius: 10px;
+          padding: 12px 14px;
         }
         .contact-card {
           background: var(--surface-2, #f8fafc);
-          border-radius: 12px;
-          padding: 20px;
+          border-radius: 10px;
+          padding: 14px 12px;
           border: 1px solid var(--border, #e2e8f0);
         }
         .contact-card p {
-          margin: 4px 0;
+          margin: 3px 0;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
+          font-size: 0.75rem;
         }
         .legal-footer-nav {
           display: flex;
           justify-content: space-between;
-          margin-top: 24px;
-          gap: 16px;
+          margin-top: 18px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .legal-nav-link {
           color: #c0392b;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 0.75rem;
           text-decoration: none;
         }
         .legal-nav-link:hover {

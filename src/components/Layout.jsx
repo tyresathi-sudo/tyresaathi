@@ -26,7 +26,7 @@ export default function Layout() {
 
       {/* 💬 Global Floating WhatsApp / Support Widget */}
       <a
-        href={`https://wa.me/918877277757?text=${encodeURIComponent("Namaste TyreSaathi, mujhe support aur jaankari chahiye.")}`}
+        href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur jaankari chahiye.")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="floating-whatsapp-btn"

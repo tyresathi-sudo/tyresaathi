@@ -1477,79 +1477,90 @@ export default function AdminPanel() {
         .admin-page-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 10px 10px 40px;
+          padding: 6px 4px 30px;
         }
         .admin-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 12px;
+          margin-bottom: 14px;
         }
         @media (max-width: 800px) {
-          .admin-header-row { flex-direction: column; }
+          .admin-header-row { flex-direction: column; gap: 10px; }
         }
         .admin-badge-strip {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          font-size: 11.5px;
+          gap: 4px;
+          font-size: 0.6875rem;
           font-weight: 800;
           color: #c0392b;
           letter-spacing: 0.5px;
           background: #fdedec;
-          padding: 4px 10px;
+          padding: 3px 8px;
           border-radius: 4px;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
         .admin-page-title {
-          font-size: 24px;
+          font-size: 1.25rem; /* text-xl on mobile */
           font-weight: 800;
           color: var(--text);
           margin: 0 0 4px;
+          line-height: 1.25;
+        }
+        @media (min-width: 640px) {
+          .admin-page-title { font-size: 1.5rem; }
         }
         .admin-page-sub {
-          font-size: 13.5px;
+          font-size: 0.75rem; /* text-xs */
           color: var(--text-muted);
           margin: 0;
+          line-height: 1.35;
         }
         .btn-excel-top-action {
           background: #27ae60;
           color: white;
           border: none;
-          padding: 10px 18px;
-          border-radius: 8px;
+          padding: 8px 14px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 13.5px;
+          font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           box-shadow: 0 4px 12px rgba(39, 174, 96, 0.25);
         }
 
         /* Nav Tabs */
         .admin-nav-tabs {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 10px;
-          margin-bottom: 24px;
+          padding-bottom: 8px;
+          margin-bottom: 16px;
           overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .admin-nav-tabs::-webkit-scrollbar {
+          display: none;
         }
         .admin-tab {
           background: var(--surface);
           border: 1px solid var(--border);
-          padding: 9px 16px;
-          border-radius: 20px;
-          font-size: 13px;
+          padding: 6px 12px;
+          border-radius: 16px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--text);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           white-space: nowrap;
+          flex-shrink: 0;
         }
         .tab-active {
           background: #c0392b !important;
@@ -1563,9 +1574,9 @@ export default function AdminPanel() {
         .tab-bubble {
           background: #f39c12;
           color: white;
-          font-size: 10.5px;
-          padding: 2px 6px;
-          border-radius: 10px;
+          font-size: 0.6875rem;
+          padding: 1px 5px;
+          border-radius: 8px;
         }
         .tab-bubble-red {
           background: #e74c3c;
@@ -1574,83 +1585,69 @@ export default function AdminPanel() {
         /* Stats Grid */
         .admin-stats-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          margin-bottom: 24px;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 8px;
+          margin-bottom: 16px;
         }
-        @media (max-width: 1000px) {
+        @media (min-width: 768px) {
           .admin-stats-grid { 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 10px;
-            margin-bottom: 18px;
-          }
-          .admin-metric-card {
-            padding: 12px 10px !important;
-            gap: 10px !important;
-          }
-          .metric-icon-wrap {
-            width: 38px !important;
-            height: 38px !important;
-          }
-          .metric-val {
-            font-size: 16px !important;
-          }
-          .metric-lbl {
-            font-size: 11px !important;
-          }
-          .metric-note {
-            font-size: 10px !important;
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 12px;
+            margin-bottom: 20px;
           }
         }
         .admin-metric-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 18px;
+          border-radius: 10px;
+          padding: 12px 10px;
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 10px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.03);
         }
         .metric-icon-wrap {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
         .metric-lbl {
-          font-size: 12px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
           display: block;
         }
         .metric-val {
-          font-size: 20px;
+          font-size: 1.15rem;
           font-weight: 800;
-          margin: 2px 0;
+          margin: 1px 0;
           color: var(--text);
         }
         .metric-note {
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
         }
 
         /* Quick Links Grid */
         .admin-quick-links-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 18px;
+          grid-template-columns: 1fr;
+          gap: 10px;
         }
-        @media (max-width: 800px) {
-          .admin-quick-links-grid { grid-template-columns: 1fr; }
+        @media (min-width: 640px) {
+          .admin-quick-links-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 900px) {
+          .admin-quick-links-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
         }
         .shortcut-box {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 20px;
+          border-radius: 10px;
+          padding: 14px 12px;
           cursor: pointer;
           transition: all 0.2s ease;
         }
@@ -1659,18 +1656,18 @@ export default function AdminPanel() {
           box-shadow: 0 8px 20px rgba(0,0,0,0.06);
           border-color: #c0392b;
         }
-        .sc-icon { font-size: 28px; margin-bottom: 8px; }
-        .shortcut-box h4 { margin: 0 0 6px; font-size: 16px; color: var(--text); }
-        .shortcut-box p { margin: 0 0 12px; font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
-        .sc-arrow { font-size: 13px; font-weight: 700; color: #c0392b; }
+        .sc-icon { font-size: 22px; margin-bottom: 6px; }
+        .shortcut-box h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--text); }
+        .shortcut-box p { margin: 0 0 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.35; }
+        .sc-arrow { font-size: 0.75rem; font-weight: 700; color: #c0392b; }
 
         /* Section Toolbar */
         .section-toolbar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 14px;
-          margin-bottom: 16px;
+          gap: 10px;
+          margin-bottom: 12px;
           flex-wrap: wrap;
         }
         .search-bar-wrap {
@@ -1678,76 +1675,79 @@ export default function AdminPanel() {
           display: flex;
           align-items: center;
           flex: 1;
-          min-width: 280px;
+          min-width: 200px;
         }
         .search-bar-wrap svg {
           position: absolute;
-          left: 12px;
+          left: 10px;
           color: var(--text-muted);
+          width: 16px;
+          height: 16px;
         }
         .search-bar-wrap input {
           width: 100%;
-          padding: 10px 12px 10px 36px;
-          border-radius: 8px;
+          padding: 8px 10px 8px 32px;
+          border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 0.8125rem;
         }
         .btn-export-excel-action {
           background: #27ae60;
           color: white;
           border: none;
-          padding: 9px 14px;
+          padding: 7px 12px;
           border-radius: 6px;
-          font-size: 13px;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
         }
 
         /* Admin Data Table */
         .admin-table-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
+          border-radius: 10px;
           overflow-x: auto;
           box-shadow: 0 4px 14px rgba(0,0,0,0.04);
         }
         .admin-data-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: 0.75rem;
         }
         .admin-data-table th {
           background: var(--surface-2);
-          padding: 12px 14px;
+          padding: 8px 10px;
           text-align: left;
           font-weight: 700;
           color: var(--text-muted);
           border-bottom: 1px solid var(--border);
+          font-size: 0.72rem;
         }
         .admin-data-table td {
-          padding: 12px 14px;
+          padding: 8px 10px;
           border-bottom: 1px solid var(--border);
           vertical-align: middle;
         }
         .shop-title-name {
-          font-size: 14px;
+          font-size: 0.8125rem;
           color: var(--text);
           display: block;
         }
         .user-subtext {
           display: block;
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
         }
         .role-badge {
-          font-size: 10.5px;
+          font-size: 0.6875rem;
           font-weight: 800;
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 4px;
         }
         .role-admin { background: #fdedec; color: #c0392b; }
@@ -1757,24 +1757,24 @@ export default function AdminPanel() {
         .badge-verified {
           background: #eafaf1;
           color: #27ae60;
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 0.6875rem;
         }
         .badge-unverified {
           background: #fef9e7;
           color: #d35400;
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 0.6875rem;
         }
         .btn-approval-toggle {
           border: none;
-          padding: 6px 12px;
+          padding: 5px 10px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 0.72rem;
           font-weight: 700;
           cursor: pointer;
         }
@@ -1783,10 +1783,10 @@ export default function AdminPanel() {
 
         .reg-badge {
           background: var(--bg);
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 4px;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 0.6875rem;
           display: inline-block;
           margin-top: 2px;
         }
@@ -1798,55 +1798,55 @@ export default function AdminPanel() {
           background: #2c3e50;
           color: white;
           border: none;
-          padding: 6px 12px;
+          padding: 5px 10px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 0.72rem;
           font-weight: 700;
           cursor: pointer;
         }
         .resolved-check {
           color: #27ae60;
           font-weight: 700;
-          font-size: 12px;
+          font-size: 0.75rem;
         }
         .admin-reply-snippet {
           background: #f4fdf8;
           border-left: 2px solid #27ae60;
-          padding: 4px 8px;
-          font-size: 11.5px;
-          margin-top: 4px;
+          padding: 3px 6px;
+          font-size: 0.6875rem;
+          margin-top: 3px;
         }
 
         /* Excel Center Grid */
         .admin-excel-center {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 24px;
+          border-radius: 10px;
+          padding: 16px 14px;
         }
         .excel-center-header {
           display: flex;
           align-items: center;
-          gap: 16px;
-          margin-bottom: 24px;
+          gap: 12px;
+          margin-bottom: 16px;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 16px;
+          padding-bottom: 12px;
         }
-        .excel-center-header h2 { margin: 0 0 4px; font-size: 20px; }
-        .excel-center-header p { margin: 0; font-size: 13px; color: var(--text-muted); }
+        .excel-center-header h2 { margin: 0 0 2px; font-size: 1.05rem; }
+        .excel-center-header p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
         .excel-cards-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
-        @media (max-width: 768px) {
-          .excel-cards-grid { grid-template-columns: 1fr; }
+        @media (min-width: 640px) {
+          .excel-cards-grid { grid-template-columns: repeat(2, 1fr); }
         }
         .excel-download-card {
           background: var(--bg);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 20px;
+          border-radius: 10px;
+          padding: 14px 12px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -1854,39 +1854,39 @@ export default function AdminPanel() {
         .card-top {
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 10px;
+          gap: 10px;
+          margin-bottom: 8px;
         }
         .ex-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
+          width: 34px;
+          height: 34px;
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 20px;
+          font-size: 16px;
         }
-        .card-top h4 { margin: 0 0 2px; font-size: 15px; }
-        .card-top small { color: var(--text-muted); font-size: 12px; }
+        .card-top h4 { margin: 0 0 2px; font-size: 0.875rem; }
+        .card-top small { color: var(--text-muted); font-size: 0.6875rem; }
         .excel-download-card p {
-          font-size: 12.5px;
+          font-size: 0.75rem;
           color: var(--text-muted);
-          line-height: 1.4;
-          margin: 0 0 16px;
+          line-height: 1.35;
+          margin: 0 0 12px;
         }
         .btn-download-csv {
           background: #27ae60;
           color: white;
           border: none;
-          padding: 10px 16px;
-          border-radius: 8px;
+          padding: 8px 12px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 0.75rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           transition: background 0.15s ease;
         }
         .btn-download-csv:hover { background: #219653; }
@@ -1900,60 +1900,60 @@ export default function AdminPanel() {
           background: #ff4757;
           color: white;
           border: none;
-          padding: 9px 16px;
-          border-radius: 8px;
-          font-size: 13px;
+          padding: 7px 14px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           box-shadow: 0 4px 12px rgba(255, 71, 87, 0.25);
         }
         .btn-create-ad:hover { background: #e03646; }
 
         .ads-metrics-strip {
           display: flex;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 10px;
+          margin-bottom: 14px;
           flex-wrap: wrap;
         }
         .ad-mini-stat {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 12px 20px;
+          border-radius: 8px;
+          padding: 10px 14px;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
         .ad-stat-val {
-          font-size: 22px;
+          font-size: 1.15rem;
           font-weight: 800;
         }
         .ad-stat-lbl {
-          font-size: 12px;
+          font-size: 0.6875rem;
           color: var(--text-muted);
           font-weight: 600;
         }
 
         .admin-ads-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
+          grid-template-columns: 1fr;
+          gap: 12px;
         }
-        @media (max-width: 900px) {
-          .admin-ads-grid { grid-template-columns: 1fr; }
+        @media (min-width: 768px) {
+          .admin-ads-grid { grid-template-columns: repeat(2, 1fr); }
         }
         .admin-ad-card-item {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 18px;
+          border-radius: 10px;
+          padding: 14px 12px;
           box-shadow: 0 4px 14px rgba(0,0,0,0.04);
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 10px;
         }
         .ad-item-header {
           display: flex;
@@ -1961,9 +1961,9 @@ export default function AdminPanel() {
           justify-content: space-between;
         }
         .ad-status-pill {
-          font-size: 11px;
+          font-size: 0.6875rem;
           font-weight: 700;
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
         }
         .status-active { background: #eafaf1; color: #27ae60; }
@@ -1971,20 +1971,20 @@ export default function AdminPanel() {
         .ad-featured-pill {
           background: #fef9e7;
           color: #f39c12;
-          font-size: 11px;
+          font-size: 0.6875rem;
           font-weight: 700;
-          padding: 3px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
         }
         .ad-item-top-btns {
           display: flex;
-          gap: 6px;
+          gap: 4px;
         }
         .btn-icon-ad {
           background: var(--bg);
           border: 1px solid var(--border);
           border-radius: 6px;
-          padding: 6px;
+          padding: 5px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -1993,56 +1993,56 @@ export default function AdminPanel() {
         .btn-icon-ad:hover { background: var(--surface-2); }
 
         .ad-preview-box {
-          border-radius: 12px;
-          padding: 18px;
+          border-radius: 10px;
+          padding: 14px 12px;
           color: white;
         }
         .prev-top {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 10px;
+          margin-bottom: 8px;
         }
         .prev-shop-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: 10.5px;
+          gap: 3px;
+          font-size: 0.6875rem;
           font-weight: 700;
           background: rgba(255, 255, 255, 0.2);
-          padding: 2px 6px;
+          padding: 2px 5px;
           border-radius: 4px;
         }
         .prev-offer-pill {
           color: white;
-          font-size: 10.5px;
+          font-size: 0.6875rem;
           font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 12px;
+          padding: 2px 6px;
+          border-radius: 10px;
         }
         .prev-shop-name {
-          font-size: 16px;
+          font-size: 0.95rem;
           font-weight: 800;
-          margin: 0 0 4px;
+          margin: 0 0 2px;
           color: white;
         }
         .prev-tagline {
-          font-size: 12.5px;
+          font-size: 0.75rem;
           font-weight: 700;
           color: #ffc145;
-          margin: 0 0 6px;
+          margin: 0 0 4px;
         }
         .prev-desc {
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           color: rgba(255, 255, 255, 0.85);
-          margin: 0 0 8px;
-          line-height: 1.35;
+          margin: 0 0 6px;
+          line-height: 1.3;
         }
         .prev-meta {
-          font-size: 10.5px;
+          font-size: 0.6875rem;
           color: rgba(255, 255, 255, 0.75);
           display: flex;
-          gap: 10px;
+          gap: 8px;
         }
 
         .ad-manage-bar {
@@ -2050,26 +2050,26 @@ export default function AdminPanel() {
           align-items: center;
           justify-content: space-between;
           border-top: 1px solid var(--border);
-          padding-top: 12px;
-          font-size: 12px;
+          padding-top: 10px;
+          font-size: 0.72rem;
           color: var(--text-muted);
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
         }
         .ad-contact-info {
           display: flex;
-          gap: 12px;
+          gap: 8px;
         }
         .btn-toggle-ad {
           border: none;
-          padding: 6px 12px;
+          padding: 5px 10px;
           border-radius: 6px;
-          font-size: 11.5px;
+          font-size: 0.72rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 4px;
         }
         .btn-toggle-active { background: #fdedec; color: #c0392b; }
         .btn-toggle-inactive { background: #eafaf1; color: #27ae60; }
@@ -2077,36 +2077,37 @@ export default function AdminPanel() {
         .no-ads-box {
           grid-column: 1 / -1;
           text-align: center;
-          padding: 40px;
+          padding: 30px;
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
+          border-radius: 10px;
           color: var(--text-muted);
+          font-size: 0.8125rem;
         }
 
         /* Modern Ad Create / Edit Modal */
         .ad-modal-wide {
-          max-width: 960px;
+          max-width: 800px;
           width: 95%;
           max-height: 90vh;
           overflow-y: auto;
-          border-radius: 16px;
-          padding: 24px;
+          border-radius: 12px;
+          padding: 18px 16px;
         }
         .ad-modal-header-styled {
           display: flex;
           align-items: center;
           justify-content: space-between;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 16px;
-          margin-bottom: 20px;
+          padding-bottom: 12px;
+          margin-bottom: 14px;
         }
         .btn-modal-close-icon {
           background: var(--surface-2);
           border: 1px solid var(--border);
           border-radius: 50%;
-          width: 34px;
-          height: 34px;
+          width: 30px;
+          height: 30px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2122,26 +2123,29 @@ export default function AdminPanel() {
         .ad-modal-grid {
           display: grid;
           grid-template-columns: 1.2fr 1fr;
-          gap: 24px;
+          gap: 16px;
+        }
+        @media (max-width: 768px) {
+          .ad-modal-grid { grid-template-columns: 1fr; }
         }
         .ad-form-inputs .modal-field {
-          margin-bottom: 14px;
+          margin-bottom: 10px;
         }
         .ad-form-inputs .modal-field label {
           display: block;
-          font-size: 12px;
+          font-size: 0.75rem; /* text-xs */
           font-weight: 700;
           color: var(--heading, #1e293b);
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
         .ad-form-inputs .modal-field input,
         .ad-form-inputs .modal-field textarea {
           width: 100%;
           background: var(--surface, #ffffff);
           border: 1.5px solid var(--border, #cbd5e1);
-          border-radius: 8px;
-          padding: 9px 12px;
-          font-size: 13.5px;
+          border-radius: 6px;
+          padding: 7px 10px;
+          font-size: 0.8125rem;
           color: var(--text, #1e293b);
           outline: none;
           transition: all 0.2s ease;
@@ -2155,20 +2159,23 @@ export default function AdminPanel() {
         .form-row-2col {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 8px;
+        }
+        @media (max-width: 500px) {
+          .form-row-2col { grid-template-columns: 1fr; }
         }
         .theme-pills-row {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
-          margin-top: 6px;
+          margin-top: 4px;
         }
         .theme-pill {
           color: white;
           border: 2px solid transparent;
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 11.5px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.6875rem;
           font-weight: 700;
           cursor: pointer;
           transition: transform 0.15s ease;
@@ -2177,10 +2184,10 @@ export default function AdminPanel() {
           background: var(--surface);
           border: 1px solid var(--border);
           color: var(--text);
-          font-size: 11.5px;
+          font-size: 0.6875rem;
           font-weight: 600;
-          padding: 4px 10px;
-          border-radius: 6px;
+          padding: 3px 8px;
+          border-radius: 4px;
           cursor: pointer;
           transition: all 0.15s ease;
         }
@@ -2195,24 +2202,24 @@ export default function AdminPanel() {
           transform: scale(1.05);
         }
         .modal-checkbox-row {
-          margin-top: 14px;
+          margin-top: 10px;
           background: rgba(0,0,0,0.02);
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
           border: 1px solid var(--border);
         }
         .modal-checkbox-row label {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           cursor: pointer;
-          font-size: 13px;
+          font-size: 0.75rem;
           font-weight: 600;
           color: var(--text);
         }
         .ad-modal-preview-col h4 {
-          margin: 0 0 12px;
-          font-size: 13.5px;
+          margin: 0 0 8px;
+          font-size: 0.8125rem;
           font-weight: 700;
           color: var(--heading, #1e293b);
         }
@@ -2221,29 +2228,29 @@ export default function AdminPanel() {
           align-items: center;
           justify-content: space-between;
           border-top: 1px solid var(--border);
-          padding-top: 18px;
-          margin-top: 24px;
+          padding-top: 14px;
+          margin-top: 18px;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 8px;
         }
         .ad-modal-right-btns {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           flex-wrap: wrap;
         }
         .btn-ad-act-publish {
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: white;
           border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-size: 13.5px;
+          padding: 8px 16px;
+          border-radius: 6px;
+          font-size: 0.8125rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
           transition: all 0.2s ease;
         }
@@ -2255,14 +2262,14 @@ export default function AdminPanel() {
           background: var(--surface-2, #f1f5f9);
           border: 1.5px solid var(--border, #cbd5e1);
           color: var(--text, #334155);
-          padding: 9px 16px;
-          border-radius: 8px;
-          font-size: 13px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 4px;
           transition: all 0.15s ease;
         }
         .btn-ad-act-draft:hover {
@@ -2274,9 +2281,9 @@ export default function AdminPanel() {
           background: transparent;
           border: 1px solid var(--border, #cbd5e1);
           color: var(--text-muted, #64748b);
-          padding: 9px 16px;
-          border-radius: 8px;
-          font-size: 13px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -2284,67 +2291,6 @@ export default function AdminPanel() {
         .btn-ad-act-cancel:hover {
           background: var(--surface-2);
           color: var(--text);
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-          .admin-header-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-          }
-          .admin-header-actions {
-            width: 100%;
-          }
-          .btn-excel-top-action {
-            width: 100%;
-            justify-content: center;
-          }
-          .admin-page-title {
-            font-size: 18px !important;
-          }
-          .admin-page-sub {
-            font-size: 12px !important;
-          }
-          .ad-modal-wide {
-            padding: 16px;
-            width: 96%;
-          }
-          .ad-modal-grid {
-            grid-template-columns: 1fr;
-          }
-          .form-row-2col {
-            grid-template-columns: 1fr;
-          }
-          .ad-modal-actions-bar {
-            flex-direction: column;
-            gap: 10px;
-          }
-          .ad-modal-actions-bar button,
-          .ad-modal-right-btns,
-          .ad-modal-right-btns button {
-            width: 100%;
-            justify-content: center;
-          }
-          .admin-stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 10px !important;
-          }
-          .admin-nav-tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            padding-bottom: 6px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
-          .admin-nav-tabs::-webkit-scrollbar {
-            display: none;
-          }
-          .admin-tab {
-            flex-shrink: 0;
-            font-size: 12px;
-            padding: 8px 12px;
-          }
         }
       `}</style>
     </div>
