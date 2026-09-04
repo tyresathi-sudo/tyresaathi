@@ -30,12 +30,23 @@ import {
   Power,
   Rocket,
   FileText,
-  X
+  X,
+  Crown,
+  Gift,
+  Tag,
+  Save,
+  RotateCcw,
+  Lock,
+  Building2,
+  QrCode,
+  CreditCard,
+  Copy,
+  Check
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { 
   exportBookingsToExcel, 
   exportInvoicesToExcel, 
@@ -44,6 +55,17 @@ import {
 } from "../utils/excelExport";
 import { getGoogleSheetUrl } from "../utils/googleSheets";
 import { INITIAL_SHOP_ADS, AD_THEMES } from "../config/shopAdsData";
+import { 
+  getActiveSubscriptionConfig, 
+  saveActiveSubscriptionConfig, 
+  DEFAULT_PLAN_SETTINGS 
+} from "../config/subscriptionPlans";
+import { 
+  getAdminBankConfig, 
+  saveAdminBankConfig, 
+  getUpiQrCodeUrl, 
+  DEFAULT_BANK_CONFIG 
+} from "../config/paymentConfig";
 
 const SAMPLE_ADMIN_SHOPS = [
   {
@@ -169,6 +191,118 @@ export default function AdminPanel() {
   const [searchUser, setSearchUser] = useState("");
   const [replyTicketModal, setReplyTicketModal] = useState(null);
   const [replyText, setReplyText] = useState("");
+
+  // Subscription & Pricing Manager State
+  const [subConfig, setSubConfig] = useState(getActiveSubscriptionConfig);
+  const [pricingSuccessMsg, setPricingSuccessMsg] = useState("");
+
+  const handleToggleLaunchFreeMode = () => {
+    setSubConfig((prev) => ({
+      ...prev,
+      launchFreeMode: !prev.launchFreeMode
+    }));
+  };
+
+  const handlePlanPriceChange = (planId, field, value) => {
+    setSubConfig((prev) => ({
+      ...prev,
+      plans: prev.plans.map((p) => (p.id === planId ? { ...p, [field]: value } : p))
+    }));
+  };
+
+  const handlePlanFeatureChange = (planId, featureIdx, newText) => {
+    setSubConfig((prev) => ({
+      ...prev,
+      plans: prev.plans.map((p) => {
+        if (p.id !== planId) return p;
+        const newFeatures = [...p.features];
+        newFeatures[featureIdx] = newText;
+        return { ...p, features: newFeatures };
+      })
+    }));
+  };
+
+  const handleAddPlanFeature = (planId) => {
+    setSubConfig((prev) => ({
+      ...prev,
+      plans: prev.plans.map((p) => {
+        if (p.id !== planId) return p;
+        return { ...p, features: [...p.features, "✨ Naya feature yahan likhein..."] };
+      })
+    }));
+  };
+
+  const handleRemovePlanFeature = (planId, featureIdx) => {
+    setSubConfig((prev) => ({
+      ...prev,
+      plans: prev.plans.map((p) => {
+        if (p.id !== planId) return p;
+        return { ...p, features: p.features.filter((_, idx) => idx !== featureIdx) };
+      })
+    }));
+  };
+
+  const handleSaveSubscriptionConfig = async () => {
+    const success = saveActiveSubscriptionConfig(subConfig);
+    try {
+      await setDoc(doc(db, "app_settings", "subscription_plans"), subConfig, { merge: true });
+    } catch (e) {
+      console.warn("Firestore subscription settings sync:", e);
+    }
+    if (success) {
+      setPricingSuccessMsg("✅ Badhaai ho! Subscription Plans & Prices live update ho gaye hain!");
+      setTimeout(() => setPricingSuccessMsg(""), 5000);
+    }
+  };
+
+  const handleResetSubscriptionConfig = () => {
+    if (window.confirm("Kya aap sach me default prices aur plans wapas restore karna chahte hain?")) {
+      setSubConfig(DEFAULT_PLAN_SETTINGS);
+      saveActiveSubscriptionConfig(DEFAULT_PLAN_SETTINGS);
+      setPricingSuccessMsg("↺ Plans wapas default settings par reset kar diye gaye hain.");
+      setTimeout(() => setPricingSuccessMsg(""), 5000);
+    }
+  };
+
+  // Bank Account & UPI Setup State
+  const [bankConfig, setBankConfig] = useState(getAdminBankConfig);
+  const [bankSuccessMsg, setBankSuccessMsg] = useState("");
+  const [adminCopiedKey, setAdminCopiedKey] = useState("");
+
+  const handleAdminCopy = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setAdminCopiedKey(key);
+    setTimeout(() => setAdminCopiedKey(""), 3000);
+  };
+
+  const handleSaveBankConfig = async (e) => {
+    if (e) e.preventDefault();
+    if (!bankConfig.upiId?.trim() && !bankConfig.accountNumber?.trim()) {
+      alert("Kripya kam se kam apna UPI ID ya Bank Account number zaroor bharein!");
+      return;
+    }
+
+    const success = saveAdminBankConfig(bankConfig);
+    try {
+      await setDoc(doc(db, "app_settings", "bank_account_config"), bankConfig, { merge: true });
+    } catch (err) {
+      console.warn("Firestore bank config sync:", err);
+    }
+
+    if (success) {
+      setBankSuccessMsg("✅ Badhaai ho! Aapka Bank Account aur UPI ID successfully save ho gaya hai!");
+      setTimeout(() => setBankSuccessMsg(""), 5000);
+    }
+  };
+
+  const handleResetBankConfig = () => {
+    if (window.confirm("Kya aap default bank details wapas set karna chahte hain?")) {
+      setBankConfig(DEFAULT_BANK_CONFIG);
+      saveAdminBankConfig(DEFAULT_BANK_CONFIG);
+      setBankSuccessMsg("↺ Default Bank details restore ho gayi hain.");
+      setTimeout(() => setBankSuccessMsg(""), 5000);
+    }
+  };
 
   // Load Real Data from Firestore if available
   useEffect(() => {
@@ -470,6 +604,25 @@ export default function AdminPanel() {
         </button>
 
         <button
+          className={`admin-tab ${activeTab === "pricing" ? "tab-active tab-pricing-active" : ""}`}
+          onClick={() => setActiveTab("pricing")}
+        >
+          <Crown size={16} /> 👑 Plans & Pricing Control
+          {subConfig.launchFreeMode ? (
+            <span className="tab-bubble" style={{ background: "#27ae60" }}>🚀 Free Launch Active</span>
+          ) : (
+            <span className="tab-bubble" style={{ background: "#c0392b" }}>💰 Paid Mode</span>
+          )}
+        </button>
+
+        <button
+          className={`admin-tab ${activeTab === "bank" ? "tab-active tab-bank-active" : ""}`}
+          onClick={() => setActiveTab("bank")}
+        >
+          <Building2 size={16} /> 🏦 Bank Account & UPI
+        </button>
+
+        <button
           className={`admin-tab ${activeTab === "bookings" ? "tab-active" : ""}`}
           onClick={() => setActiveTab("bookings")}
         >
@@ -636,11 +789,26 @@ export default function AdminPanel() {
                       </td>
                       <td>
                         {u.role === "vendor" || u.role === "admin" ? (
-                          u.shopApproved ? (
-                            <span className="badge-verified">✓ Verified Hub</span>
-                          ) : (
-                            <span className="badge-unverified">⏳ Pending Approval</span>
-                          )
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            {u.shopApproved ? (
+                              <span className="badge-verified">✓ Verified Hub</span>
+                            ) : (
+                              <span className="badge-unverified">⏳ Pending Approval</span>
+                            )}
+                            <span style={{
+                              fontSize: "11px",
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: "12px",
+                              display: "inline-block",
+                              width: "fit-content",
+                              background: u.subscriptionPlan === "elite_vip" ? "#fef3c7" : u.subscriptionPlan === "pro_partner" ? "#e0e7ff" : "#ecfdf5",
+                              color: u.subscriptionPlan === "elite_vip" ? "#92400e" : u.subscriptionPlan === "pro_partner" ? "#3730a3" : "#065f46",
+                              border: "1px solid currentColor"
+                            }}>
+                              {u.subscriptionPlan === "elite_vip" ? "👑 Elite VIP" : u.subscriptionPlan === "pro_partner" ? "⭐ Pro Partner" : "🟢 Lifetime Free (₹0)"}
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-muted">Customer</span>
                         )}
@@ -669,6 +837,686 @@ export default function AdminPanel() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB: PLANS & PRICING MANAGER (DYNAMIC REVENUE & LAUNCH CONTROL)
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "pricing" && (
+        <div className="admin-section-container">
+          {/* Header Strip */}
+          <div className="section-toolbar" style={{ flexWrap: "wrap", gap: "12px", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <Crown size={22} color="#f39c12" />
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 800 }}>
+                  Subscription & Pricing Control System (प्लान व कीमत प्रबंधक)
+                </h3>
+              </div>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+                Shuruat mein sabhi plans 100% Free rakhein ya jab marzi ho tab apni custom Monthly/Yearly kimat (prices) set karke update karein.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-export-excel-action"
+                style={{ background: "#718096", color: "#fff" }}
+                onClick={handleResetSubscriptionConfig}
+              >
+                <RotateCcw size={15} /> Reset Defaults
+              </button>
+              <button
+                type="button"
+                className="btn-export-excel-action"
+                style={{ background: "#27ae60", color: "#fff", fontWeight: "800" }}
+                onClick={handleSaveSubscriptionConfig}
+              >
+                <Save size={15} /> 💾 Save & Publish All Prices
+              </button>
+            </div>
+          </div>
+
+          {/* Success Notification Alert */}
+          {pricingSuccessMsg && (
+            <div style={{ background: "#eafaf1", border: "1.5px solid #27ae60", color: "#1e824c", padding: "12px 18px", borderRadius: "10px", marginBottom: "16px", fontWeight: 700, fontSize: "13.5px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} color="#27ae60" />
+              <span>{pricingSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* 🚀 Master Launch Mode Switch (100% Free vs Live Paid Mode) */}
+          <div style={{
+            background: subConfig.launchFreeMode ? "linear-gradient(135deg, rgba(39, 174, 96, 0.12) 0%, rgba(46, 204, 113, 0.05) 100%)" : "linear-gradient(135deg, rgba(192, 57, 43, 0.1) 0%, rgba(231, 76, 60, 0.05) 100%)",
+            border: `1.5px solid ${subConfig.launchFreeMode ? "#27ae60" : "#c0392b"}`,
+            borderRadius: "16px",
+            padding: "20px",
+            marginBottom: "24px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.04)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
+              <div style={{ flex: 1, minWidth: "280px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <span style={{
+                    fontSize: "12px",
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    padding: "3px 10px",
+                    borderRadius: "12px",
+                    background: subConfig.launchFreeMode ? "#27ae60" : "#c0392b",
+                    color: "#fff"
+                  }}>
+                    {subConfig.launchFreeMode ? "🚀 Launch Mode: 100% FREE ACTIVE" : "💰 Live Paid Revenue Mode ACTIVE"}
+                  </span>
+                  <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                    {subConfig.launchFreeMode ? "(Sabhi plans ₹0 me milenge)" : "(Dukandar set ki gayi fees pay karenge)"}
+                  </span>
+                </div>
+                <h4 style={{ margin: "0 0 6px 0", fontSize: "16px", fontWeight: 800 }}>
+                  {subConfig.launchFreeMode
+                    ? "🎉 App Launch Offer Chalu Hai (Sabhi Dukandaron Ke Liye Free)"
+                    : "💳 Paid Revenue Mode Chalu Hai (Har Plan Ke Rate Lagu Hain)"}
+                </h4>
+                <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                  {subConfig.launchFreeMode
+                    ? "Jab tak ye mode ON hai, Pro aur VIP plans par price ₹0 dikhegi aur dukandar bina paise diye plan le sakenge. Jab aapko payment lena shuru karna ho, to 'Switch to Paid Mode' dabayein."
+                    : "Abhi dukandar Pro ya VIP plan lene par neeche set kiye gaye Monthly/Yearly rate ke anusaar payment karenge."}
+                </p>
+              </div>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={handleToggleLaunchFreeMode}
+                  style={{
+                    background: subConfig.launchFreeMode ? "#c0392b" : "#27ae60",
+                    color: "#fff",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "10px",
+                    fontSize: "14px",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  {subConfig.launchFreeMode ? (
+                    <>
+                      <span>💰 Switch to Paid Mode (कीमत लागू करें)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🚀 Switch to 100% Free Launch Mode (फ्री करें)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Launch Banner Text Field */}
+            {subConfig.launchFreeMode && (
+              <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px dashed rgba(39, 174, 96, 0.4)" }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                  📢 Special Launch Banner Note (Dukandaron ko pricing page par dikhne wala message):
+                </label>
+                <input
+                  type="text"
+                  value={subConfig.launchBannerNote || ""}
+                  onChange={(e) => setSubConfig({ ...subConfig, launchBannerNote: e.target.value })}
+                  placeholder="🎉 LAUNCH OFFER: Sabhi Plans & Features Filhaal 100% FREE Hain!..."
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid var(--border)",
+                    fontSize: "13px",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 🏷️ Individual Plan Price & Features Editor Cards Grid */}
+          <h4 style={{ margin: "0 0 12px 0", fontSize: "16px", fontWeight: 800 }}>
+            📝 Set Custom Prices & Features Per Plan (प्रत्येक प्लान का रेट व फीचर्स बदलें)
+          </h4>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "20px", marginBottom: "28px" }}>
+            {subConfig.plans.map((plan) => {
+              const isFreeLocked = plan.id === "free_lifetime";
+
+              return (
+                <div
+                  key={plan.id}
+                  style={{
+                    background: "var(--surface)",
+                    border: `1.5px solid ${plan.popular ? "#c0392b" : "var(--border)"}`,
+                    borderRadius: "16px",
+                    padding: "20px",
+                    boxShadow: "0 4px 18px rgba(0,0,0,0.04)",
+                    display: "flex",
+                    flexDirection: "column",
+                    position: "relative"
+                  }}
+                >
+                  {/* Plan Top Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                    <div>
+                      <span style={{ fontSize: "11px", fontWeight: 800, padding: "2px 8px", borderRadius: "10px", background: `${plan.color}20`, color: plan.color, border: `1px solid ${plan.color}40`, display: "inline-block", marginBottom: "4px" }}>
+                        {isFreeLocked ? "🌱 100% LIFETIME FREE TIER" : (plan.popular ? "🔥 PRO GROWTH TIER" : "👑 ELITE VIP TIER")}
+                      </span>
+                      <h4 style={{ margin: 0, fontSize: "17px", fontWeight: 800 }}>{plan.name}</h4>
+                    </div>
+
+                    {isFreeLocked && (
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11.5px", fontWeight: 700, color: "#27ae60", background: "#eafaf1", padding: "4px 8px", borderRadius: "8px" }}>
+                        <Lock size={13} /> Chhote Dukandar Free
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Pricing Inputs */}
+                  <div style={{ background: "rgba(0,0,0,0.02)", padding: "12px", borderRadius: "10px", border: "1px solid var(--border)", marginBottom: "14px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: 800, color: "var(--heading)", display: "block", marginBottom: "8px" }}>
+                      💰 Plan Price Setting (कीमत दर्ज करें):
+                    </label>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <div>
+                        <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                          Monthly Fee (प्रति माह ₹)
+                        </label>
+                        <input
+                          type="number"
+                          disabled={isFreeLocked}
+                          value={plan.priceMonthly}
+                          onChange={(e) => handlePlanPriceChange(plan.id, "priceMonthly", Number(e.target.value))}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: "8px",
+                            border: "1.5px solid var(--border)",
+                            fontWeight: 800,
+                            fontSize: "14px",
+                            color: isFreeLocked ? "#27ae60" : "var(--text)",
+                            background: isFreeLocked ? "rgba(39, 174, 96, 0.08)" : "var(--surface)",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                          Yearly Fee (वार्षिक ₹)
+                        </label>
+                        <input
+                          type="number"
+                          disabled={isFreeLocked}
+                          value={plan.priceYearly}
+                          onChange={(e) => handlePlanPriceChange(plan.id, "priceYearly", Number(e.target.value))}
+                          style={{
+                            width: "100%",
+                            padding: "8px 10px",
+                            borderRadius: "8px",
+                            border: "1.5px solid var(--border)",
+                            fontWeight: 800,
+                            fontSize: "14px",
+                            color: isFreeLocked ? "#27ae60" : "var(--text)",
+                            background: isFreeLocked ? "rgba(39, 174, 96, 0.08)" : "var(--surface)",
+                            boxSizing: "border-box"
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hindi Name & Tagline */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "14px" }}>
+                    <div>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                        Hindi Title / Subtitle:
+                      </label>
+                      <input
+                        type="text"
+                        value={plan.hindiName || ""}
+                        onChange={(e) => handlePlanPriceChange(plan.id, "hindiName", e.target.value)}
+                        style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                        Tagline / Offer Note:
+                      </label>
+                      <input
+                        type="text"
+                        value={plan.tagline || ""}
+                        onChange={(e) => handlePlanPriceChange(plan.id, "tagline", e.target.value)}
+                        style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Features List Editor */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                      <label style={{ fontSize: "11.5px", fontWeight: 800, color: "var(--heading)" }}>
+                        ✨ Feature Bullets ({plan.features.length}):
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleAddPlanFeature(plan.id)}
+                        style={{ background: "transparent", border: "none", color: "#c0392b", fontSize: "11px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: "2px" }}
+                      >
+                        <Plus size={13} /> Add Feature
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {plan.features.map((feat, fIdx) => (
+                        <div key={fIdx} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <input
+                            type="text"
+                            value={feat}
+                            onChange={(e) => handlePlanFeatureChange(plan.id, fIdx, e.target.value)}
+                            style={{ flex: 1, padding: "5px 8px", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "12px" }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePlanFeature(plan.id, fIdx)}
+                            style={{ background: "transparent", border: "none", color: "#e74c3c", cursor: "pointer", padding: "2px" }}
+                            title="Remove bullet"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Save CTA Bar */}
+          <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <div>
+              <strong style={{ fontSize: "14px", display: "block" }}>💾 Ready to apply changes?</strong>
+              <small style={{ color: "var(--text-muted)" }}>
+                'Save & Publish' dabate hi naye prices aur launch mode sabhi users ko turant dikhne lagenge.
+              </small>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveSubscriptionConfig}
+              style={{
+                background: "#27ae60",
+                color: "#ffffff",
+                border: "none",
+                padding: "10px 24px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontWeight: 800,
+                cursor: "pointer",
+                boxShadow: "0 4px 14px rgba(39, 174, 96, 0.3)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px"
+              }}
+            >
+              <Save size={16} /> Save & Publish Live Prices
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB: BANK ACCOUNT & UPI SETTINGS (ADMIN REVENUE PAYMENTS)
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "bank" && (
+        <div className="admin-section-container">
+          {/* Header Toolbar */}
+          <div className="section-toolbar" style={{ flexWrap: "wrap", gap: "12px", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <Building2 size={22} color="#c0392b" />
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 800 }}>
+                  Admin Official Bank Account & UPI Setup (बैंक खाता व UPI सेटिंग्स)
+                </h3>
+              </div>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+                Yahan apna UPI ID aur Bank Account details darj karein. Dukandar subscription lete samay isi account par payment bhejenge.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-export-excel-action"
+                style={{ background: "#718096", color: "#fff" }}
+                onClick={handleResetBankConfig}
+              >
+                <RotateCcw size={15} /> Reset Defaults
+              </button>
+              <button
+                type="button"
+                className="btn-export-excel-action"
+                style={{ background: "#27ae60", color: "#fff", fontWeight: "800" }}
+                onClick={handleSaveBankConfig}
+              >
+                <Save size={15} /> 💾 Save Bank Details
+              </button>
+            </div>
+          </div>
+
+          {/* Success Notification Alert */}
+          {bankSuccessMsg && (
+            <div style={{ background: "#eafaf1", border: "1.5px solid #27ae60", color: "#1e824c", padding: "12px 18px", borderRadius: "10px", marginBottom: "16px", fontWeight: 700, fontSize: "13.5px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} color="#27ae60" />
+              <span>{bankSuccessMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSaveBankConfig}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "24px", marginBottom: "28px" }}>
+              
+              {/* 📝 Left Column: Form Fields */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                
+                {/* 1. UPI & Instant Payment Details */}
+                <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "20px", boxShadow: "0 4px 18px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", borderBottom: "1px solid var(--border)", paddingBottom: "10px" }}>
+                    <QrCode size={18} color="#c0392b" />
+                    <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>1. UPI & Instant QR Details</h4>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Primary UPI ID (Google Pay / PhonePe / Paytm / BHIM)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.upiId || ""}
+                        onChange={(e) => setBankConfig({ ...bankConfig, upiId: e.target.value.trim() })}
+                        placeholder="Apna UPI ID dalein (उदा. 9876543210@paytm, name@oksbi)..."
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "14px", fontWeight: 700, color: "#c0392b", boxSizing: "border-box" }}
+                      />
+                      <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "3px", display: "block" }}>
+                        * Jaise hi aap yahan UPI ID dalenge, right side mein iska live QR Code turant generate ho jayega.
+                      </small>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Payee / Business Name
+                        </label>
+                        <input
+                          type="text"
+                          value={bankConfig.payeeName || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, payeeName: e.target.value })}
+                          placeholder="उदा. TyreSaathi Official"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Payment Support Phone (WhatsApp)
+                        </label>
+                        <input
+                          type="tel"
+                          value={bankConfig.phone || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, phone: e.target.value })}
+                          placeholder="उदा. 9876543210"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Payment Instruction / Help Note (दुकानदारों के लिए संदेश)
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.paymentNotes || ""}
+                        onChange={(e) => setBankConfig({ ...bankConfig, paymentNotes: e.target.value })}
+                        placeholder="उदा. Payment karne ke baad screenshot is number par WhatsApp karein."
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Direct Bank Account Details (NEFT / IMPS / RTGS) */}
+                <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "20px", boxShadow: "0 4px 18px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", borderBottom: "1px solid var(--border)", paddingBottom: "10px" }}>
+                    <Building2 size={18} color="#27ae60" />
+                    <h4 style={{ margin: 0, fontSize: "16px", fontWeight: 800 }}>2. Bank Account Details (NEFT / IMPS)</h4>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Bank Name (बैंक का नाम)
+                        </label>
+                        <input
+                          type="text"
+                          value={bankConfig.bankName || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, bankName: e.target.value })}
+                          placeholder="उदा. State Bank of India, HDFC Bank"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Account Holder Name
+                        </label>
+                        <input
+                          type="text"
+                          value={bankConfig.accountHolderName || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, accountHolderName: e.target.value })}
+                          placeholder="उदा. Aapka Naam ya Firm ka Naam"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "12px" }}>
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Account Number (खाता संख्या)
+                        </label>
+                        <input
+                          type="text"
+                          value={bankConfig.accountNumber || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, accountNumber: e.target.value.trim() })}
+                          placeholder="उदा. 389201928371"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "14px", fontWeight: 700, letterSpacing: "0.5px", boxSizing: "border-box" }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          IFSC Code
+                        </label>
+                        <input
+                          type="text"
+                          value={bankConfig.ifscCode || ""}
+                          onChange={(e) => setBankConfig({ ...bankConfig, ifscCode: e.target.value.toUpperCase().trim() })}
+                          placeholder="उदा. SBIN0001234"
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13.5px", fontWeight: 700, textTransform: "uppercase", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Branch Name & City
+                      </label>
+                      <input
+                        type="text"
+                        value={bankConfig.branchName || ""}
+                        onChange={(e) => setBankConfig({ ...bankConfig, branchName: e.target.value })}
+                        placeholder="उदा. Main Branch, Raipur"
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 👁️ Right Column: Live Visual Passbook & UPI QR Preview */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                
+                {/* 💳 Virtual Bank Passbook Card Preview */}
+                <div style={{
+                  background: "linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #0f2027 100%)",
+                  borderRadius: "18px",
+                  padding: "24px",
+                  color: "#ffffff",
+                  boxShadow: "0 12px 30px rgba(30, 60, 114, 0.35)",
+                  position: "relative",
+                  overflow: "hidden"
+                }}>
+                  {/* Subtle Background Badge Pattern */}
+                  <div style={{ position: "absolute", right: "-10px", top: "-10px", opacity: 0.08, fontSize: "130px", fontWeight: 900, pointerEvents: "none" }}>
+                    ₹
+                  </div>
+
+                  {/* Top Card Row */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "22px" }}>
+                    <div>
+                      <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", opacity: 0.8 }}>OFFICIAL SETTLEMENT ACCOUNT</span>
+                      <h4 style={{ margin: "2px 0 0", fontSize: "17px", fontWeight: 800, letterSpacing: "0.5px" }}>
+                        {bankConfig.bankName || "BANK NAME (खाली)"}
+                      </h4>
+                    </div>
+
+                    <div style={{ width: "36px", height: "26px", borderRadius: "4px", background: "linear-gradient(135deg, #FFD200 0%, #F7971E 100%)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} title="EMV Smart Chip" />
+                  </div>
+
+                  {/* Account Number in Passbook Card */}
+                  <div style={{ marginBottom: "18px" }}>
+                    <span style={{ fontSize: "10px", opacity: 0.75, display: "block" }}>ACCOUNT NUMBER</span>
+                    <strong style={{ fontSize: "19px", letterSpacing: "2.5px", fontFamily: "monospace" }}>
+                      {bankConfig.accountNumber ? bankConfig.accountNumber.replace(/(\d{4})/g, "$1 ").trim() : "•••• •••• ••••"}
+                    </strong>
+                  </div>
+
+                  {/* Bottom Holder & IFSC details */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", fontSize: "11px" }}>
+                    <div>
+                      <span style={{ opacity: 0.75, display: "block" }}>ACCOUNT HOLDER</span>
+                      <strong style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        {bankConfig.accountHolderName || "HOLDER NAME"}
+                      </strong>
+                    </div>
+
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ opacity: 0.75, display: "block" }}>IFSC CODE</span>
+                      <strong style={{ fontSize: "12px", fontFamily: "monospace", letterSpacing: "1px" }}>
+                        {bankConfig.ifscCode || "IFSC CODE"}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 📱 Live Generated UPI QR Code Preview Box */}
+                <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "20px", textAlign: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", marginBottom: "12px" }}>
+                    <QrCode size={18} color="#c0392b" />
+                    <strong style={{ fontSize: "15px" }}>Live Generated UPI QR Code (लाइव प्रीव्यू)</strong>
+                  </div>
+
+                  {bankConfig.upiId && bankConfig.upiId.trim() ? (
+                    <>
+                      <div style={{ background: "#ffffff", padding: "12px", borderRadius: "14px", border: "1px solid #e2e8f0", display: "inline-block", boxShadow: "0 4px 14px rgba(0,0,0,0.06)", margin: "0 auto 12px auto" }}>
+                        <img
+                          src={getUpiQrCodeUrl(bankConfig.upiId, bankConfig.payeeName, 0)}
+                          alt="Admin UPI QR Preview"
+                          style={{ width: "160px", height: "160px", display: "block", borderRadius: "8px" }}
+                        />
+                      </div>
+
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "var(--surface-2)", padding: "6px 14px", borderRadius: "20px", border: "1px solid var(--border)", fontSize: "12px" }}>
+                        <span>UPI ID: <strong style={{ color: "#c0392b" }}>{bankConfig.upiId}</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => handleAdminCopy(bankConfig.upiId, "admin_upi")}
+                          style={{ background: "transparent", border: "none", color: "#c0392b", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "2px", fontWeight: 700 }}
+                        >
+                          {adminCopiedKey === "admin_upi" ? <Check size={13} /> : <Copy size={13} />}
+                          {adminCopiedKey === "admin_upi" ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+
+                      <p style={{ margin: "12px 0 0", fontSize: "11.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                        * Yeh QR code direct aapke is UPI ID se linked hai. Dukandar ise scan karke direct aapke account me payment bhej sakenge.
+                      </p>
+                    </>
+                  ) : (
+                    <div style={{
+                      padding: "32px 16px",
+                      border: "2px dashed var(--border, #cbd5e1)",
+                      borderRadius: "14px",
+                      background: "rgba(0,0,0,0.02)",
+                      margin: "0 auto",
+                      maxWidth: "280px"
+                    }}>
+                      <QrCode size={46} color="#94a3b8" style={{ margin: "0 auto 10px", display: "block", opacity: 0.7 }} />
+                      <strong style={{ display: "block", fontSize: "13.5px", color: "var(--text)", marginBottom: "4px" }}>
+                        UPI ID Khali Hai
+                      </strong>
+                      <p style={{ margin: 0, fontSize: "11.5px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                        Left side mein apna <strong>UPI ID</strong> dalein, yahan live QR Code turant ban kar aa jayega.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            {/* Bottom Save CTA Bar */}
+            <div style={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+              <div>
+                <strong style={{ fontSize: "14px", display: "block" }}>💾 Save Bank & UPI Details</strong>
+                <small style={{ color: "var(--text-muted)" }}>
+                  'Save Bank Details' dabate hi naya UPI ID aur Bank info poore TyreSaathi subscription system me update ho jayega.
+                </small>
+              </div>
+              <button
+                type="submit"
+                style={{
+                  background: "#27ae60",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "10px 24px",
+                  borderRadius: "8px",
+                  fontSize: "14px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(39, 174, 96, 0.3)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}
+              >
+                <Save size={16} /> Save Bank & UPI Details
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

@@ -1,47 +1,82 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  updateDoc, 
-  doc, 
-  query, 
-  where, 
-  orderBy, 
-  serverTimestamp 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  doc,
+  serverTimestamp
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
-import { 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  AlertCircle, 
-  Phone, 
-  Plus, 
-  Wrench, 
-  Car, 
-  MapPin, 
-  User, 
-  Filter, 
-  ChevronRight,
+import {
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Phone,
+  Plus,
+  Wrench,
+  Car,
+  MapPin,
+  User,
+  Filter,
   Receipt,
-  Download
+  Download,
+  MessageCircle,
+  BarChart3
 } from "lucide-react";
 import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
 import { logBookingToSheet } from "../utils/googleSheets";
 
-const INITIAL_DEMO_BOOKINGS = [];
-
 export default function Bookings() {
   const { user, profile, isVendor } = useAuth();
   const [bookings, setBookings] = useState([]);
+  const [availableShops, setAvailableShops] = useState(SAMPLE_SHOPS);
   const [activeTab, setActiveTab] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Load real registered shops from Firestore
+  useEffect(() => {
+    async function loadRealShops() {
+      try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        if (!usersSnap.empty) {
+          const vendorDocs = usersSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((u) => u.role === "vendor" || u.role === "admin" || u.shopName);
+          if (vendorDocs.length > 0) {
+            const formatted = vendorDocs.map((v) => ({
+              id: v.id || v.uid,
+              name: v.shopName || v.name,
+              phone: v.phone || "8877277757",
+              city: v.city || "Raipur",
+              address: v.address || "TyreSaathi Partner Hub",
+              services: v.services || ["3D Wheel Alignment", "Tubeless Repair", "Tyre Sales"],
+              rating: 4.9,
+              reviewsCount: 24
+            }));
+            setAvailableShops(formatted);
+            if (formatted[0]) {
+              setNewBooking((prev) => ({
+                ...prev,
+                shopId: formatted[0].id,
+                shopName: formatted[0].name,
+                shopPhone: formatted[0].phone
+              }));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load real shops from Firestore:", e);
+      }
+    }
+    loadRealShops();
+  }, []);
 
   // New Booking Form State
   const [newBooking, setNewBooking] = useState({
@@ -51,7 +86,7 @@ export default function Bookings() {
     shopName: SAMPLE_SHOPS[0].name,
     shopPhone: SAMPLE_SHOPS[0].phone,
     customerName: profile?.name || "",
-    customerPhone: profile?.phone || "8877277757",
+    customerPhone: profile?.phone || "",
     vehicleType: "Car / SUV",
     vehicleNumber: "",
     date: new Date().toISOString().split("T")[0],
@@ -84,7 +119,6 @@ export default function Bookings() {
 
   // Update Status (Accept / Reject / Complete)
   const handleUpdateStatus = async (bookingId, newStatus) => {
-    // Optimistic local update
     setBookings((prev) =>
       prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
     );
@@ -94,7 +128,6 @@ export default function Bookings() {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
-      // Also log update to Google Sheet
       const existing = bookings.find((b) => b.id === bookingId);
       if (existing) {
         logBookingToSheet({
@@ -132,15 +165,11 @@ export default function Bookings() {
       });
       const finalBooking = { id: docRef.id, ...bookingData };
       setBookings((prev) => [finalBooking, ...prev]);
-
-      // Automatically log to Google Sheet
       logBookingToSheet(finalBooking);
     } catch (err) {
       console.warn("Local fallback save for booking:", err);
       const fallbackBooking = { id: "b-" + Date.now(), ...bookingData };
       setBookings((prev) => [fallbackBooking, ...prev]);
-      
-      // Also log to Google Sheet in fallback mode
       logBookingToSheet(fallbackBooking);
     } finally {
       setLoading(false);
@@ -165,49 +194,50 @@ export default function Bookings() {
 
   return (
     <div className="bookings-page-container">
-      {/* Page Header */}
+      {/* 📅 Top Page Header */}
       <div className="bookings-header-row">
         <div>
-          <h1 className="page-heading">
-            {isVendor ? "🏪 Shop Owner Bookings Dashboard" : "📅 Tyre Service Bookings"}
-          </h1>
-          <p className="page-sub">
-            {isVendor
-              ? "Aapki dukan par aayi hui customer service bookings ko Accept ya Reject karein."
-              : "Tyre Cut Repair, Puncture, Fitting aur Doorstep Service ki bookings aur status dekhein."}
-          </p>
+          <h1 className="page-heading">📅 Customer Service Bookings</h1>
+          <p className="page-sub">Manage, accept or complete appointment tickets</p>
         </div>
 
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="header-actions-group">
+          <Link
+            to="/analytics"
+            className="btn-header-insights"
+            title="View Business Insights & Views Analytics"
+          >
+            <BarChart3 size={15} /> 📊 Shop Insights
+          </Link>
+
           <button
             type="button"
-            className="book-service-cta"
-            style={{ background: "#27ae60" }}
+            className="btn-header-excel"
             onClick={() => exportBookingsToExcel(filteredBookings)}
             title="Download Bookings as Excel Sheet (.csv)"
           >
-            <Download size={16} /> 📥 Export to Excel
+            <Download size={15} /> 📥 Export to Excel
           </button>
 
-          <button className="book-service-cta" onClick={() => setModalOpen(true)}>
+          <button className="btn-header-new-booking" onClick={() => setModalOpen(true)}>
             <Plus size={16} /> Book New Service (नई बुकिंग)
           </button>
         </div>
       </div>
 
-      {/* Filter Tabs */}
+      {/* 🏷️ Filter Tabs (As in Image 2) */}
       <div className="booking-filter-tabs">
         <button
           className={`filter-tab ${activeTab === "all" ? "tab-active" : ""}`}
           onClick={() => setActiveTab("all")}
         >
-          All ({counts.all})
+          All Bookings ({counts.all})
         </button>
         <button
           className={`filter-tab ${activeTab === "pending" ? "tab-active tab-pending" : ""}`}
           onClick={() => setActiveTab("pending")}
         >
-          ⏳ Pending / New ({counts.pending})
+          ⏳ Pending ({counts.pending})
         </button>
         <button
           className={`filter-tab ${activeTab === "accepted" ? "tab-active tab-accepted" : ""}`}
@@ -216,7 +246,7 @@ export default function Bookings() {
           ✅ Accepted ({counts.accepted})
         </button>
         <button
-          className={`filter-tab ${activeTab === "in_progress" ? "tab-active" : ""}`}
+          className={`filter-tab ${activeTab === "in_progress" ? "tab-active tab-inprogress" : ""}`}
           onClick={() => setActiveTab("in_progress")}
         >
           🔧 In Progress ({counts.in_progress})
@@ -235,7 +265,7 @@ export default function Bookings() {
         </button>
       </div>
 
-      {/* Bookings List */}
+      {/* 📋 Bookings List Grid */}
       <div className="bookings-list-grid">
         {filteredBookings.length === 0 ? (
           <div className="no-bookings-card">
@@ -262,19 +292,19 @@ export default function Bookings() {
 
                 <div className="booking-status-badge-wrap">
                   {b.status === "pending" && (
-                    <span className="status-badge badge-pending">⏳ Awaiting Shop Response</span>
+                    <span className="status-badge badge-pending">⏳ Awaiting Response</span>
                   )}
                   {b.status === "accepted" && (
-                    <span className="status-badge badge-accepted">✅ Booking Accepted</span>
+                    <span className="status-badge badge-accepted">✅ Accepted</span>
                   )}
                   {b.status === "rejected" && (
-                    <span className="status-badge badge-rejected">❌ Booking Rejected</span>
+                    <span className="status-badge badge-rejected">❌ Rejected</span>
                   )}
                   {b.status === "in_progress" && (
-                    <span className="status-badge badge-inprogress">🔧 Service in Progress</span>
+                    <span className="status-badge badge-inprogress">🔧 In Progress</span>
                   )}
                   {b.status === "completed" && (
-                    <span className="status-badge badge-completed">🎉 Service Completed</span>
+                    <span className="status-badge badge-completed">🎉 Completed</span>
                   )}
                 </div>
               </div>
@@ -308,27 +338,26 @@ export default function Bookings() {
                 </div>
               )}
 
-              {/* Bottom Row: Shop Owner Action Buttons (Accept / Reject / Call / WhatsApp) */}
+              {/* Bottom Row: Action Buttons */}
               <div className="booking-card-actions">
                 <div className="action-left-info">
                   <span className="time-ago-text">Booking ID: #{b.id.slice(-6)}</span>
                 </div>
 
                 <div className="action-buttons-group">
-                  {/* Shop Owner Actions */}
                   {b.status === "pending" && (
                     <>
                       <button
                         className="btn-action-reject"
                         onClick={() => handleUpdateStatus(b.id, "rejected")}
                       >
-                        <XCircle size={15} /> Reject (अस्वीकार करें)
+                        <XCircle size={14} /> Reject (अस्वीकार करें)
                       </button>
                       <button
                         className="btn-action-accept"
                         onClick={() => handleUpdateStatus(b.id, "accepted")}
                       >
-                        <CheckCircle2 size={15} /> Accept (स्वीकार करें)
+                        <CheckCircle2 size={14} /> Accept (स्वीकार करें)
                       </button>
                     </>
                   )}
@@ -351,7 +380,6 @@ export default function Bookings() {
                     </button>
                   )}
 
-                  {/* 📞 One-Click Direct Phone Call Button */}
                   {b.customerPhone && (
                     <>
                       <a
@@ -359,7 +387,7 @@ export default function Bookings() {
                         className="btn-action-call"
                         title={`Call ${b.customerName}`}
                       >
-                        <Phone size={14} /> Call ({b.customerPhone})
+                        <Phone size={13} /> Call ({b.customerPhone})
                       </a>
 
                       <a
@@ -374,13 +402,12 @@ export default function Bookings() {
                     </>
                   )}
 
-                  {/* 🧾 Quick Bill Generator Shortcut */}
                   <Link
                     to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
                     className="btn-action-bill-shortcut"
                     title="Generate Bill for this Service"
                   >
-                    <Receipt size={14} /> 🧾 Bill Banayein
+                    <Receipt size={13} /> 🧾 Bill Banayein
                   </Link>
                 </div>
               </div>
@@ -427,7 +454,7 @@ export default function Bookings() {
                 <select
                   value={newBooking.shopId}
                   onChange={(e) => {
-                    const shop = SAMPLE_SHOPS.find((x) => x.id === e.target.value);
+                    const shop = availableShops.find((x) => x.id === e.target.value);
                     setNewBooking({
                       ...newBooking,
                       shopId: e.target.value,
@@ -436,9 +463,9 @@ export default function Bookings() {
                     });
                   }}
                 >
-                  {SAMPLE_SHOPS.map((shop) => (
+                  {availableShops.map((shop) => (
                     <option key={shop.id} value={shop.id}>
-                      {shop.name} (📍 {shop.distanceKm} km - {shop.city})
+                      {shop.name} {shop.city ? `(📍 ${shop.city})` : ""}
                     </option>
                   ))}
                 </select>
@@ -547,243 +574,297 @@ export default function Bookings() {
         </div>
       )}
 
+      {/* Styling */}
       <style>{`
         .bookings-page-container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 6px 4px 30px;
+          padding: 20px 16px 80px 16px;
+          font-family: 'Inter', sans-serif;
+          color: #f3f4f6;
         }
+
         .bookings-header-row {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          gap: 14px;
+        }
+
+        .page-heading {
+          font-size: 22px;
+          font-weight: 800;
+          color: #ffffff;
+          margin: 0;
+          letter-spacing: -0.5px;
+        }
+
+        .page-sub {
+          font-size: 13px;
+          color: #94a3b8;
+          margin: 4px 0 0 0;
+        }
+
+        .header-actions-group {
+          display: flex;
+          align-items: center;
           gap: 10px;
           flex-wrap: wrap;
         }
-        @media (max-width: 768px) {
-          .bookings-header-row {
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 12px;
-          }
-          .bookings-header-row > div:last-child {
-            width: 100%;
-          }
-          .book-service-cta {
-            flex: 1;
-            justify-content: center;
-            padding: 8px 12px !important;
-            font-size: 0.8125rem !important;
-          }
-        }
-        .page-heading {
-          font-size: 1.25rem; /* text-xl on mobile */
-          font-weight: 800;
-          color: var(--text);
-          margin: 0 0 4px;
-          line-height: 1.25;
-        }
-        @media (min-width: 640px) {
-          .page-heading { font-size: 1.5rem; }
-        }
-        .page-sub {
-          font-size: 0.75rem; /* text-xs */
-          color: var(--text-muted);
-          margin: 0;
-          line-height: 1.35;
-        }
-        .book-service-cta {
+
+        .btn-header-insights {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: #c0392b;
-          color: white;
-          border: none;
-          padding: 8px 14px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.8125rem;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
-          white-space: nowrap;
+          background: rgba(59, 130, 246, 0.15);
+          border: 1px solid rgba(59, 130, 246, 0.35);
+          color: #60a5fa;
+          padding: 9px 14px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 600;
+          text-decoration: none;
+          transition: all 0.2s;
         }
-        .book-service-cta:hover {
-          background: #a93226;
+        .btn-header-insights:hover {
+          background: rgba(59, 130, 246, 0.25);
+          transform: translateY(-1px);
         }
 
-        /* Filter Tabs */
+        .btn-header-excel {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #059669;
+          color: #fff;
+          border: none;
+          padding: 9px 14px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-header-excel:hover {
+          background: #10b981;
+          transform: translateY(-1px);
+        }
+
+        .btn-header-new-booking {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: #fff;
+          border: none;
+          padding: 9px 16px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+          transition: all 0.2s;
+        }
+        .btn-header-new-booking:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+        }
+
+        /* Filter Tabs (Exact image 2 styling) */
         .booking-filter-tabs {
           display: flex;
-          gap: 6px;
+          gap: 8px;
           overflow-x: auto;
-          padding-bottom: 6px;
-          margin-bottom: 14px;
-          border-bottom: 1px solid var(--border);
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
+          padding-bottom: 8px;
+          margin-bottom: 20px;
         }
-        .booking-filter-tabs::-webkit-scrollbar {
-          display: none;
-        }
+
         .filter-tab {
-          padding: 5px 12px;
-          border-radius: 16px;
-          border: 1px solid var(--border);
-          background: var(--surface);
-          color: var(--text);
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 700;
+          background: rgba(30, 41, 59, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #94a3b8;
+          padding: 9px 18px;
+          border-radius: 24px;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
           white-space: nowrap;
-          transition: all 0.15s ease;
-          flex-shrink: 0;
+          transition: all 0.2s ease;
+        }
+        .filter-tab:hover {
+          background: rgba(30, 41, 59, 0.9);
+          color: #fff;
         }
         .tab-active {
-          background: #1e1e24;
-          color: white;
-          border-color: #1e1e24;
+          background: #3b82f6 !important;
+          color: #fff !important;
+          border-color: #3b82f6 !important;
         }
-        .tab-pending.tab-active { background: #d35400; border-color: #d35400; }
-        .tab-accepted.tab-active { background: #27ae60; border-color: #27ae60; }
-        .tab-completed.tab-active { background: #2980b9; border-color: #2980b9; }
-        .tab-rejected.tab-active { background: #c0392b; border-color: #c0392b; }
+        .tab-pending {
+          background: #f59e0b !important;
+          border-color: #f59e0b !important;
+        }
+        .tab-accepted {
+          background: #10b981 !important;
+          border-color: #10b981 !important;
+        }
+        .tab-inprogress {
+          background: #6366f1 !important;
+          border-color: #6366f1 !important;
+        }
+        .tab-completed {
+          background: #059669 !important;
+          border-color: #059669 !important;
+        }
+        .tab-rejected {
+          background: #ef4444 !important;
+          border-color: #ef4444 !important;
+        }
 
-        /* Bookings List */
+        /* Bookings List Grid & Cards */
         .bookings-list-grid {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
+
+        .no-bookings-card {
+          text-align: center;
+          padding: 50px 20px;
+          background: rgba(30, 41, 59, 0.4);
+          border: 1px dashed rgba(255, 255, 255, 0.1);
+          border-radius: 14px;
+        }
+
         .booking-item-card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 14px 12px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+          background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-left: 4px solid #3b82f6;
+          border-radius: 14px;
+          padding: 18px 20px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+          transition: all 0.2s ease;
         }
-        @media (min-width: 640px) {
-          .booking-item-card {
-            padding: 18px 16px;
-            border-radius: 12px;
-          }
+        .booking-item-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(255, 255, 255, 0.18);
         }
-        .status-border-pending { border-left: 4px solid #d35400; }
-        .status-border-accepted { border-left: 4px solid #27ae60; }
-        .status-border-in_progress { border-left: 4px solid #f39c12; }
-        .status-border-completed { border-left: 4px solid #2980b9; }
-        .status-border-rejected { border-left: 4px solid #c0392b; }
+
+        .status-border-pending { border-left-color: #f59e0b; }
+        .status-border-accepted { border-left-color: #10b981; }
+        .status-border-in_progress { border-left-color: #6366f1; }
+        .status-border-completed { border-left-color: #059669; }
+        .status-border-rejected { border-left-color: #ef4444; }
 
         .booking-card-top {
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: flex-start;
+          margin-bottom: 14px;
+          flex-wrap: wrap;
           gap: 10px;
-          margin-bottom: 12px;
         }
-        @media (max-width: 650px) {
-          .booking-card-top {
-            flex-direction: column;
-          }
-        }
+
         .service-info-group {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
+
         .service-icon-circle {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: color-mix(in srgb, #c0392b 10%, var(--surface));
-          color: #c0392b;
+          width: 40px;
+          height: 40px;
+          background: rgba(59, 130, 246, 0.15);
+          color: #38bdf8;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          flex-shrink: 0;
         }
+
         .booking-service-title {
-          font-size: 0.95rem; /* text-base or text-sm */
-          font-weight: 700;
-          color: var(--text);
-          margin: 0 0 2px;
-          line-height: 1.25;
+          font-size: 16px;
+          font-weight: 800;
+          color: #ffffff;
+          margin: 0;
         }
+
         .booking-vehicle-tag {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          font-size: 12px;
+          color: #94a3b8;
+          margin-top: 2px;
         }
 
         .status-badge {
-          display: inline-flex;
-          align-items: center;
-          padding: 3px 8px;
-          border-radius: 12px;
-          font-size: 0.6875rem;
+          font-size: 12px;
           font-weight: 700;
+          padding: 5px 12px;
+          border-radius: 20px;
         }
-        .badge-pending { background: #fef5e7; color: #d35400; }
-        .badge-accepted { background: #eafaf1; color: #27ae60; }
-        .badge-inprogress { background: #fef9e7; color: #b7950b; }
-        .badge-completed { background: #ebf5fb; color: #2980b9; }
-        .badge-rejected { background: #fdedec; color: #c0392b; }
+        .badge-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+        .badge-accepted { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+        .badge-inprogress { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); }
+        .badge-completed { background: rgba(5, 150, 105, 0.2); color: #10b981; border: 1px solid rgba(5, 150, 105, 0.4); }
+        .badge-rejected { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
 
         .booking-meta-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
-          background: var(--bg);
-          padding: 10px;
-          border-radius: 6px;
-          margin-bottom: 10px;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 14px;
+          background: rgba(15, 23, 42, 0.5);
+          padding: 12px 14px;
+          border-radius: 10px;
+          margin-bottom: 12px;
         }
-        @media (min-width: 640px) {
-          .booking-meta-grid {
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            padding: 12px;
-          }
-        }
+
         .meta-block {
           display: flex;
           flex-direction: column;
           gap: 2px;
         }
+
         .meta-label {
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: var(--text-muted);
+          font-size: 11px;
+          color: #64748b;
+          font-weight: 600;
           text-transform: uppercase;
         }
+
         .meta-value {
-          font-size: 0.8125rem;
+          font-size: 13px;
           font-weight: 700;
-          color: var(--text);
+          color: #f1f5f9;
         }
-        .meta-subtext {
-          font-size: 0.6875rem;
-          color: var(--text-muted);
-        }
+
         .meta-phone-link {
-          font-size: 0.72rem;
-          color: #27ae60;
-          font-weight: 700;
-          text-decoration: none;
           display: inline-flex;
           align-items: center;
-          gap: 3px;
+          gap: 4px;
+          color: #38bdf8;
+          font-size: 12px;
+          text-decoration: none;
+          margin-top: 2px;
+        }
+        .meta-phone-link:hover { text-decoration: underline; }
+
+        .meta-subtext {
+          font-size: 12px;
+          color: #94a3b8;
         }
 
         .booking-notes-box {
-          font-size: 0.75rem; /* text-xs */
-          background: var(--surface-2);
-          padding: 6px 10px;
-          border-radius: 6px;
-          color: var(--text);
-          margin-bottom: 10px;
+          background: rgba(245, 158, 11, 0.08);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          color: #fcd34d;
+          margin-bottom: 12px;
         }
 
         .booking-card-actions {
@@ -791,242 +872,238 @@ export default function Bookings() {
           align-items: center;
           justify-content: space-between;
           padding-top: 10px;
-          border-top: 1px solid var(--border);
-          gap: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
           flex-wrap: wrap;
+          gap: 10px;
         }
+
         .time-ago-text {
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          font-size: 12px;
+          color: #64748b;
+          font-family: monospace;
         }
+
         .action-buttons-group {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           flex-wrap: wrap;
         }
+
         .btn-action-accept {
-          background: #27ae60;
-          color: white;
-          border: none;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 700;
-          cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          background: #10b981;
+          color: #fff;
+          border: none;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .btn-action-reject {
-          background: var(--surface-2);
-          color: #c0392b;
-          border: 1px solid #c0392b;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 700;
-          cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          background: rgba(239, 68, 68, 0.2);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          color: #f87171;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .btn-action-progress {
-          background: #f39c12;
-          color: white;
-          border: none;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
+          background: #6366f1;
+          color: #fff;
+          border: none;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .btn-action-complete {
-          background: #2980b9;
-          color: white;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #059669;
+          color: #fff;
           border: none;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
           font-weight: 700;
           cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
         }
         .btn-action-call {
-          background: var(--surface-2);
-          color: var(--text);
-          border: 1px solid var(--border);
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          transition: background 0.15s ease;
-        }
-        .btn-action-call:hover {
-          background: var(--border);
-          color: #c0392b;
+          background: rgba(59, 130, 246, 0.15);
+          color: #38bdf8;
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
         }
         .btn-action-whatsapp {
-          background: #25D366;
-          color: white;
-          border: none;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          box-shadow: 0 2px 6px rgba(37, 211, 102, 0.3);
-          transition: background 0.15s ease;
-        }
-        .btn-action-whatsapp:hover {
-          background: #1ebd56;
-          color: white;
+          background: rgba(37, 211, 102, 0.15);
+          color: #25d366;
+          border: 1px solid rgba(37, 211, 102, 0.3);
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
         }
         .btn-action-bill-shortcut {
-          background: #2c3e50;
-          color: white;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-decoration: none;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          transition: background 0.15s ease;
-        }
-        .btn-action-bill-shortcut:hover {
-          background: #1a252f;
-          color: white;
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: #ffffff;
+          padding: 6px 11px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
         }
 
-        /* Modal */
+        /* Modal Styles */
         .modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.6);
-          z-index: 200;
+          background: rgba(0, 0, 0, 0.75);
+          backdrop-filter: blur(6px);
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 12px;
+          z-index: 999;
+          padding: 16px;
         }
+
         .modal-card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          max-width: 500px;
+          background: #1e293b;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 16px;
+          max-width: 520px;
           width: 100%;
-          padding: 18px 16px;
-          box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+          padding: 22px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
           max-height: 90vh;
           overflow-y: auto;
         }
+
         .modal-header {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 8px;
+          justify-content: space-between;
+          margin-bottom: 16px;
         }
+
         .modal-title {
-          font-size: 1rem;
-          font-weight: 700;
+          font-size: 17px;
+          font-weight: 800;
+          color: #ffffff;
           margin: 0;
-          color: var(--text);
         }
+
         .modal-close-btn {
-          background: none;
+          background: transparent;
           border: none;
-          font-size: 16px;
+          color: #94a3b8;
+          font-size: 18px;
           cursor: pointer;
-          color: var(--text-muted);
         }
+
         .modal-form {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
         }
+
         .modal-field {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
         }
+
         .modal-field label {
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 700;
-          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 600;
+          color: #cbd5e1;
         }
-        .modal-field input,
-        .modal-field select,
-        .modal-field textarea {
-          padding: 8px 10px;
-          border-radius: 6px;
-          border: 1.5px solid var(--border);
-          background: var(--bg);
-          color: var(--text);
-          font-size: 0.8125rem;
+
+        .modal-field input, .modal-field select, .modal-field textarea {
+          background: #0f172a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          padding: 9px 12px;
+          color: #ffffff;
+          font-size: 13px;
           outline: none;
         }
+
         .modal-grid-2 {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 8px;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
         }
-        @media (min-width: 500px) {
-          .modal-grid-2 {
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-          }
-        }
+
         .modal-actions {
           display: flex;
-          gap: 8px;
+          justify-content: flex-end;
+          gap: 10px;
           margin-top: 10px;
         }
+
         .btn-cancel {
-          flex: 1;
-          background: var(--surface-2);
-          color: var(--text);
-          border: 1px solid var(--border);
-          padding: 9px 12px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.8125rem;
-          cursor: pointer;
-        }
-        .btn-submit-booking {
-          flex: 2;
-          background: #c0392b;
-          color: white;
+          background: rgba(255, 255, 255, 0.08);
           border: none;
-          padding: 9px 12px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.8125rem;
+          color: #cbd5e1;
+          padding: 9px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
         }
-        .no-bookings-card {
-          padding: 40px 16px;
-          text-align: center;
-          background: var(--surface);
-          border: 1px dashed var(--border);
-          border-radius: 10px;
-          color: var(--text-muted);
-          font-size: 0.8125rem;
+
+        .btn-submit-booking {
+          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+          color: #ffffff;
+          border: none;
+          padding: 9px 18px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+          .bookings-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .header-actions-group {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .modal-grid-2 {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

@@ -18,7 +18,8 @@ import {
   Receipt,
   Settings as SettingsIcon,
   LifeBuoy,
-  ShieldCheck
+  ShieldCheck,
+  Crown
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -123,6 +124,9 @@ export default function Navbar({ onMenuClick }) {
                       </Link>
                       <Link to="/settings" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                         <SettingsIcon size={14} /> Settings & Preferences
+                      </Link>
+                      <Link to="/subscription" className="dropdown-item" style={{ color: "#f39c12", fontWeight: 700 }} onClick={() => setUserDropdownOpen(false)}>
+                        <Crown size={14} color="#f39c12" /> Membership & Plans
                       </Link>
                       <Link to="/support" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
                         <LifeBuoy size={14} /> Help & Support Tickets
@@ -264,6 +268,11 @@ export default function Navbar({ onMenuClick }) {
 
             <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
               SEARCH
+            </NavLink>
+
+            <NavLink to="/subscription" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`} style={{ color: "#f39c12", fontWeight: 700 }}>
+              <Crown size={13} style={{ display: "inline", marginRight: 4, verticalAlign: "-1px" }} />
+              PLANS
             </NavLink>
 
             <NavLink to="/privacy-policy" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>

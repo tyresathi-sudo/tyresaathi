@@ -27,6 +27,7 @@ import {
 import { INITIAL_SHOP_ADS } from "../config/shopAdsData";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
+import AdCarouselSlider from "../components/AdCarouselSlider";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -129,7 +130,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 🏍️ 2. Vehicle Categories Row */}
+      {/* 📢 2. Auto-Sliding Ads Banner Carousel */}
+      <AdCarouselSlider
+        initialAds={activeAds}
+        onAdAdded={(newAd) => {
+          setShopAds((prev) => [newAd, ...prev]);
+        }}
+      />
+
+      {/* 🏍️ 2.5 Vehicle Categories Row */}
       <section className="home-section">
         <div className="section-header-row">
           <div>
@@ -154,104 +163,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
-      {/* 📢 2.5 Featured Partner Shop Offers & Sponsored Ads */}
-      {activeAds.length > 0 && (
-        <section className="home-section shop-ads-section">
-          <div className="section-header-row">
-            <div>
-              <div className="ads-section-tag">
-                <Flame size={14} color="#ff4757" />
-                <span>SPONSORED PARTNER DEALS</span>
-              </div>
-              <h2 className="section-main-title">Featured Tyre Shops & Exclusive Offers (दुकानदार ऑफर्स)</h2>
-              <p className="section-sub-title">Nearest verified partner hubs offering special discounts, free fitment & doorstep service</p>
-            </div>
-            <a
-              href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi, mujhe apni tyre shop ka advertisement / offer home page par lagwana hai.")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-promote-shop-top"
-            >
-              <Megaphone size={14} /> Promote Your Shop Here →
-            </a>
-          </div>
-
-          <div className="shop-ads-grid">
-            {activeAds.map((ad) => (
-              <div
-                key={ad.id}
-                className="shop-ad-card"
-                style={{ background: ad.gradient || "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
-              >
-                <div className="ad-card-top">
-                  <div className="ad-shop-header">
-                    <span className="ad-shop-badge">
-                      <ShieldCheck size={13} color="#2ed573" /> Verified Partner
-                    </span>
-                    <span className="ad-city-tag">📍 {ad.city}</span>
-                  </div>
-                  <span
-                    className="ad-offer-pill"
-                    style={{ background: ad.badgeColor || "#ff4757" }}
-                  >
-                    {ad.offerBadge}
-                  </span>
-                </div>
-
-                <div className="ad-card-body">
-                  <h3 className="ad-shop-name">{ad.shopName}</h3>
-                  <h4 className="ad-tagline">{ad.tagline}</h4>
-                  <p className="ad-desc">{ad.description}</p>
-                  {ad.address && <div className="ad-address-snippet">🏠 {ad.address}</div>}
-                </div>
-
-                <div className="ad-card-actions">
-                  <div className="ad-action-top-row">
-                    {ad.phone && (
-                      <a href={`tel:${ad.phone}`} className="btn-ad-call">
-                        <Phone size={13} /> Call Shop
-                      </a>
-                    )}
-                    {ad.whatsapp && (
-                      <a
-                        href={`https://wa.me/91${ad.whatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${ad.shopName}, maine TyreSaathi par aapka offer (${ad.offerBadge}) dekha, mujhe details chahiye.`)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn-ad-whatsapp"
-                      >
-                        <MessageSquare size={13} /> WhatsApp Inquiry
-                      </a>
-                    )}
-                  </div>
-                  <Link to="/bookings" className="btn-ad-book">
-                    📅 Book Fitment Slot
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Shopkeeper Promo Banner */}
-          <div className="partner-ad-join-strip">
-            <div className="join-strip-left">
-              <span className="join-strip-icon">📢</span>
-              <div>
-                <strong>Kya aap tyre shop owner hain?</strong>
-                <p>Apni dukan ke offers aur advertisement TyreSaathi home page par dikhayein aur hazaron naye customers payein.</p>
-              </div>
-            </div>
-            <a
-              href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi Team, mujhe apni tyre shop ka offer add karwana hai.")}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-join-ad-banner"
-            >
-              💬 WhatsApp Par Ad Lagwayein
-            </a>
-          </div>
-        </section>
-      )}
 
       {/* 🌟 3. Popular Brands Row (Matching Reference Photo) */}
       <section className="home-section brands-section">

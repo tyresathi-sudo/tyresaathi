@@ -1,13 +1,62 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, MapPin, Phone, Star, Navigation, Clock, CheckCircle2, ExternalLink } from "lucide-react";
 import { SAMPLE_SHOPS } from "../config/tyreCatalog";
+import { trackStoreEvent } from "../utils/analyticsTracker";
+import { db } from "../firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function StoreLocation() {
+  const [shopsList, setShopsList] = useState(SAMPLE_SHOPS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedShop, setSelectedShop] = useState(SAMPLE_SHOPS[0]);
   const [filterCity, setFilterCity] = useState("all");
 
-  const filteredShops = SAMPLE_SHOPS.filter((shop) => {
+  // Track page view on load
+  useEffect(() => {
+    trackStoreEvent("view", { page: "store_location" });
+  }, []);
+
+  // Fetch real registered shops from Firestore
+  useEffect(() => {
+    async function loadFirestoreShops() {
+      try {
+        const snap = await getDocs(collection(db, "users"));
+        if (!snap.empty) {
+          const vendors = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((u) => u.role === "vendor" || u.role === "admin" || u.shopName);
+          if (vendors.length > 0) {
+            const mapped = vendors.map((v, idx) => {
+              const shopServices = v.services || v.servicesOffered || ["3D Wheel Alignment", "Tubeless Tyre Repair", "Nitrogen Air Fill", "Laser Wheel Balancing"];
+              return {
+                id: v.id || v.uid,
+                name: v.shopName || v.name || "TyreSaathi Partner Hub",
+                city: v.city || "Raipur",
+                address: v.address || "TyreSaathi Partner Hub",
+                phone: v.phone || "8877277757",
+                rating: v.rating || 4.9,
+                reviewsCount: v.reviewsCount || 28,
+                distanceKm: (1.2 + idx * 0.8).toFixed(1),
+                isNearest: idx === 0,
+                services: shopServices,
+                servicesOffered: shopServices,
+                timing: "Mon - Sun: 09:00 AM - 09:00 PM",
+                lat: 21.2514,
+                lng: 81.6296
+              };
+            });
+            setShopsList(mapped);
+            setSelectedShop(mapped[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore shops load fallback:", err);
+      }
+    }
+    loadFirestoreShops();
+  }, []);
+
+  const filteredShops = shopsList.filter((shop) => {
     const matchesSearch =
       shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       shop.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -16,7 +65,7 @@ export default function StoreLocation() {
     return matchesSearch && matchesCity;
   });
 
-  const cities = ["all", ...new Set(SAMPLE_SHOPS.map((s) => s.city))];
+  const cities = ["all", ...new Set(shopsList.map((s) => s.city))];
 
   return (
     <div className="store-location-page">
@@ -92,7 +141,7 @@ export default function StoreLocation() {
                   <p className="store-address">{shop.address}</p>
 
                   <div className="store-services-chips">
-                    {shop.servicesOffered?.slice(0, 3).map((svc, idx) => (
+                    {(shop.servicesOffered || shop.services || []).slice(0, 3).map((svc, idx) => (
                       <span key={idx} className="svc-chip">✓ {svc}</span>
                     ))}
                   </div>
@@ -103,6 +152,7 @@ export default function StoreLocation() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedShop(shop);
+                        trackStoreEvent("map_direction", { shopName: shop.name, city: shop.city });
                       }}
                     >
                       <Navigation size={13} /> View on Map
@@ -112,7 +162,10 @@ export default function StoreLocation() {
                       target="_blank"
                       rel="noreferrer"
                       className="google-maps-link"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        trackStoreEvent("map_direction", { shopName: shop.name, city: shop.city });
+                      }}
                     >
                       Open in Maps <ExternalLink size={12} />
                     </a>
@@ -150,7 +203,7 @@ export default function StoreLocation() {
                 </span>
               </div>
               <div className="popup-services">
-                <strong>Services:</strong> {selectedShop.servicesOffered.join(" • ")}
+                <strong>Services:</strong> {(selectedShop.servicesOffered || selectedShop.services || ["Tyre Replacement", "Wheel Alignment", "Puncture Repair"]).join(" • ")}
               </div>
               <div className="popup-action-buttons">
                 <a

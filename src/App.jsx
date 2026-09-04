@@ -19,6 +19,8 @@ import Billing from "./pages/Billing.jsx";
 import Settings from "./pages/Settings.jsx";
 import SupportTickets from "./pages/SupportTickets.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx";
+import ShopAnalytics from "./pages/ShopAnalytics.jsx";
+import Subscription from "./pages/Subscription.jsx";
 
 export default function App() {
   return (
@@ -33,6 +35,8 @@ export default function App() {
       <Route path="/disclaimer" element={<TrademarkDisclaimer />} />
       <Route path="/ip-policy" element={<TrademarkDisclaimer />} />
       <Route path="/trademark-disclaimer" element={<TrademarkDisclaimer />} />
+      <Route path="/subscription" element={<Subscription />} />
+      <Route path="/pricing" element={<Subscription />} />
 
       <Route
         element={
@@ -44,6 +48,10 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<Search />} />
         <Route path="/bookings" element={<Bookings />} />
+        <Route path="/analytics" element={<ShopAnalytics />} />
+        <Route path="/insights" element={<ShopAnalytics />} />
+        <Route path="/subscription" element={<Subscription />} />
+        <Route path="/pricing" element={<Subscription />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/support" element={<SupportTickets />} />

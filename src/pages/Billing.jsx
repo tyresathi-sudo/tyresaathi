@@ -240,7 +240,7 @@ export default function Billing() {
 
   // Generate WhatsApp Message Link
   const getWhatsAppShareUrl = (inv) => {
-    const itemsList = inv.items
+    const itemsList = (inv.items || [])
       .map((it, idx) => `${idx + 1}. ${it.name} (x${it.qty}) - ₹${it.amount}`)
       .join("\n");
 
@@ -866,10 +866,10 @@ export default function Billing() {
                         )}
                       </td>
                       <td>
-                        <span className="items-count-tag">{inv.items.length} Items</span>
+                        <span className="items-count-tag">{(inv.items || []).length} Items</span>
                         <small className="items-summary-preview">
-                          {inv.items.map((x) => x.name).slice(0, 2).join(", ")}
-                          {inv.items.length > 2 ? "..." : ""}
+                          {(inv.items || []).map((x) => x.name).slice(0, 2).join(", ")}
+                          {(inv.items || []).length > 2 ? "..." : ""}
                         </small>
                       </td>
                       <td>
