@@ -45,17 +45,27 @@ jobs:
           CI: true
           CAPACITOR_TELEMETRY: false
 
+      - name: Create Signing Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/release.keystore -alias tyresaathi -keyalg RSA -keysize 2048 -validity 10000 -storepass tyresaathi123 -keypass tyresaathi123 -dname "CN=TyreSaathi, OU=App, O=TyreSaathi, L=Delhi, S=Delhi, C=IN"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Android APK (Debug)
+      - name: Build Android APK (Release & Debug)
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon
+          ./gradlew assembleRelease assembleDebug --stacktrace --no-daemon
 
-      - name: Upload APK Artifact
+      - name: Prepare APK Outputs
+        run: |
+          mkdir -p output-apks
+          cp android/app/build/outputs/apk/release/app-release.apk output-apks/TyreSaathi-Release.apk || cp android/app/build/outputs/apk/release/*.apk output-apks/TyreSaathi-Release.apk || true
+          cp android/app/build/outputs/apk/debug/app-debug.apk output-apks/TyreSaathi-Debug.apk || true
+
+      - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TyreSaathi-Android-APK
-          path: android/app/build/outputs/apk/debug/*.apk
+          name: TyreSaathi-APK-Package
+          path: output-apks/*
