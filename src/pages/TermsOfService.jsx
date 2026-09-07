@@ -38,7 +38,7 @@ export default function TermsOfService() {
           </p>
           <ul>
             <li>
-              <strong>Intermediary Platform:</strong> TyreSaathi acts as a technology intermediary connecting motorists (customers) with independent, verified tyre retail shops, alignment hubs, and doorstep mechanics.
+              <strong>Intermediary Platform:</strong> TyreSaathi acts as a technology intermediary connecting motorists (customers) with independent, verified tyre retail shops, fitment hubs, and doorstep mechanics.
             </li>
             <li>
               <strong>Independent Dealerships:</strong> All product listings, tyre sales, fitments, cut repairs, and physical services are performed by independent local tyre retailers and service hubs.
@@ -79,7 +79,7 @@ export default function TermsOfService() {
           <h2>5. Service Bookings, Pricing & Cancellations</h2>
           <ul>
             <li>
-              <strong>Slot Bookings:</strong> Customers can book doorstep assistance, tyre fitting, wheel alignment, or puncture repair slots. Estimated arrival time may vary based on traffic, distance, and technician availability.
+              <strong>Slot Bookings:</strong> Customers can book doorstep assistance, tyre fitting, nitrogen air fill, or puncture repair slots. Estimated arrival time may vary based on traffic, distance, and technician availability.
             </li>
             <li>
               <strong>Cancellations:</strong> Users can cancel a service request without cancellation penalty prior to technician dispatch.

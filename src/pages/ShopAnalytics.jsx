@@ -84,9 +84,9 @@ export default function ShopAnalytics() {
     loadAnalytics();
   }, [timeframe]);
 
-  const shopDisplayName = profile?.shopName || "Tyre Saathi Hub";
-  const ownerDisplayName = profile?.name || "AHAMAD RAJA";
-  const partnerId = profile?.uid ? `#TS-${profile.uid.slice(0, 6).toUpperCase()}` : "#TS-DEL-8902";
+  const shopDisplayName = profile?.shopName || profile?.name || "Tyre Saathi Partner Hub";
+  const ownerDisplayName = profile?.name || "Partner Owner";
+  const partnerId = profile?.uid ? `#TS-${profile.uid.slice(0, 6).toUpperCase()}` : "#TS-PARTNER";
 
   if (!analyticsData) {
     return (
@@ -100,7 +100,7 @@ export default function ShopAnalytics() {
   const currentMetricData = analyticsData[selectedMetric] || analyticsData.views;
   const chartPoints = currentMetricData.points || [0, 0, 0, 0, 0, 0, 0];
   const maxVal = Math.max(...chartPoints, 1);
-  const minVal = Math.min(...chartPoints);
+  const minVal = 0;
   const range = maxVal - minVal || 1;
 
   const svgWidth = 600;

@@ -11,20 +11,26 @@ import {
   Sparkles,
   Calendar,
   X,
-  Megaphone
+  Megaphone,
+  Upload,
+  Camera,
+  Loader2,
+  Trash2
 } from "lucide-react";
 import { AD_THEMES, INITIAL_SHOP_ADS } from "../config/shopAdsData";
-import { db } from "../firebase";
+import { db, storage } from "../firebase";
 import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdCarouselSlider({ initialAds, onAdAdded }) {
   const { user, profile } = useAuth();
-  const [ads, setAds] = useState(initialAds && initialAds.length > 0 ? initialAds : INITIAL_SHOP_ADS);
+  const [ads, setAds] = useState(Array.isArray(initialAds) ? initialAds : []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Swipe support for touch screens
   const touchStartX = useRef(0);
@@ -40,14 +46,41 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
     whatsapp: profile?.phone || "8877277757",
     city: profile?.city || "New Delhi",
     address: profile?.address || "",
+    imageUrl: "",
     themeId: "crimson"
   });
 
+  // Handle Photo Upload
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Kripya 5MB se chhota photo chunein!");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const storageRef = ref(storage, `shop_ads/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+      setNewAd((prev) => ({ ...prev, imageUrl: downloadUrl }));
+    } catch (err) {
+      console.warn("Storage upload fallback to Data URL:", err);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setNewAd((prev) => ({ ...prev, imageUrl: ev.target.result }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // Sync ads if parent passes updated list
   useEffect(() => {
-    if (initialAds && initialAds.length > 0) {
-      setAds(initialAds);
-    }
+    setAds(Array.isArray(initialAds) ? initialAds : []);
   }, [initialAds]);
 
   // Auto slide every 4.5 seconds
@@ -109,6 +142,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       whatsapp: newAd.whatsapp,
       city: newAd.city,
       address: newAd.address,
+      imageUrl: newAd.imageUrl || "",
       gradient: selectedTheme.gradient,
       badgeColor: selectedTheme.badgeColor,
       isActive: true,
@@ -127,6 +161,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       const updatedList = [finalAd, ...ads];
       setAds(updatedList);
       localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updatedList }));
       if (onAdAdded) onAdAdded(finalAd);
     } catch (err) {
       console.warn("Firestore ad fallback:", err);
@@ -134,6 +169,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       const updatedList = [fallbackAd, ...ads];
       setAds(updatedList);
       localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updatedList }));
       if (onAdAdded) onAdAdded(fallbackAd);
     } finally {
       setSubmitting(false);
@@ -205,14 +241,27 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
                   </span>
                 </div>
 
-                {/* Body Content */}
-                <div className="banner-body-content">
-                  <h3 className="banner-shop-title">{ad.shopName}</h3>
-                  <h4 className="banner-tagline">{ad.tagline}</h4>
-                  <p className="banner-desc">{ad.description}</p>
-                  {ad.address && (
-                    <div className="banner-address">
-                      🏠 {ad.address}
+                {/* Body Content with optional Shop / Offer Image */}
+                <div className="banner-main-layout">
+                  <div className="banner-body-content">
+                    <h3 className="banner-shop-title">{ad.shopName}</h3>
+                    <h4 className="banner-tagline">{ad.tagline}</h4>
+                    <p className="banner-desc">{ad.description}</p>
+                    {ad.address && (
+                      <div className="banner-address">
+                        🏠 {ad.address}
+                      </div>
+                    )}
+                  </div>
+                  {ad.imageUrl && (
+                    <div className="banner-image-container">
+                      <img
+                        src={ad.imageUrl}
+                        alt={ad.shopName}
+                        className="banner-ad-photo"
+                        loading="lazy"
+                        onError={(e) => { e.target.style.display = "none"; }}
+                      />
                     </div>
                   )}
                 </div>
@@ -336,7 +385,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Buy 4 MRF Tyres & Get Free 3D Alignment + Nitrogen Fill!"
+                  placeholder="e.g. Buy 4 MRF Tyres & Get Free Tube + Nitrogen Fill!"
                   value={newAd.tagline}
                   onChange={(e) => setNewAd({ ...newAd, tagline: e.target.value })}
                 />
@@ -385,6 +434,84 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
                   value={newAd.address}
                   onChange={(e) => setNewAd({ ...newAd, address: e.target.value })}
                 />
+              </div>
+
+              {/* 📸 Shop Photo / Offer Poster Image Upload */}
+              <div className="modal-field" style={{ background: "rgba(0,0,0,0.02)", padding: "12px", borderRadius: "10px", border: "1.5px dashed var(--border, #cbd5e1)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <label style={{ fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", margin: 0, fontSize: "13px" }}>
+                    <Camera size={15} color="#c0392b" /> Shop Photo / Offer Image (दुकान या ऑफर का फोटो)
+                  </label>
+                  {newAd.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setNewAd((prev) => ({ ...prev, imageUrl: "" }))}
+                      style={{ background: "none", border: "none", color: "#e74c3c", fontSize: "11.5px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}
+                    >
+                      <Trash2 size={12} /> Remove
+                    </button>
+                  )}
+                </div>
+
+                {newAd.imageUrl ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "var(--surface, #fff)", padding: "8px", borderRadius: "8px", border: "1px solid var(--border, #e2e8f0)" }}>
+                    <img
+                      src={newAd.imageUrl}
+                      alt="Offer Preview"
+                      style={{ width: "70px", height: "52px", objectFit: "cover", borderRadius: "6px" }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: "12px", fontWeight: "700", color: "#27ae60", display: "block" }}>
+                        ✅ Photo Uploaded
+                      </span>
+                      <small style={{ color: "var(--text-muted, #64748b)", fontSize: "11px" }}>
+                        Slider banner par offer details ke sath dikhegi.
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      id="carousel-ad-photo-file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                    />
+                    <label
+                      htmlFor="carousel-ad-photo-file"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        padding: "11px",
+                        borderRadius: "8px",
+                        background: "var(--surface, #fff)",
+                        border: "1.5px dashed #c0392b",
+                        color: "#c0392b",
+                        fontWeight: "700",
+                        fontSize: "12.5px",
+                        cursor: uploadingImage ? "not-allowed" : "pointer",
+                        textAlign: "center"
+                      }}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> Uploading image to Cloud...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={14} /> 📁 Click to Upload Photo (Gallery se chunein)
+                        </>
+                      )}
+                    </label>
+                    <small style={{ color: "var(--text-muted, #64748b)", fontSize: "10.5px", display: "block", marginTop: "3px" }}>
+                      * Optional (Max 5MB). Photo lagane se ad zyada aakarshak dikhta hai.
+                    </small>
+                  </div>
+                )}
               </div>
 
               {/* Theme Color Picker */}
@@ -456,49 +583,45 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: linear-gradient(135deg, #c0392b 0%, #d9381e 100%);
+          background: #c0392b;
           color: #ffffff;
           border: none;
-          padding: 8px 15px;
-          border-radius: 10px;
-          font-size: 12px;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.35);
-          transition: all 0.2s ease;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
         }
         .btn-add-ad-top:hover {
+          background: #a93226;
           transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(192, 57, 43, 0.5);
         }
 
         /* Viewport & Track */
         .ad-slider-viewport {
           position: relative;
-          width: 100%;
-          border-radius: 20px;
           overflow: hidden;
-          box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+          border-radius: 20px;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
         }
 
         .ad-slider-track {
           display: flex;
-          width: 100%;
           transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+          width: 100%;
         }
 
         .ad-slide-item {
           flex: 0 0 100%;
-          width: 100%;
+          min-width: 100%;
         }
 
         .ad-banner-card {
-          padding: 26px 32px;
-          min-height: 230px;
+          padding: 24px 28px;
+          border-radius: 20px;
           color: #ffffff;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
           position: relative;
         }
 
@@ -548,8 +671,46 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           letter-spacing: 0.5px;
         }
 
-        .banner-body-content {
+        .banner-main-layout {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
           margin-bottom: 18px;
+        }
+
+        .banner-body-content {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .banner-image-container {
+          flex-shrink: 0;
+          width: 140px;
+          height: 100px;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .banner-ad-photo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        @media (max-width: 640px) {
+          .banner-main-layout {
+            flex-direction: column-reverse;
+            align-items: flex-start;
+          }
+          .banner-image-container {
+            width: 100%;
+            height: 130px;
+          }
         }
 
         .banner-shop-title {

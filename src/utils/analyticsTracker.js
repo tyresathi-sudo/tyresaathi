@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, addDoc, getDocs, serverTimestamp, query, where, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 
 // Local storage key for fallback & offline tracking
 const ANALYTICS_STORAGE_KEY = "tyresaathi_analytics_events";
@@ -39,7 +39,22 @@ export async function trackStoreEvent(eventType, metadata = {}) {
 }
 
 /**
- * Fetch all real analytics events and calculate actual metrics & graph curves
+ * Calculate real percentage growth between first half and second half of time window
+ */
+function calculateGrowth(points) {
+  if (!points || points.length === 0) return "0.0%";
+  const half = Math.floor(points.length / 2);
+  const firstHalf = points.slice(0, half).reduce((a, b) => a + b, 0);
+  const secondHalf = points.slice(half).reduce((a, b) => a + b, 0);
+
+  if (firstHalf === 0 && secondHalf === 0) return "0.0%";
+  if (firstHalf === 0) return `+${(secondHalf * 100).toFixed(0)}%`;
+  const diff = ((secondHalf - firstHalf) / firstHalf) * 100;
+  return `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`;
+}
+
+/**
+ * Fetch all real analytics events and calculate actual metrics & graph curves (100% Real Data)
  */
 export async function getRealAnalyticsData(timeframe = "7d") {
   const daysCount = timeframe === "7d" ? 7 : 30;
@@ -83,7 +98,7 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     realBookings = localB ? JSON.parse(localB) : [];
   }
 
-  // 3. Initialize daily counters
+  // 3. Initialize daily counters with 0
   const dailyViews = {};
   const dailyMaps = {};
   const dailyCalls = {};
@@ -114,38 +129,29 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     }
   });
 
-  // Create point arrays
-  let viewsPoints = dateKeys.map((k) => dailyViews[k]);
-  let mapPoints = dateKeys.map((k) => dailyMaps[k]);
-  let callPoints = dateKeys.map((k) => dailyCalls[k]);
-  let bookingPoints = dateKeys.map((k) => dailyBookings[k]);
-
-  // If real activity is in early stage, establish realistic starting baseline
-  const totalRawViews = viewsPoints.reduce((a, b) => a + b, 0);
-  if (totalRawViews === 0) {
-    // Generate organic baseline based on registered real app interactions
-    viewsPoints = dateKeys.map((_, i) => Math.max(1, (i + 1) * 3 + Math.floor(Math.sin(i) * 2)));
-    mapPoints = dateKeys.map((_, i) => Math.max(0, Math.floor((i + 1) * 1.2)));
-    callPoints = dateKeys.map((_, i) => Math.max(0, Math.floor((i + 1) * 0.8)));
-  }
+  // Real point arrays without any simulated or dummy values
+  const viewsPoints = dateKeys.map((k) => dailyViews[k]);
+  const mapPoints = dateKeys.map((k) => dailyMaps[k]);
+  const callPoints = dateKeys.map((k) => dailyCalls[k]);
+  const bookingPoints = dateKeys.map((k) => dailyBookings[k]);
 
   const totalViews = viewsPoints.reduce((a, b) => a + b, 0);
   const totalMaps = mapPoints.reduce((a, b) => a + b, 0);
   const totalCalls = callPoints.reduce((a, b) => a + b, 0);
-  const totalBookings = bookingPoints.reduce((a, b) => a + b, 0) || realBookings.length || 1;
+  const totalBookings = bookingPoints.reduce((a, b) => a + b, 0) || realBookings.length;
 
   // Real conversion calculation
-  const convRate = totalViews > 0 ? ((totalBookings / totalViews) * 100).toFixed(1) : "8.4";
+  const convRate = totalViews > 0 ? ((totalBookings / totalViews) * 100).toFixed(1) : "0.0";
   const convPoints = viewsPoints.map((v, i) => {
-    const b = bookingPoints[i] || (v > 0 ? 1 : 0);
-    return Number(((b / (v || 1)) * 100).toFixed(1));
+    const b = bookingPoints[i] || 0;
+    return v > 0 ? Number(((b / v) * 100).toFixed(1)) : 0;
   });
 
   return {
     views: {
       label: "Store Profile Views",
       current: totalViews.toLocaleString(),
-      growth: "+14.2%",
+      growth: calculateGrowth(viewsPoints),
       color: "#FF3B30",
       secondaryColor: "#FF8C00",
       gradientId: "viewsGradVivid",
@@ -155,7 +161,7 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     mapClicks: {
       label: "Map Route Directions",
       current: totalMaps.toLocaleString(),
-      growth: "+8.1%",
+      growth: calculateGrowth(mapPoints),
       color: "#00E676",
       secondaryColor: "#00B0FF",
       gradientId: "mapGradVivid",
@@ -165,7 +171,7 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     callLeads: {
       label: "Direct Call Leads",
       current: totalCalls.toLocaleString(),
-      growth: "+19.5%",
+      growth: calculateGrowth(callPoints),
       color: "#FFB300",
       secondaryColor: "#FF5722",
       gradientId: "callGradVivid",
@@ -175,7 +181,7 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     conversion: {
       label: "Booking Conversion",
       current: `${convRate}%`,
-      growth: "+2.3%",
+      growth: calculateGrowth(convPoints),
       color: "#B388FF",
       secondaryColor: "#FF4081",
       gradientId: "convGradVivid",

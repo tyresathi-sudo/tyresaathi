@@ -32,17 +32,17 @@ import { db } from "../firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { SERVICE_TYPES, MEGA_MENU_BRANDS } from "../config/tyreCatalog";
 import { exportInvoicesToExcel } from "../utils/excelExport";
+import { triggerHaptic, showNativeToast, shareNativeContent } from "../utils/nativeBridge.js";
 
 const INITIAL_DEMO_INVOICES = [];
 
 const PRESET_SERVICES = [
   { name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 350, type: "service" },
   { name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 100, type: "service" },
-  { name: "3D Wheel Alignment & Balancing (अलाइनमेंट)", rate: 450, type: "service" },
   { name: "New Tyre Fitting & Nitrogen Fill (फिटिंग)", rate: 150, type: "service" },
   { name: "Doorstep Emergency Assistance (घर/रास्ते पर)", rate: 499, type: "service" },
   { name: "Nitrogen Air Fill - All 4 Tyres", rate: 100, type: "service" },
-  { name: "Wheel Weights / Lead balancing (per 50g)", rate: 80, type: "service" },
+  { name: "Tube Replacement / Valve Pin Change (ट्यूब/वॉल्व)", rate: 90, type: "service" },
   { name: "Tyre Rotation & Inspection", rate: 200, type: "service" },
 ];
 
@@ -134,13 +134,14 @@ export default function Billing() {
 
   // Add Item Row
   const addItemRow = (type = "tyre") => {
+    triggerHaptic("light");
     const newItem = {
       id: Date.now().toString(),
-      name: type === "service" ? "Wheel Alignment / Puncture Fix" : "New Tyre / Tube",
+      name: type === "service" ? "Puncture Repair / Tyre Fitting" : "New Tyre / Tube",
       type,
       qty: 1,
-      rate: type === "service" ? 350 : 2200,
-      amount: type === "service" ? 350 : 2200,
+      rate: type === "service" ? 150 : 2200,
+      amount: type === "service" ? 150 : 2200,
     };
     setInvoice((prev) => ({
       ...prev,
@@ -150,6 +151,7 @@ export default function Billing() {
 
   // Add Preset Service directly
   const addPresetService = (svc) => {
+    triggerHaptic("light");
     const newItem = {
       id: Date.now().toString(),
       name: svc.name,
@@ -166,6 +168,7 @@ export default function Billing() {
 
   // Remove Item Row
   const removeItemRow = (id) => {
+    triggerHaptic("warning");
     if (invoice.items.length <= 1) {
       alert("कम से कम एक आइटम बिल में होना चाहिए।");
       return;
@@ -206,6 +209,8 @@ export default function Billing() {
     setInvoices((prev) => [invoiceRecord, ...prev]);
     setLoading(false);
     setSavedSuccess(true);
+    triggerHaptic("success");
+    showNativeToast(`Bill #${invoiceRecord.invoiceNo} saved successfully!`);
     setTimeout(() => setSavedSuccess(false), 4000);
 
     // Open print preview modal automatically
@@ -892,6 +897,21 @@ export default function Billing() {
                           >
                             <Printer size={14} /> Print
                           </button>
+                          <button
+                            type="button"
+                            className="btn-tbl-share"
+                            onClick={() => {
+                              const itemsSummary = (inv.items || []).map((i) => `${i.name} (x${i.qty})`).join(", ");
+                              shareNativeContent({
+                                title: `TyreSaathi Invoice #${inv.invoiceNo}`,
+                                text: `🧾 TyreSaathi Retail Invoice\nBill No: #${inv.invoiceNo}\nCustomer: ${inv.customerName}\nTotal: ₹${inv.grandTotal}\nItems: ${itemsSummary}\nShop: ${inv.shopName || "TyreSaathi Partner"}`,
+                                dialogTitle: "Share Invoice"
+                              });
+                            }}
+                            title="Share Invoice via App / Sheet"
+                          >
+                            <Share2 size={14} /> Share
+                          </button>
                           <a
                             href={getWhatsAppShareUrl(inv)}
                             target="_blank"
@@ -921,6 +941,33 @@ export default function Billing() {
             <div className="print-modal-controls no-print">
               <h3>📄 Retail Invoice Print Preview</h3>
               <div className="print-controls-right">
+                <button
+                  type="button"
+                  className="btn-do-share"
+                  style={{
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                  onClick={() => {
+                    const itemsSummary = (printModalInvoice.items || []).map((i) => `${i.name} (x${i.qty})`).join(", ");
+                    shareNativeContent({
+                      title: `Invoice #${printModalInvoice.invoiceNo} - ${printModalInvoice.shopName}`,
+                      text: `🧾 TyreSaathi Invoice #${printModalInvoice.invoiceNo}\nCustomer: ${printModalInvoice.customerName} (${printModalInvoice.vehicleNumber || ""})\nTotal: ₹${printModalInvoice.grandTotal}\nItems: ${itemsSummary}\nShop: ${printModalInvoice.shopName}`,
+                      dialogTitle: "Share Invoice Slip"
+                    });
+                  }}
+                >
+                  <Share2 size={16} /> Share Slip
+                </button>
                 <button
                   type="button"
                   className="btn-do-print"

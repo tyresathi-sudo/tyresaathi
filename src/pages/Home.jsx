@@ -36,25 +36,81 @@ export default function Home() {
   const [shopAds, setShopAds] = useState(() => {
     try {
       const local = localStorage.getItem("tyresaathi_shop_ads");
-      return local ? JSON.parse(local) : INITIAL_SHOP_ADS;
+      if (local) {
+        const parsed = JSON.parse(local);
+        const cleaned = parsed.filter(
+          (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
+        );
+        return cleaned;
+      }
+      return [];
     } catch {
-      return INITIAL_SHOP_ADS;
+      return [];
     }
   });
 
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+
   useEffect(() => {
-    async function fetchAds() {
+    async function fetchAdsAndProducts() {
       try {
         const snap = await getDocs(collection(db, "shop_ads"));
         if (!snap.empty) {
           const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           setShopAds(list);
+          try {
+            localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(list));
+          } catch (e) {}
         }
       } catch (err) {
-        console.warn("Firestore ads load fallback:", err);
+        console.warn("Firestore ads load notice:", err);
+      }
+
+      try {
+        const prodSnap = await getDocs(collection(db, "products"));
+        if (!prodSnap.empty) {
+          const prodList = prodSnap.docs.map((d) => ({
+            id: d.id,
+            distanceKm: (1.2).toFixed(1),
+            isNearest: true,
+            ...d.data(),
+          }));
+          setFeaturedProducts(prodList);
+        } else {
+          setFeaturedProducts([]);
+        }
+      } catch (prodErr) {
+        console.warn("Firestore products load notice:", prodErr);
+        setFeaturedProducts([]);
+      } finally {
+        setLoadingProducts(false);
       }
     }
-    fetchAds();
+    fetchAdsAndProducts();
+
+    const handleAdsSync = (e) => {
+      try {
+        if (e?.detail && Array.isArray(e.detail)) {
+          setShopAds(e.detail);
+          return;
+        }
+        const local = localStorage.getItem("tyresaathi_shop_ads");
+        if (local) {
+          const parsed = JSON.parse(local);
+          setShopAds(parsed);
+        }
+      } catch (err) {
+        console.warn("Ads sync error:", err);
+      }
+    };
+
+    window.addEventListener("tyresaathi_ads_updated", handleAdsSync);
+    window.addEventListener("storage", handleAdsSync);
+    return () => {
+      window.removeEventListener("tyresaathi_ads_updated", handleAdsSync);
+      window.removeEventListener("storage", handleAdsSync);
+    };
   }, []);
 
   const handleHeroSearch = (e) => {
@@ -69,7 +125,7 @@ export default function Home() {
   const activeAds = shopAds.filter((a) => {
     if (a.isActive === false) return false;
     if (a.startDate && a.startDate > todayStr) return false;
-    if (a.endDate && a.endDate < todayStr) return false;
+    if (a.endDate && a.endDate.trim() !== "" && a.endDate < todayStr) return false;
     return true;
   });
 
@@ -83,7 +139,7 @@ export default function Home() {
             Find the Perfect Tyre for Your <span className="highlight-text">Car & Bike</span>
           </h1>
           <p className="hero-description">
-            Compare prices across nearest authorized tyre shops, get genuine brand warranty, and book 15-minute doorstep puncture or 3D alignment.
+            Compare prices across nearest authorized tyre shops, get genuine brand warranty, and book 15-minute doorstep puncture repair or instant tyre fitment.
           </p>
 
           {/* Quick Search Widget */}
@@ -203,35 +259,60 @@ export default function Home() {
           </Link>
         </div>
 
-        <div className="home-products-grid">
-          {INITIAL_FEATURED_PRODUCTS.slice(0, 4).map((p) => (
-            <div key={p.id} className="home-product-card">
-              <div className="product-image-box">
-                <img src={p.images[0]} alt={p.productName} />
-                <span className="dist-badge">📍 {p.distanceKm} km (Nearest)</span>
-              </div>
-              <div className="product-info-box">
-                <span className="brand-tag">{p.brandName} • {p.sizeName}</span>
-                <h4 className="prod-title">{p.productName}</h4>
-                <div className="price-line">
-                  <span className="deal-price">₹{p.offerPrice}</span>
-                  <span className="mrp-price">₹{p.originalPrice}</span>
+        {featuredProducts.length > 0 ? (
+          <div className="home-products-grid">
+            {featuredProducts.slice(0, 8).map((p) => {
+              const prodImg = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "/tyresaathi-logo.png";
+              return (
+                <div key={p.id} className="home-product-card">
+                  <div className="product-image-box">
+                    <img
+                      src={prodImg}
+                      alt={p.productName || "Tyre"}
+                      onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
+                    />
+                    <span className="dist-badge">📍 {p.distanceKm || "1.0"} km (Nearest)</span>
+                  </div>
+                  <div className="product-info-box">
+                    <span className="brand-tag">{p.brandName || "Tyre"} • {p.sizeName || p.size || ""}</span>
+                    <h4 className="prod-title">{p.productName || p.title}</h4>
+                    <div className="price-line">
+                      <span className="deal-price">₹{p.offerPrice || p.price}</span>
+                      {p.originalPrice && <span className="mrp-price">₹{p.originalPrice}</span>}
+                    </div>
+                    <div className="shop-line">
+                      <small>🏪 {p.shopName || "TyreSaathi Partner"}</small>
+                    </div>
+                    <div className="btn-row">
+                      <Link to="/bookings" className="btn-book">
+                        <Calendar size={13} /> Book Service
+                      </Link>
+                      <Link to="/store-location" className="btn-call" title="View Hub Location">
+                        <MapPin size={13} />
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-                <div className="shop-line">
-                  <small>🏪 {p.shopName}</small>
-                </div>
-                <div className="btn-row">
-                  <Link to="/bookings" className="btn-book">
-                    <Calendar size={13} /> Book Service
-                  </Link>
-                  <Link to="/store-location" className="btn-call" title="View Hub Location">
-                    <MapPin size={13} />
-                  </Link>
-                </div>
-              </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="empty-prod-card-wrap">
+            <div className="empty-prod-icon">🛞</div>
+            <h3 className="empty-prod-heading">No Live Tyres Listed In Your Area Yet</h3>
+            <p className="empty-prod-sub">
+              Tyre shops and dealers can list their real tyre inventory, sizes and offers here.
+            </p>
+            <div className="empty-prod-btn-row">
+              <Link to="/shop/add-product" className="btn-empty-add">
+                ➕ List Tyres For Your Shop (टायर लिस्ट करें)
+              </Link>
+              <Link to="/search" className="btn-empty-search">
+                🔍 Browse All Tyre Sizes
+              </Link>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </section>
 
       {/* 🛠️ 5. Instant Service Booking Banner */}
@@ -256,7 +337,7 @@ export default function Home() {
           <div className="store-cta-text">
             <h2>📍 Find a TyreSaathi Authorized Store Near You</h2>
             <p>
-              Connect with verified local partner tyre shops with 3D Wheel Alignment machines, Nitrogen filling, and genuine brand tyre stocks.
+              Connect with verified local partner tyre shops with instant Nitrogen filling, puncture repair, and 100% genuine brand tyre stocks.
             </p>
             <div className="store-sample-pills">
               <span>📍 Raipur (Rawabhatha)</span>
@@ -630,6 +711,68 @@ export default function Home() {
           display: flex;
           gap: 6px;
           margin-top: auto;
+        }
+
+        /* Empty state styling */
+        .empty-prod-card-wrap {
+          background: var(--surface);
+          border: 1.5px dashed var(--border);
+          border-radius: 12px;
+          padding: 36px 20px;
+          text-align: center;
+          margin: 10px 0;
+        }
+        .empty-prod-icon {
+          font-size: 38px;
+          margin-bottom: 8px;
+        }
+        .empty-prod-heading {
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: var(--text);
+          margin: 0 0 6px;
+        }
+        .empty-prod-sub {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          max-width: 480px;
+          margin: 0 auto 16px;
+          line-height: 1.4;
+        }
+        .empty-prod-btn-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .btn-empty-add {
+          background: #c0392b;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.82rem;
+          text-decoration: none;
+          transition: transform 0.15s ease, background 0.15s ease;
+        }
+        .btn-empty-add:hover {
+          background: #a93226;
+          transform: translateY(-2px);
+        }
+        .btn-empty-search {
+          background: var(--surface-2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.82rem;
+          text-decoration: none;
+          transition: border-color 0.15s ease;
+        }
+        .btn-empty-search:hover {
+          border-color: #c0392b;
         }
         .btn-book {
           flex: 1;

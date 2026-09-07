@@ -41,12 +41,17 @@ import {
   QrCode,
   CreditCard,
   Copy,
-  Check
+  Check,
+  Upload,
+  Camera,
+  Loader2,
+  Image as ImageIcon
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase";
+import { db, storage } from "../firebase";
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { 
   exportBookingsToExcel, 
   exportInvoicesToExcel, 
@@ -67,20 +72,7 @@ import {
   DEFAULT_BANK_CONFIG 
 } from "../config/paymentConfig";
 
-const SAMPLE_ADMIN_SHOPS = [
-  {
-    uid: "admin-master-01",
-    name: "TyreSaathi Master Admin",
-    email: "tyresathi@gmail.com",
-    phone: "8877277757",
-    role: "admin",
-    shopName: "TyreSaathi Central Headquarters",
-    shopApproved: true,
-    city: "Raipur, Chhattisgarh",
-    address: "Transport Nagar, Rawabhatha, Raipur, Chhattisgarh",
-    createdAt: "2026-08-01"
-  }
-];
+const SAMPLE_ADMIN_SHOPS = [];
 
 const SAMPLE_GLOBAL_BOOKINGS = [];
 const SAMPLE_ADMIN_INVOICES = [];
@@ -141,9 +133,16 @@ export default function AdminPanel() {
   const [ads, setAds] = useState(() => {
     try {
       const local = localStorage.getItem("tyresaathi_shop_ads");
-      return local ? JSON.parse(local) : INITIAL_SHOP_ADS;
+      if (local) {
+        const parsed = JSON.parse(local);
+        const cleaned = parsed.filter(
+          (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
+        );
+        return cleaned;
+      }
+      return [];
     } catch {
-      return INITIAL_SHOP_ADS;
+      return [];
     }
   });
   const [adModalOpen, setAdModalOpen] = useState(false);
@@ -156,16 +155,47 @@ export default function AdminPanel() {
     description: "",
     phone: "",
     whatsapp: "",
-    city: "Raipur",
+    city: "Muzaffarpur",
     customCity: "",
     address: "",
     startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     gradient: AD_THEMES[0].gradient,
     badgeColor: AD_THEMES[0].badgeColor,
+    imageUrl: "",
     isActive: true,
     featured: true,
   });
+
+  const [uploadingAdImage, setUploadingAdImage] = useState(false);
+
+  // Upload Ad Photo / Poster Image
+  const handleAdImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Kripya 5MB se chhota photo chunein!");
+      return;
+    }
+
+    setUploadingAdImage(true);
+    try {
+      const storageRef = ref(storage, `shop_ads/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+      setAdForm((prev) => ({ ...prev, imageUrl: downloadUrl }));
+    } catch (err) {
+      console.warn("Storage upload fallback to base64 Data URL:", err);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setAdForm((prev) => ({ ...prev, imageUrl: ev.target.result }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingAdImage(false);
+    }
+  };
 
   // Custom Color State
   const [customColor1, setCustomColor1] = useState("#1e3c72");
@@ -391,23 +421,68 @@ export default function AdminPanel() {
     setReplyText("");
   };
 
-  // Toggle Ad Active / Inactive
-  const handleToggleAdStatus = (id) => {
+  // Toggle Ad Active / Inactive & Auto-extend if expired
+  const handleToggleAdStatus = async (id) => {
+    const today = new Date().toISOString().split("T")[0];
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    let targetUpdatedAd = null;
+
     setAds((prev) => {
-      const updated = prev.map((a) => (a.id === id ? { ...a, isActive: !a.isActive } : a));
+      const updated = prev.map((a) => {
+        if (a.id === id) {
+          const nextActive = a.isActive === false ? true : false;
+          let newStartDate = a.startDate || today;
+          let newEndDate = a.endDate;
+
+          // If turning active and date is expired or in the past, auto-extend to +30 days
+          if (nextActive) {
+            if (!newEndDate || newEndDate < today) {
+              newStartDate = today;
+              newEndDate = nextMonth;
+            }
+          }
+
+          const modified = {
+            ...a,
+            isActive: nextActive,
+            startDate: newStartDate,
+            endDate: newEndDate,
+          };
+          targetUpdatedAd = modified;
+          return modified;
+        }
+        return a;
+      });
+
       localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
       return updated;
     });
+
+    if (targetUpdatedAd) {
+      try {
+        await setDoc(doc(db, "shop_ads", id), targetUpdatedAd, { merge: true });
+      } catch (err) {
+        console.warn("Firestore ad status sync notice:", err);
+      }
+    }
   };
 
   // Delete Ad
-  const handleDeleteAd = (id) => {
+  const handleDeleteAd = async (id) => {
     if (window.confirm("Kya aap sach me is dukan ke ad ko delete karna chahte hain?")) {
       setAds((prev) => {
         const updated = prev.filter((a) => a.id !== id);
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
         return updated;
       });
+      try {
+        await deleteDoc(doc(db, "shop_ads", id));
+      } catch (err) {
+        console.warn("Firestore ad delete sync notice:", err);
+      }
     }
   };
 
@@ -415,7 +490,7 @@ export default function AdminPanel() {
   const handleOpenCreateAd = () => {
     setEditingAdId(null);
     const today = new Date().toISOString().split("T")[0];
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     setAdForm({
       shopName: "",
       tagline: "",
@@ -423,13 +498,14 @@ export default function AdminPanel() {
       description: "",
       phone: "",
       whatsapp: "",
-      city: "Raipur",
+      city: "Muzaffarpur",
       customCity: "",
       address: "",
       startDate: today,
-      endDate: nextWeek,
+      endDate: nextMonth,
       gradient: AD_THEMES[0].gradient,
       badgeColor: AD_THEMES[0].badgeColor,
+      imageUrl: "",
       isActive: true,
       featured: true,
     });
@@ -441,7 +517,7 @@ export default function AdminPanel() {
   const handleOpenEditAd = (ad) => {
     setEditingAdId(ad.id);
     const today = new Date().toISOString().split("T")[0];
-    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const isPreset = AD_THEMES.some((t) => t.gradient === ad.gradient);
     const isCityInList = POPULAR_CITIES.includes(ad.city);
     setShowCustomColorPicker(!isPreset);
@@ -452,13 +528,14 @@ export default function AdminPanel() {
       description: ad.description || "",
       phone: ad.phone || "",
       whatsapp: ad.whatsapp || "",
-      city: isCityInList ? (ad.city || "Raipur") : "Other",
+      city: isCityInList ? (ad.city || "Muzaffarpur") : "Other",
       customCity: !isCityInList ? (ad.city || "") : "",
       address: ad.address || "",
       startDate: ad.startDate || today,
-      endDate: ad.endDate || (ad.endDate === "" ? "" : nextWeek),
+      endDate: ad.endDate || (ad.endDate === "" ? "" : nextMonth),
       gradient: ad.gradient || AD_THEMES[0].gradient,
       badgeColor: ad.badgeColor || AD_THEMES[0].badgeColor,
+      imageUrl: ad.imageUrl || "",
       isActive: ad.isActive !== false,
       featured: ad.featured || false,
     });
@@ -477,45 +554,80 @@ export default function AdminPanel() {
   };
 
   // Save Ad (Publish Live or Save as Draft)
-  const handleSaveAd = (e, asDraft = false) => {
+  const handleSaveAd = async (e, asDraft = false) => {
     if (e) e.preventDefault();
     if (!adForm.shopName.trim() || !adForm.tagline.trim()) {
       alert("Kripya Shop Name aur Offer Tagline zaroor bharein!");
       return;
     }
 
+    const today = new Date().toISOString().split("T")[0];
+    const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
     const finalCity = adForm.city === "Other" 
       ? (adForm.customCity.trim() || "Local") 
       : adForm.city;
 
+    const isActive = asDraft ? false : true;
+    let startDate = adForm.startDate || today;
+    let endDate = adForm.endDate;
+
+    // If active and end date is expired, auto-extend to next month
+    if (isActive && endDate && endDate < today) {
+      endDate = nextMonth;
+    }
+
     const payload = {
       ...adForm,
       city: finalCity,
-      isActive: asDraft ? false : true,
+      startDate,
+      endDate,
+      isActive,
     };
+
+    let targetId = editingAdId;
+    let targetAd = null;
 
     if (editingAdId) {
       setAds((prev) => {
-        const updated = prev.map((a) => (a.id === editingAdId ? { ...a, ...payload } : a));
+        const updated = prev.map((a) => {
+          if (a.id === editingAdId) {
+            targetAd = { ...a, ...payload };
+            return targetAd;
+          }
+          return a;
+        });
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
         return updated;
       });
     } else {
+      targetId = `ad-${Date.now()}`;
       const newAdItem = {
-        id: `ad-${Date.now()}`,
+        id: targetId,
         ...payload,
         views: 0,
         clicks: 0,
-        createdAt: new Date().toISOString().split("T")[0],
+        createdAt: today,
       };
+      targetAd = newAdItem;
       setAds((prev) => {
         const updated = [newAdItem, ...prev];
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
         return updated;
       });
     }
 
     setAdModalOpen(false);
+
+    if (targetId && targetAd) {
+      try {
+        await setDoc(doc(db, "shop_ads", targetId), targetAd, { merge: true });
+      } catch (err) {
+        console.warn("Firestore ad save sync notice:", err);
+      }
+    }
   };
 
   // Calculations
@@ -1911,12 +2023,26 @@ export default function AdminPanel() {
                       </span>
                     </div>
 
-                    <h4 className="prev-shop-name">{ad.shopName}</h4>
-                    <p className="prev-tagline">{ad.tagline}</p>
-                    <p className="prev-desc">{ad.description}</p>
-                    <div className="prev-meta">
-                      <span>📍 {ad.city}</span>
-                      {ad.address && <span>🏠 {ad.address}</span>}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 className="prev-shop-name">{ad.shopName}</h4>
+                        <p className="prev-tagline">{ad.tagline}</p>
+                        <p className="prev-desc">{ad.description}</p>
+                        <div className="prev-meta">
+                          <span>📍 {ad.city}</span>
+                          {ad.address && <span>🏠 {ad.address}</span>}
+                        </div>
+                      </div>
+                      {ad.imageUrl && (
+                        <div style={{ width: "84px", height: "64px", borderRadius: "8px", overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", flexShrink: 0, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>
+                          <img
+                            src={ad.imageUrl}
+                            alt={ad.shopName}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                            onError={(e) => { e.target.style.display = "none"; }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1929,11 +2055,15 @@ export default function AdminPanel() {
 
                     <div className="ad-toggle-wrap">
                       <button
-                        className={`btn-toggle-ad ${ad.isActive !== false ? "btn-toggle-active" : "btn-toggle-inactive"}`}
+                        className={`btn-toggle-ad ${scheduleInfo.status === "active" ? "btn-toggle-active" : "btn-toggle-inactive"}`}
                         onClick={() => handleToggleAdStatus(ad.id)}
                       >
                         <Power size={13} />
-                        {ad.isActive !== false ? "Ad Pause Karein" : "Ad Live Karein"}
+                        {scheduleInfo.status === "active"
+                          ? "Ad Pause Karein"
+                          : scheduleInfo.status === "expired"
+                          ? "⚡ Renew & Make Live (+30d)"
+                          : "⚡ Ad Live Karein"}
                       </button>
                     </div>
                   </div>
@@ -1979,7 +2109,7 @@ export default function AdminPanel() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Star Tyre & 3D Alignment Hub"
+                      placeholder="e.g. Star Tyre & Express Hub"
                       value={adForm.shopName}
                       onChange={(e) => setAdForm({ ...adForm, shopName: e.target.value })}
                     />
@@ -2001,7 +2131,7 @@ export default function AdminPanel() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Free 3D Alignment on purchase of 4 Car Tyres!"
+                      placeholder="e.g. Free Nitrogen Air & Valve Fitting on 4 Tyres!"
                       value={adForm.tagline}
                       onChange={(e) => setAdForm({ ...adForm, tagline: e.target.value })}
                     />
@@ -2069,6 +2199,84 @@ export default function AdminPanel() {
                         onChange={(e) => setAdForm({ ...adForm, address: e.target.value })}
                       />
                     </div>
+                  </div>
+
+                  {/* 📸 Shop Offer Banner / Poster Image Upload */}
+                  <div className="modal-field" style={{ background: "rgba(0,0,0,0.02)", padding: "14px", borderRadius: "12px", border: "1.5px dashed var(--border)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", margin: 0, color: "var(--heading, #1e293b)" }}>
+                        <Camera size={16} color="#c0392b" /> 📸 Shop Photo / Offer Image (दुकान या ऑफर का फोटो)
+                      </label>
+                      {adForm.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setAdForm((prev) => ({ ...prev, imageUrl: "" }))}
+                          style={{ background: "none", border: "none", color: "#e74c3c", fontSize: "12px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <Trash2 size={13} /> Remove Photo
+                        </button>
+                      )}
+                    </div>
+
+                    {adForm.imageUrl ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", background: "var(--surface)", padding: "10px", borderRadius: "10px", border: "1px solid var(--border)" }}>
+                        <img
+                          src={adForm.imageUrl}
+                          alt="Offer Preview"
+                          style={{ width: "90px", height: "65px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border)" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: "12px", fontWeight: "700", color: "#27ae60", display: "block" }}>
+                            ✅ Photo Uploaded Successfully
+                          </span>
+                          <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>
+                            Ye photo Homepage slider banner par offer ke sath dikhegi.
+                          </small>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="file"
+                          id="admin-ad-image-file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={handleAdImageUpload}
+                          disabled={uploadingAdImage}
+                        />
+                        <label
+                          htmlFor="admin-ad-image-file"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                            padding: "14px",
+                            borderRadius: "10px",
+                            background: "var(--surface)",
+                            border: "1.5px dashed #c0392b",
+                            color: "#c0392b",
+                            fontWeight: "700",
+                            fontSize: "13px",
+                            cursor: uploadingAdImage ? "not-allowed" : "pointer",
+                            textAlign: "center"
+                          }}
+                        >
+                          {uploadingAdImage ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" /> Uploading image to Cloud...
+                            </>
+                          ) : (
+                            <>
+                              <Upload size={16} /> 📁 Click to Upload Shop / Offer Photo (Gallery se chunein)
+                            </>
+                          )}
+                        </label>
+                        <small style={{ color: "var(--text-muted)", fontSize: "11px", display: "block", marginTop: "4px" }}>
+                          * JPG, PNG, WEBP supported (Max 5MB). Photo upload karne par banner aur aakarshak lagega.
+                        </small>
+                      </div>
+                    )}
                   </div>
 
                   {/* ⏰ Date & Time Schedule & Auto-Expiry */}
@@ -2244,10 +2452,19 @@ export default function AdminPanel() {
                     </div>
 
                     <div className="ad-card-body">
-                      <h3 className="ad-shop-name">{adForm.shopName || "Dukan Ka Naam"}</h3>
-                      <h4 className="ad-tagline">{adForm.tagline || "Offer Headline Yahan Dikhegi"}</h4>
-                      <p className="ad-desc">{adForm.description || "Offer ka poora vivran yahan customer ko dikhega..."}</p>
-                      {adForm.address && <div className="ad-address-snippet">🏠 {adForm.address}</div>}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 className="ad-shop-name">{adForm.shopName || "Dukan Ka Naam"}</h3>
+                          <h4 className="ad-tagline">{adForm.tagline || "Offer Headline Yahan Dikhegi"}</h4>
+                          <p className="ad-desc">{adForm.description || "Offer ka poora vivran yahan customer ko dikhega..."}</p>
+                          {adForm.address && <div className="ad-address-snippet">🏠 {adForm.address}</div>}
+                        </div>
+                        {adForm.imageUrl && (
+                          <div style={{ width: "90px", height: "70px", borderRadius: "8px", overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.4)", flexShrink: 0, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>
+                            <img src={adForm.imageUrl} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="ad-card-actions">

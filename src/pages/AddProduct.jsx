@@ -487,7 +487,7 @@ export default function AddProduct() {
                   type="text"
                   value={form.serviceName}
                   onChange={(e) => updateField("serviceName", e.target.value)}
-                  placeholder="e.g. Tyre Cut Repair / Wheel Alignment"
+                  placeholder="e.g. Tyre Cut Repair / Puncture Fix"
                   className="smart-text-input"
                   required
                 />

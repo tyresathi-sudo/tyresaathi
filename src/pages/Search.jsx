@@ -32,7 +32,8 @@ export default function Search() {
   const [selectedBrand, setSelectedBrand] = useState(brandParam);
   const [selectedCategory, setSelectedCategory] = useState(categoryParam);
   const [selectedSize, setSelectedSize] = useState("all");
-  const [products, setProducts] = useState(INITIAL_FEATURED_PRODUCTS);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Sync state with URL params if they change
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function Search() {
     if (categoryParam) setSelectedCategory(categoryParam);
   }, [queryParam, brandParam, categoryParam]);
 
-  // Load any newly published products from Firestore
+  // Load real published products from Firestore
   useEffect(() => {
     async function loadFirestoreProducts() {
       try {
@@ -49,19 +50,19 @@ export default function Search() {
         if (!snap.empty) {
           const fetched = snap.docs.map((d) => ({
             id: d.id,
-            distanceKm: 2.5, // default local distance for freshly added products
+            distanceKm: (1.5).toFixed(1),
             isNearest: true,
             ...d.data(),
           }));
-          // Merge with initial catalog
-          setProducts((prev) => {
-            const combined = [...fetched, ...INITIAL_FEATURED_PRODUCTS];
-            const unique = Array.from(new Map(combined.map((item) => [item.id, item])).values());
-            return unique;
-          });
+          setProducts(fetched);
+        } else {
+          setProducts([]);
         }
       } catch (e) {
-        console.warn("Using default catalog items:", e);
+        console.warn("Firestore products load notice:", e);
+        setProducts([]);
+      } finally {
+        setLoading(false);
       }
     }
     loadFirestoreProducts();
@@ -489,9 +490,9 @@ export default function Search() {
 function ProductCard({ product }) {
   const images = Array.isArray(product.images) && product.images.length > 0
     ? product.images
-    : ["https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=600&auto=format&fit=crop&q=80"];
+    : [product.imageUrl || "/tyresaathi-logo.png"];
 
-  const [selectedImg, setSelectedImg] = useState(images[0]);
+  const [selectedImg, setSelectedImg] = useState(images[0] || "/tyresaathi-logo.png");
 
   const discount = (() => {
     const mrp = Number(product.originalPrice || 0);
@@ -503,7 +504,12 @@ function ProductCard({ product }) {
     <div className="product-item-card">
       {/* Top Image Box */}
       <div className="card-img-wrapper">
-        <img src={selectedImg} alt={product.productName} className="main-card-img" />
+        <img
+          src={selectedImg}
+          alt={product.productName || "Tyre"}
+          className="main-card-img"
+          onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
+        />
 
         {discount > 0 && (
           <span className="card-discount-pill">{discount}% OFF</span>

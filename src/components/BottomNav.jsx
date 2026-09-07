@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { BOTTOM_NAV_ITEMS } from "../config/navItems.js";
+import { triggerHaptic } from "../utils/nativeBridge.js";
 
 export default function BottomNav() {
   return (
@@ -10,6 +11,7 @@ export default function BottomNav() {
           key={to}
           to={to}
           end={end}
+          onClick={() => triggerHaptic("light")}
           className={({ isActive }) => "bottom-nav-btn" + (isActive ? " bottom-nav-btn-active" : "")}
         >
           <div className="icon-wrapper">

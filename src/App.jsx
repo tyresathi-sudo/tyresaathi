@@ -1,7 +1,10 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect, useRef } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Layout from "./components/Layout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import NetworkStatusBanner from "./components/NetworkStatusBanner.jsx";
+import AppUpdateChecker from "./components/AppUpdateChecker.jsx";
+import { initNativeFeatures, registerHardwareBackButton } from "./utils/nativeBridge.js";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
@@ -23,8 +26,28 @@ import ShopAnalytics from "./pages/ShopAnalytics.jsx";
 import Subscription from "./pages/Subscription.jsx";
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const locationRef = useRef(location);
+
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
+
+  useEffect(() => {
+    // 1. Initialize native splash, status bar, and local notification channels
+    initNativeFeatures();
+
+    // 2. Register Android hardware back button handler
+    const unregisterBack = registerHardwareBackButton(navigate, locationRef);
+    return () => unregisterBack();
+  }, [navigate]);
+
   return (
-    <Routes>
+    <>
+      <NetworkStatusBanner />
+      <AppUpdateChecker />
+      <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -64,5 +87,6 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </>
   );
 }

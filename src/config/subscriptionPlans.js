@@ -14,7 +14,7 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     color: "#2F9E44",
     features: [
       "🏪 Basic Shop Profile & Google Maps Location",
-      "📅 Up to 20 Service Bookings / Month",
+      "📅 Up to 50 Service Bookings / Month",
       "📞 Direct Customer Phone Call & WhatsApp Button",
       "📄 Basic In-Store Bill Generator",
       "📱 Customer Ratings & Feedback Support",
@@ -91,6 +91,14 @@ export function getActiveSubscriptionConfig() {
     const saved = localStorage.getItem("tyresaathi_subscription_settings");
     if (saved) {
       const parsed = JSON.parse(saved);
+      if (parsed.plans) {
+        parsed.plans = parsed.plans.map((p) => {
+          if (p.id === "free_lifetime" && Array.isArray(p.features)) {
+            p.features = p.features.map((f) => f.replace("20 Service Bookings", "50 Service Bookings"));
+          }
+          return p;
+        });
+      }
       return { ...DEFAULT_PLAN_SETTINGS, ...parsed };
     }
   } catch (e) {

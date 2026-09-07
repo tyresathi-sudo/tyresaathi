@@ -6,9 +6,9 @@ import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 
 export default function StoreLocation() {
-  const [shopsList, setShopsList] = useState(SAMPLE_SHOPS);
+  const [shopsList, setShopsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedShop, setSelectedShop] = useState(SAMPLE_SHOPS[0]);
+  const [selectedShop, setSelectedShop] = useState(null);
   const [filterCity, setFilterCity] = useState("all");
 
   // Track page view on load
@@ -27,7 +27,7 @@ export default function StoreLocation() {
             .filter((u) => u.role === "vendor" || u.role === "admin" || u.shopName);
           if (vendors.length > 0) {
             const mapped = vendors.map((v, idx) => {
-              const shopServices = v.services || v.servicesOffered || ["3D Wheel Alignment", "Tubeless Tyre Repair", "Nitrogen Air Fill", "Laser Wheel Balancing"];
+              const shopServices = v.services || v.servicesOffered || ["Tyre Fitting & Replacement", "Tubeless Tyre Repair", "Nitrogen Air Fill", "Tyre Cut & Sidewall Repair"];
               return {
                 id: v.id || v.uid,
                 name: v.shopName || v.name || "TyreSaathi Partner Hub",
@@ -65,7 +65,7 @@ export default function StoreLocation() {
     return matchesSearch && matchesCity;
   });
 
-  const cities = ["all", ...new Set(shopsList.map((s) => s.city))];
+  const cities = ["all", ...new Set(shopsList.filter((s) => s && s.city).map((s) => s.city))];
 
   return (
     <div className="store-location-page">
@@ -203,7 +203,7 @@ export default function StoreLocation() {
                 </span>
               </div>
               <div className="popup-services">
-                <strong>Services:</strong> {(selectedShop.servicesOffered || selectedShop.services || ["Tyre Replacement", "Wheel Alignment", "Puncture Repair"]).join(" • ")}
+                <strong>Services:</strong> {(selectedShop.servicesOffered || selectedShop.services || ["Tyre Replacement", "Puncture Repair", "Nitrogen Air Fill", "Cut Repair"]).join(" • ")}
               </div>
               <div className="popup-action-buttons">
                 <a

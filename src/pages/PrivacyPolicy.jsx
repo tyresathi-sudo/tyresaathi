@@ -41,7 +41,7 @@ export default function PrivacyPolicy() {
               <strong>Workshop & Inventory Data:</strong> For shopkeepers, we process tyre product listings, tyre sizes, stock quantities, invoice bills, and pricing data entered by you.
             </li>
             <li>
-              <strong>Transaction & Booking Records:</strong> Details of tyre replacement appointments, wheel alignment requests, cut repair requests, and invoices generated.
+              <strong>Transaction & Booking Records:</strong> Details of tyre replacement appointments, puncture & cut repair requests, and invoices generated.
             </li>
           </ul>
         </section>
@@ -52,7 +52,7 @@ export default function PrivacyPolicy() {
           <ul>
             <li>
               📍 <strong>Location (ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION):</strong> 
-              Used solely to calculate real-time distance and display the nearest authorized tyre shops, alignment hubs, and doorstep mechanics to you. Location data is never sold or tracked in the background when the app is closed.
+              Used solely to calculate real-time distance and display the nearest authorized tyre shops, fitment hubs, and doorstep mechanics to you. Location data is never sold or tracked in the background when the app is closed.
             </li>
             <li>
               📷 <strong>Camera (CAMERA):</strong> 

@@ -31,11 +31,12 @@ import {
 import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
 import { logBookingToSheet } from "../utils/googleSheets";
+import { triggerHaptic, showNativeToast, scheduleServiceReminder } from "../utils/nativeBridge.js";
 
 export default function Bookings() {
   const { user, profile, isVendor } = useAuth();
   const [bookings, setBookings] = useState([]);
-  const [availableShops, setAvailableShops] = useState(SAMPLE_SHOPS);
+  const [availableShops, setAvailableShops] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,7 +57,7 @@ export default function Bookings() {
               phone: v.phone || "8877277757",
               city: v.city || "Raipur",
               address: v.address || "TyreSaathi Partner Hub",
-              services: v.services || ["3D Wheel Alignment", "Tubeless Repair", "Tyre Sales"],
+              services: v.services || ["Tyre Replacement & Fitting", "Tubeless Puncture Repair", "Tyre Cut Repair", "Nitrogen Air Fill"],
               rating: 4.9,
               reviewsCount: 24
             }));
@@ -80,11 +81,11 @@ export default function Bookings() {
 
   // New Booking Form State
   const [newBooking, setNewBooking] = useState({
-    serviceId: SERVICE_TYPES[0].id,
-    serviceName: SERVICE_TYPES[0].name,
-    shopId: SAMPLE_SHOPS[0].id,
-    shopName: SAMPLE_SHOPS[0].name,
-    shopPhone: SAMPLE_SHOPS[0].phone,
+    serviceId: SERVICE_TYPES[0]?.id || "puncture",
+    serviceName: SERVICE_TYPES[0]?.name || "Tubeless Puncture Repair",
+    shopId: "",
+    shopName: profile?.shopName || "TyreSaathi Partner Hub",
+    shopPhone: profile?.phone || "",
     customerName: profile?.name || "",
     customerPhone: profile?.phone || "",
     vehicleType: "Car / SUV",
@@ -174,6 +175,13 @@ export default function Bookings() {
     } finally {
       setLoading(false);
       setModalOpen(false);
+      triggerHaptic("success");
+      scheduleServiceReminder({
+        title: "TyreSaathi Service Scheduled! 🚗",
+        body: `Booking for ${bookingData.vehicleNumber} at ${bookingData.shopName || "Tyre Hub"} has been registered.`,
+        scheduleInSeconds: 5,
+      });
+      showNativeToast("✅ Booking Submitted Successfully!");
       alert("✅ Aapki Booking Shop Owner ko bhej di gayi hai! Dukan se call ya approval status yahan dikhega.");
     }
   };
