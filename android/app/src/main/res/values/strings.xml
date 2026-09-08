@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">TyreSaathi</string>
     <string name="title_activity_main">TyreSaathi</string>
-    <string name="package_name">com.tyresaathi.app</string>
-    <string name="custom_url_scheme">com.tyresaathi.app</string>
+    <string name="package_name">com.tyresaathi.official</string>
+    <string name="custom_url_scheme">com.tyresaathi.official</string>
 </resources>

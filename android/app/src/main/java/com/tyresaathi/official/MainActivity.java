@@ -1,4 +1,4 @@
-package com.tyresaathi.app;
+package com.tyresaathi.official;
 
 import com.getcapacitor.BridgeActivity;
 
