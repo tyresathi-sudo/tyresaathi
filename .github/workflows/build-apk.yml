@@ -19,14 +19,6 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Licenses & Install Android SDK 36
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
-
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -40,7 +32,7 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor Android
-        run: npx --yes @capacitor/cli sync android
+        run: npx cap sync android
         env:
           CI: true
           CAPACITOR_TELEMETRY: false
@@ -57,7 +49,7 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease assembleDebug --stacktrace --no-daemon
+          ./gradlew assembleDebug assembleRelease --stacktrace --no-daemon
 
       - name: Prepare APK Outputs
         run: |
