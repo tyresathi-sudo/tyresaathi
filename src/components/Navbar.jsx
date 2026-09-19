@@ -32,9 +32,18 @@ export default function Navbar({ onMenuClick }) {
 
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const megaMenuRef = useRef(null);
   const userDropdownRef = useRef(null);
+  const mobileSearchInputRef = useRef(null);
+
+  // Focus mobile search input when opened
+  useEffect(() => {
+    if (mobileSearchOpen && mobileSearchInputRef.current) {
+      mobileSearchInputRef.current.focus();
+    }
+  }, [mobileSearchOpen]);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -53,6 +62,7 @@ export default function Navbar({ onMenuClick }) {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setMobileSearchOpen(false);
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
@@ -306,18 +316,79 @@ export default function Navbar({ onMenuClick }) {
 
           {/* Mobile Right Action Group (Clean, balanced app-bar buttons) */}
           <div className="mobile-right-actions">
+            <button 
+              className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`} 
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)} 
+              title="Search Tyres"
+              aria-label="Search"
+            >
+              <Search size={19} />
+            </button>
             {isVendor && (
-              <Link to="/shop/add-product" className="mobile-icon-btn" title="Add Product" aria-label="Add Product">
-                <PlusCircle size={20} color="#c0392b" />
+              <Link to="/shop/add-product" className="mobile-icon-btn mobile-add-btn" title="Add Product" aria-label="Add Product">
+                <PlusCircle size={19} color="#c0392b" />
               </Link>
             )}
             <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
-              {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
-              <User size={19} />
+              <User size={18} />
             </Link>
           </div>
+        </div>
+
+        {/* 📱 Mobile Collapsible Search Row */}
+        {mobileSearchOpen && (
+          <div className="mobile-search-bar-wrap">
+            <form onSubmit={handleSearchSubmit} className="mobile-search-form">
+              <Search size={16} className="mobile-search-icon" />
+              <input
+                ref={mobileSearchInputRef}
+                type="text"
+                placeholder="Search tyres, sizes (e.g. 185/65 R15)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button type="button" className="mobile-search-clear" onClick={() => setSearchQuery("")}>
+                  <X size={15} />
+                </button>
+              )}
+              <button type="submit" className="mobile-search-submit">Search</button>
+            </form>
+          </div>
+        )}
+
+        {/* 📱 Mobile Quick Navigation Pill Strip (Matches Top Header on Mobile) */}
+        <div className="mobile-nav-pills-bar">
+          <NavLink to="/" end className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
+            🏠 Home
+          </NavLink>
+          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("car")}>
+            🚗 Car Tyres
+          </button>
+          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("bike")}>
+            🏍️ Bike Tyres
+          </button>
+          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("commercial")}>
+            🚚 Commercial
+          </button>
+          <NavLink to="/store-location" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
+            📍 Stores
+          </NavLink>
+          <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
+            📑 Bookings
+          </NavLink>
+          <NavLink to="/billing" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
+            🧾 Billing
+          </NavLink>
+          <NavLink to="/subscription" className={({ isActive }) => `mobile-nav-pill pill-gold ${isActive ? "active" : ""}`}>
+            👑 Plans
+          </NavLink>
+          <NavLink to="/privacy-policy" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
+            ℹ️ About
+          </NavLink>
         </div>
       </div>
 
@@ -510,14 +581,122 @@ export default function Navbar({ onMenuClick }) {
           background: var(--surface-2);
           transform: scale(0.92);
         }
+        .mobile-icon-active {
+          background: rgba(192, 57, 43, 0.12) !important;
+          color: #c0392b !important;
+        }
+
+        /* Mobile Collapsible Search Row */
+        .mobile-search-bar-wrap {
+          padding: 8px 12px 10px;
+          background: var(--surface);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+          animation: mobileSlideDown 0.18s ease-out;
+        }
+        @keyframes mobileSlideDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .mobile-search-form {
+          display: flex;
+          align-items: center;
+          background: var(--bg);
+          border: 1.5px solid #c0392b;
+          border-radius: 10px;
+          padding: 6px 10px;
+          gap: 8px;
+        }
+        .mobile-search-icon {
+          color: #c0392b;
+          flex-shrink: 0;
+        }
+        .mobile-search-form input {
+          border: none;
+          background: none;
+          outline: none;
+          font-size: 13.5px;
+          width: 100%;
+          color: var(--text);
+          font-weight: 500;
+        }
+        .mobile-search-clear {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+        }
+        .mobile-search-submit {
+          background: #c0392b;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 4px 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        /* Mobile Quick Navigation Pill Strip */
+        .mobile-nav-pills-bar {
+          display: none;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 6px 10px 8px;
+          background: var(--surface);
+          border-top: 1px solid rgba(128, 128, 128, 0.12);
+          gap: 6px;
+          white-space: nowrap;
+          -webkit-overflow-scrolling: touch;
+        }
+        .mobile-nav-pills-bar::-webkit-scrollbar {
+          display: none;
+        }
+        .mobile-nav-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 11px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text);
+          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          text-decoration: none;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+        }
+        .mobile-nav-pill:active {
+          transform: scale(0.95);
+        }
+        .mobile-nav-pill.active {
+          background: #c0392b !important;
+          color: #ffffff !important;
+          border-color: #c0392b !important;
+          box-shadow: 0 2px 6px rgba(192, 57, 43, 0.35);
+        }
+        .pill-gold {
+          color: #d35400;
+        }
+        .pill-gold.active {
+          color: #ffffff !important;
+        }
 
         @media (max-width: 899px) {
           .main-site-header {
-            padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+            padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
             z-index: 50;
           }
           .mobile-hamburger-btn { display: flex; }
           .mobile-right-actions { display: flex; }
+          .mobile-nav-pills-bar { display: flex; }
           .desktop-nav-links { display: none !important; }
           .desktop-actions { display: none !important; }
           .nav-container {
@@ -527,10 +706,11 @@ export default function Navbar({ onMenuClick }) {
             height: 34px !important;
           }
           .brand-primary-name {
-            font-size: 1.15rem !important;
+            font-size: 1.18rem !important;
           }
           .brand-tagline {
-            font-size: 0.55rem !important;
+            font-size: 0.52rem !important;
+            line-height: 1.1;
           }
         }
 

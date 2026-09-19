@@ -56,7 +56,8 @@ import {
   exportBookingsToExcel, 
   exportInvoicesToExcel, 
   exportUsersToExcel, 
-  exportTicketsToExcel 
+  exportTicketsToExcel,
+  exportMasterLinksToExcel
 } from "../utils/excelExport";
 import { getGoogleSheetUrl } from "../utils/googleSheets";
 import { INITIAL_SHOP_ADS, AD_THEMES } from "../config/shopAdsData";
@@ -1804,6 +1805,25 @@ export default function AdminPanel() {
           </div>
 
           <div className="excel-cards-grid">
+            {/* Card 0: Master Links & Project Portals */}
+            <div className="excel-download-card" style={{ border: "2px solid #3b82f6", background: "#f8faff" }}>
+              <div className="card-top">
+                <span className="ex-icon" style={{ background: "#dbeafe", color: "#2563eb" }}>🔗</span>
+                <div>
+                  <h4 style={{ color: "#1e40af" }}>Master Links & Project Directory</h4>
+                  <small style={{ color: "#2563eb", fontWeight: "bold" }}>⚡ All App, Web, GitHub & Admin Links</small>
+                </div>
+              </div>
+              <p>Uptodown, GitHub repo, CI/CD APK builds, Firebase Cloud, Web PWA, aur saare live page routes ki master list.</p>
+              <button
+                className="btn-download-csv"
+                style={{ background: "#2563eb", borderColor: "#1d4ed8" }}
+                onClick={() => exportMasterLinksToExcel()}
+              >
+                <Download size={16} /> Download Master_Links.csv (Excel)
+              </button>
+            </div>
+
             {/* Card 1: Bookings */}
             <div className="excel-download-card">
               <div className="card-top">

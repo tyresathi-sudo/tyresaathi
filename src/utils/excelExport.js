@@ -135,3 +135,36 @@ export function exportTicketsToExcel(tickets) {
   };
   exportToCSV(tickets, `TyreSaathi_Support_Tickets_${new Date().toISOString().split("T")[0]}.csv`, headers);
 }
+
+export function exportMasterLinksToExcel() {
+  const masterLinksData = [
+    { category: "App Store Listing", name: "Uptodown Developer Portal", url: "https://developers.uptodown.com/", status: "In Review (v1.1)", desc: "Official Uptodown release console for TyreSaathi APK" },
+    { category: "Source Code", name: "GitHub Main Repository", url: "https://github.com/tyresathi-sudo/tyresaathi", status: "Active", desc: "Complete source code, Android Capacitor app and React codebase" },
+    { category: "CI/CD & APK Build", name: "GitHub Actions Workflow", url: "https://github.com/tyresathi-sudo/tyresaathi/actions", status: "Automated", desc: "Auto-compiles release & debug signed APKs on every git push" },
+    { category: "Live Web Application", name: "Firebase Web App", url: "https://tyresaathi-sudo.web.app", status: "Live PWA", desc: "Production Web & Mobile Web App accessible on any browser" },
+    { category: "Secondary Web Mirror", name: "Firebase App Domain", url: "https://tyresaathi-sudo.firebaseapp.com", status: "Live", desc: "Alternative production domain hosted on Google Cloud" },
+    { category: "Cloud Database & Auth", name: "Firebase Cloud Console", url: "https://console.firebase.google.com/project/tyresaathi-sudo/overview", status: "Connected", desc: "Firestore database, user authentication & cloud storage" },
+    { category: "Firestore Collections", name: "Firestore Live Database", url: "https://console.firebase.google.com/project/tyresaathi-sudo/firestore", status: "Cloud Sync", desc: "Real-time collections: users, bookings, invoices, tickets, ads" },
+    { category: "App Core Screen", name: "Home Dashboard", url: "https://tyresaathi-sudo.web.app/", status: "Production", desc: "Quick services, SOS roadside help, tyre brands & actions" },
+    { category: "GPS & Maps", name: "Nearby Tyre Shops Locator", url: "https://tyresaathi-sudo.web.app/shops", status: "Production", desc: "Real-time GPS shop search, puncture hubs, alignments" },
+    { category: "Catalogue & Search", name: "Tyre Search & Compatibility", url: "https://tyresaathi-sudo.web.app/search", status: "Production", desc: "Search tyres by vehicle type (Car, Bike, Truck, Tractor, EV)" },
+    { category: "Camera AI Tool", name: "Tyre Health Inspection", url: "https://tyresaathi-sudo.web.app/inspection", status: "Production", desc: "Camera tyre condition scanner, tread depth & wear report" },
+    { category: "Service Management", name: "Bookings & Appointments", url: "https://tyresaathi-sudo.web.app/bookings", status: "Production", desc: "Tyre change, puncture, wheel alignment appointment scheduling" },
+    { category: "B2B Shop Billing", name: "Digital Invoicing & GST Bill", url: "https://tyresaathi-sudo.web.app/billing", status: "Production", desc: "Generate tax bills, calculate discounts, share via WhatsApp/PDF" },
+    { category: "Monetization", name: "Subscription & Plans", url: "https://tyresaathi-sudo.web.app/subscription", status: "Production", desc: "Free, Silver & Gold dealer partner subscription plans" },
+    { category: "Master Control", name: "Admin Super Dashboard", url: "https://tyresaathi-sudo.web.app/admin", status: "Protected", desc: "Manage all shops, users, billing records, tickets & Excel export" },
+    { category: "Customer Helpdesk", name: "Support Tickets", url: "https://tyresaathi-sudo.web.app/support", status: "Production", desc: "Raise grievance tickets, track ticket status & admin replies" },
+    { category: "Legal & Compliance", name: "Terms of Service & Privacy", url: "https://tyresaathi-sudo.web.app/terms", status: "Production", desc: "Store compliance policies, privacy policy & user terms" }
+  ];
+
+  const headers = {
+    category: "Category / Area",
+    name: "Service / Page Name",
+    url: "Official URL / Link",
+    status: "Status",
+    desc: "Purpose & Description"
+  };
+
+  exportToCSV(masterLinksData, `TyreSaathi_Master_Links_and_Portals_${new Date().toISOString().split("T")[0]}.csv`, headers);
+}
+

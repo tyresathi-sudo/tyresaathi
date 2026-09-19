@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Center"/>
+   <Borders/>
+   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="TitleStyle">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#0D6EFD" ss:Pattern="Solid"/>
+  </Style>
+  <Style ss:ID="CategoryHeader">
+   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="12" ss:Bold="1" ss:Color="#0D6EFD"/>
+   <Interior ss:Color="#E7F1FF" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0D6EFD"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="HeaderStyle">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+   <Interior ss:Color="#1E293B" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="CellNormal">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="10"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="CellBadge">
+   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Bold="1" ss:Color="#047857"/>
+   <Interior ss:Color="#D1FAE5" ss:Pattern="Solid"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="CellLink">
+   <Alignment ss:Vertical="Center"/>
+   <Font ss:FontName="Segoe UI" ss:Size="10" ss:Underline="Single" ss:Color="#2563EB"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+    <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E2E8F0"/>
+   </Borders>
+  </Style>
+ </Styles>
+
+ <Worksheet ss:Name="Master Links &amp; Portals">
+  <Table ss:DefaultRowHeight="22">
+   <Column ss:Width="160"/>
+   <Column ss:Width="200"/>
+   <Column ss:Width="340"/>
+   <Column ss:Width="110"/>
+   <Column ss:Width="300"/>
+   
+   <Row ss:Height="40">
+    <Cell ss:MergeAcross="4" ss:StyleID="TitleStyle"><Data ss:Type="String">TyreSaathi - Master Links &amp; Portals Directory</Data></Cell>
+   </Row>
+   <Row ss:Height="12"></Row>
+
+   <!-- Table Headers -->
+   <Row ss:Height="26">
+    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Category / Area</Data></Cell>
+    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Service / Page Name</Data></Cell>
+    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Official URL / Route Link</Data></Cell>
+    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Status</Data></Cell>
+    <Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">Purpose &amp; Description</Data></Cell>
+   </Row>
+
+   <!-- Section 1 -->
+   <Row><Cell ss:MergeAcross="4" ss:StyleID="CategoryHeader"><Data ss:Type="String">1. App Store Listings &amp; Releases</Data></Cell></Row>
+   
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">App Store Listing</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Uptodown Developer Portal</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://developers.uptodown.com/"><Data ss:Type="String">https://developers.uptodown.com/</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">In Review / v1.1</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Official Uptodown release console for TyreSaathi APK</Data></Cell>
+   </Row>
+   
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Source Code Repository</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">GitHub Main Repository</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://github.com/tyresathi-sudo/tyresaathi"><Data ss:Type="String">https://github.com/tyresathi-sudo/tyresaathi</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Active</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Complete source code, Android Capacitor app and React codebase</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">CI/CD &amp; Auto APK Build</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">GitHub Actions Workflow</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://github.com/tyresathi-sudo/tyresaathi/actions"><Data ss:Type="String">https://github.com/tyresathi-sudo/tyresaathi/actions</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Automated</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Auto-compiles release &amp; debug signed APKs on every git push</Data></Cell>
+   </Row>
+
+   <!-- Section 2 -->
+   <Row><Cell ss:MergeAcross="4" ss:StyleID="CategoryHeader"><Data ss:Type="String">2. Cloud Backend &amp; Web Hosting</Data></Cell></Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Live Web Application</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firebase Web App Hosting</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app"><Data ss:Type="String">https://tyresaathi-sudo.web.app</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Live / PWA</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Production Web &amp; Mobile Web App accessible on any browser</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Secondary Web Mirror</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firebase App Domain</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.firebaseapp.com"><Data ss:Type="String">https://tyresaathi-sudo.firebaseapp.com</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Live</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Alternative production domain hosted on Google Cloud</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Cloud Database &amp; Auth</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firebase Cloud Console</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://console.firebase.google.com/project/tyresaathi-sudo/overview"><Data ss:Type="String">https://console.firebase.google.com/project/tyresaathi-sudo/overview</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Connected</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firestore database, user authentication &amp; cloud storage</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firestore Database</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Firestore Live Collections</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://console.firebase.google.com/project/tyresaathi-sudo/firestore"><Data ss:Type="String">https://console.firebase.google.com/project/tyresaathi-sudo/firestore</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Cloud Sync</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Real-time collections: users, bookings, invoices, tickets, ads</Data></Cell>
+   </Row>
+
+   <!-- Section 3 -->
+   <Row><Cell ss:MergeAcross="4" ss:StyleID="CategoryHeader"><Data ss:Type="String">3. TyreSaathi Live Pages &amp; Direct Routes</Data></Cell></Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">App Core Screen</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Home Dashboard</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/"><Data ss:Type="String">https://tyresaathi-sudo.web.app/</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Quick services, SOS roadside help, tyre brands &amp; actions</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">GPS &amp; Maps</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Nearby Tyre Shops Locator</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/shops"><Data ss:Type="String">https://tyresaathi-sudo.web.app/shops</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Real-time GPS shop search, puncture hubs, alignments</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Catalogue &amp; Search</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Tyre Search &amp; Compatibility</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/search"><Data ss:Type="String">https://tyresaathi-sudo.web.app/search</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Search tyres by vehicle type (Car, Bike, Truck, Tractor, EV)</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Camera AI Tool</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Tyre Health Inspection</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/inspection"><Data ss:Type="String">https://tyresaathi-sudo.web.app/inspection</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Camera tyre condition scanner, tread depth &amp; wear report</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Service Management</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Bookings &amp; Appointments</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/bookings"><Data ss:Type="String">https://tyresaathi-sudo.web.app/bookings</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Tyre change, puncture, wheel alignment appointment scheduling</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">B2B Shop Billing</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Digital Invoicing &amp; GST Bill</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/billing"><Data ss:Type="String">https://tyresaathi-sudo.web.app/billing</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Generate tax bills, calculate discounts, share via WhatsApp/PDF</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Monetization</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Subscription &amp; Premium Plans</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/subscription"><Data ss:Type="String">https://tyresaathi-sudo.web.app/subscription</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Free, Silver &amp; Gold dealer partner subscription plans</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Master Control</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Admin Super Dashboard</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/admin"><Data ss:Type="String">https://tyresaathi-sudo.web.app/admin</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Protected</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Manage all shops, users, billing records, tickets &amp; Excel export</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Customer Helpdesk</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Support Tickets</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/support"><Data ss:Type="String">https://tyresaathi-sudo.web.app/support</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Raise grievance tickets, track ticket status &amp; admin replies</Data></Cell>
+   </Row>
+
+   <Row>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Legal &amp; Compliance</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Terms of Service &amp; Privacy</Data></Cell>
+    <Cell ss:StyleID="CellLink" ss:HRef="https://tyresaathi-sudo.web.app/terms"><Data ss:Type="String">https://tyresaathi-sudo.web.app/terms</Data></Cell>
+    <Cell ss:StyleID="CellBadge"><Data ss:Type="String">Production</Data></Cell>
+    <Cell ss:StyleID="CellNormal"><Data ss:Type="String">Store compliance policies, privacy policy &amp; user terms</Data></Cell>
+   </Row>
+
+  </Table>
+ </Worksheet>
+</Workbook>
