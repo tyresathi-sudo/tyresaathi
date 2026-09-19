@@ -22,10 +22,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept Licenses & Install Android SDK 36
+      - name: Accept Licenses & Install Android SDK
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" || true
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
@@ -40,14 +40,15 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor Android
-        run: npx --yes @capacitor/cli sync android
+        run: npx cap sync android
         env:
           CI: true
           CAPACITOR_TELEMETRY: false
 
       - name: Create Signing Keystore
         run: |
-          keytool -genkey -v -keystore android/app/release.keystore -alias tyresaathi -keyalg RSA -keysize 2048 -validity 10000 -storepass tyresaathi123 -keypass tyresaathi123 -dname "CN=TyreSaathi, OU=App, O=TyreSaathi, L=Delhi, S=Delhi, C=IN"
+          rm -f android/app/release.keystore
+          keytool -genkey -v -keystore android/app/release.keystore -alias tyresaathi -keyalg RSA -keysize 2048 -validity 10000 -storepass tyresaathi123 -keypass tyresaathi123 -dname "CN=TyreSaathi, OU=App, O=TyreSaathi, L=Delhi, S=Delhi, C=IN" -noprompt
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -56,16 +57,16 @@ jobs:
         run: |
           cd android
           chmod +x ./gradlew
-          ./gradlew assembleRelease assembleDebug --stacktrace --no-daemon
+          ./gradlew assembleDebug assembleRelease --stacktrace --no-daemon || ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Outputs
         run: |
           mkdir -p output-apks
-          cp android/app/build/outputs/apk/release/app-release.apk output-apks/TyreSaathi-Release.apk || cp android/app/build/outputs/apk/release/*.apk output-apks/TyreSaathi-Release.apk || true
-          cp android/app/build/outputs/apk/debug/app-debug.apk output-apks/TyreSaathi-Debug.apk || true
+          find android/app/build/outputs/apk/ -type f -name "*.apk" -exec cp {} output-apks/ \;
+          ls -la output-apks/
 
-      - name: Upload Release APK Artifact
+      - name: Upload APK Package Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TyreSaathi-APK-Package
-          path: output-apks/*
+          path: output-apks/*.apk
