@@ -441,18 +441,103 @@ export default function Settings() {
 
                   <div className="toggle-row">
                     <div className="toggle-info">
-                      <strong>📊 Daily Sales Summary Email</strong>
-                      <p>Roz shaam ko dukan ki total bikri aur khata summary ka email report.</p>
+                      <strong>⭐ Star Rating & Customer Review Alerts</strong>
+                      <p>Jab bhi koi customer aapki shop ko rating ya feedback dega, turant notification alert milega.</p>
                     </div>
                     <label className="switch">
                       <input
                         type="checkbox"
-                        checked={settings.dailySummaryEmail}
-                        onChange={(e) => setSettings({ ...settings, dailySummaryEmail: e.target.checked })}
+                        checked={settings.starRatingAlerts ?? true}
+                        onChange={(e) => setSettings({ ...settings, starRatingAlerts: e.target.checked })}
                       />
                       <span className="slider round" />
                     </label>
                   </div>
+
+                  <div className="toggle-row">
+                    <div className="toggle-info">
+                      <strong>🔔 Real-Time In-App Notifications</strong>
+                      <p>Booking status badalne, naye offers aur zaroori messages ka top banner alert.</p>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={settings.inAppAlerts ?? true}
+                        onChange={(e) => setSettings({ ...settings, inAppAlerts: e.target.checked })}
+                      />
+                      <span className="slider round" />
+                    </label>
+                  </div>
+
+                  <div className="toggle-row">
+                    <div className="toggle-info">
+                      <strong>🚀 App Update Notifications</strong>
+                      <p>TyreSaathi ka naya version release hone par update prompt aur notification mile.</p>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={settings.updateAlerts ?? true}
+                        onChange={(e) => setSettings({ ...settings, updateAlerts: e.target.checked })}
+                      />
+                      <span className="slider round" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Manual App Update Check Card */}
+                <div style={{
+                  marginTop: "24px",
+                  padding: "16px 20px",
+                  background: "linear-gradient(135deg, rgba(235, 87, 87, 0.08) 0%, rgba(242, 153, 74, 0.08) 100%)",
+                  border: "1.5px solid rgba(235, 87, 87, 0.25)",
+                  borderRadius: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "12px"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{
+                      width: "42px",
+                      height: "42px",
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #c0392b, #e67e22)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff"
+                    }}>
+                      <Sparkles size={22} />
+                    </div>
+                    <div>
+                      <strong style={{ fontSize: "14px", display: "block" }}>TyreSaathi App Version v1.1.0</strong>
+                      <small style={{ color: "#666" }}>Aapka app up-to-date hai ya naya update check karein.</small>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      alert("✅ TyreSaathi App v1.1.0 latest version par chal raha hai! Agar naya update aayega to automatic screen par prompt aa jayega (jise aap update ya skip kar sakte hain).");
+                    }}
+                    style={{
+                      background: "#c0392b",
+                      color: "#fff",
+                      border: "none",
+                      padding: "9px 16px",
+                      borderRadius: "8px",
+                      fontWeight: "700",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <RefreshCw size={14} /> Check for Updates
+                  </button>
                 </div>
               </div>
             )}

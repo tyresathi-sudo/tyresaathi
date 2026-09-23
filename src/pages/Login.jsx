@@ -48,12 +48,16 @@ export default function Login() {
 
     try {
       const userCred = await login(cleanEmail, password);
-      // Log login event to Google Sheet in background
-      logUserActivityToSheet({
-        email: cleanEmail,
-        name: userCred?.user?.displayName || cleanEmail.split("@")[0],
-        action: "login",
-      });
+      // Log login event in background without blocking navigation
+      try {
+        logUserActivityToSheet({
+          email: cleanEmail,
+          name: userCred?.user?.displayName || cleanEmail.split("@")[0],
+          action: "login",
+        });
+      } catch (sheetErr) {
+        console.warn("Non-blocking sheet logging notice:", sheetErr);
+      }
       navigate("/", { replace: true });
     } catch (err) {
       console.warn("Firebase Login Error:", err);

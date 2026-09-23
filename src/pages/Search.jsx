@@ -48,12 +48,14 @@ export default function Search() {
       try {
         const snap = await getDocs(collection(db, "products"));
         if (!snap.empty) {
-          const fetched = snap.docs.map((d) => ({
-            id: d.id,
-            distanceKm: (1.5).toFixed(1),
-            isNearest: true,
-            ...d.data(),
-          }));
+          const fetched = snap.docs
+            .map((d) => ({
+              id: d.id,
+              distanceKm: (1.5).toFixed(1),
+              isNearest: true,
+              ...d.data(),
+            }))
+            .filter((p) => p.published !== false);
           setProducts(fetched);
         } else {
           setProducts([]);
@@ -572,7 +574,7 @@ function ProductCard({ product }) {
         {/* Action Buttons */}
         <div className="card-action-buttons">
           <Link
-            to={`/bookings`}
+            to={`/bookings?shopId=${product.shopId || ""}&shopName=${encodeURIComponent(product.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(product.shopPhone || "")}&service=${encodeURIComponent(product.productName || "Tyre Purchase & Fitment")}&openModal=true`}
             className="card-book-service-btn"
           >
             <Calendar size={14} /> Book / Buy

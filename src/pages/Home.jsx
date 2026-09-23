@@ -70,12 +70,14 @@ export default function Home() {
       try {
         const prodSnap = await getDocs(collection(db, "products"));
         if (!prodSnap.empty) {
-          const prodList = prodSnap.docs.map((d) => ({
-            id: d.id,
-            distanceKm: (1.2).toFixed(1),
-            isNearest: true,
-            ...d.data(),
-          }));
+          const prodList = prodSnap.docs
+            .map((d) => ({
+              id: d.id,
+              distanceKm: (1.2).toFixed(1),
+              isNearest: true,
+              ...d.data(),
+            }))
+            .filter((p) => p.published !== false);
           setFeaturedProducts(prodList);
         } else {
           setFeaturedProducts([]);
@@ -284,10 +286,17 @@ export default function Home() {
                       <small>🏪 {p.shopName || "TyreSaathi Partner"}</small>
                     </div>
                     <div className="btn-row">
-                      <Link to="/bookings" className="btn-book">
+                      <Link 
+                        to={`/bookings?shopId=${p.shopId || ""}&shopName=${encodeURIComponent(p.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(p.shopPhone || "")}&service=${encodeURIComponent(p.productName || "Tyre Purchase & Fitment")}&openModal=true`} 
+                        className="btn-book"
+                      >
                         <Calendar size={13} /> Book Service
                       </Link>
-                      <Link to="/store-location" className="btn-call" title="View Hub Location">
+                      <Link 
+                        to={`/store-location?shopId=${p.shopId || ""}&shopName=${encodeURIComponent(p.shopName || "")}`} 
+                        className="btn-call" 
+                        title="View Hub Location & Profile"
+                      >
                         <MapPin size={13} />
                       </Link>
                     </div>

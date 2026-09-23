@@ -58,6 +58,8 @@ jobs:
         run: |
           mkdir -p output-apks
           find android/app/build/outputs/apk/ -type f -name "*.apk" -exec cp {} output-apks/ \;
+          # Ensure exact TyreSaathi.apk file exists for direct download link
+          find output-apks/ -name "*release*.apk" -exec cp {} output-apks/TyreSaathi.apk \;
           ls -la output-apks/
 
       - name: Upload Release APK Artifact
@@ -72,7 +74,13 @@ jobs:
         with:
           tag_name: v1.2
           name: "TyreSaathi Android App v1.2 (Official Release)"
-          body: "⚡ TyreSaathi Official Android APK\n- New TS Brand Logo & Icons\n- Mobile Quick Navigation Header\n- Performance & Stability Enhancements"
+          body: |
+            ⚡ TyreSaathi Official Android APK Release
+            - ⭐ Real-Time Customer Star Rating & Review System
+            - 🔔 Live In-App & Push Notification Hub
+            - 🚀 Automatic App Update & Auto-Replace System (with Skip option)
+            - 📍 Nearest Tyre Hubs & Turn-by-Turn GPS Direction Routing
+            - 📊 Private Store Analytics & Live Customer Insights
           draft: false
           prerelease: false
           files: output-apks/*.apk

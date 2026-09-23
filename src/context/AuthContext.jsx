@@ -22,14 +22,43 @@ export const ROLES = {
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [role, setRole] = useState(ROLES.CUSTOMER);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+  const [userData, setUserData] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tyresaathi_user_cache");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [role, setRole] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tyresaathi_user_cache");
+      return cached ? (JSON.parse(cached).role || ROLES.CUSTOMER) : ROLES.CUSTOMER;
+    } catch {
+      return ROLES.CUSTOMER;
+    }
+  });
+  const [loading, setLoading] = useState(false);
 
   // Login
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password) {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const basicUser = {
+      uid: cred.user.uid,
+      email: cred.user.email,
+      name: cred.user.displayName || cred.user.email?.split("@")[0] || "User",
+      role: cred.user.email?.toLowerCase() === "tyresathi@gmail.com" ? ROLES.ADMIN : ROLES.CUSTOMER,
+      photoURL: cred.user.photoURL || "",
+      phone: "",
+      shopName: "",
+    };
+    setCurrentUser(cred.user);
+    setUserData(basicUser);
+    try {
+      localStorage.setItem("tyresaathi_user_cache", JSON.stringify(basicUser));
+    } catch {}
+    return cred;
   }
 
   // Register with full profile creation
@@ -63,6 +92,9 @@ export function AuthProvider({ children }) {
     }
     setUserData(userDocData);
     setRole(userDocData.role);
+    try {
+      localStorage.setItem("tyresaathi_user_cache", JSON.stringify(userDocData));
+    } catch {}
     return cred;
   }
 
@@ -96,6 +128,9 @@ export function AuthProvider({ children }) {
     }
 
     setUserData(merged);
+    try {
+      localStorage.setItem("tyresaathi_user_cache", JSON.stringify(merged));
+    } catch {}
     if (updates.role) {
       setRole(updates.role);
     }
@@ -111,6 +146,9 @@ export function AuthProvider({ children }) {
   function logout() {
     setUserData(null);
     setRole(ROLES.CUSTOMER);
+    try {
+      localStorage.removeItem("tyresaathi_user_cache");
+    } catch {}
     return signOut(auth);
   }
 
@@ -134,6 +172,9 @@ export function AuthProvider({ children }) {
     setUserData(null);
     setRole(ROLES.CUSTOMER);
     setCurrentUser(null);
+    try {
+      localStorage.removeItem("tyresaathi_user_cache");
+    } catch {}
   }
 
   useEffect(() => {
@@ -145,37 +186,35 @@ export function AuthProvider({ children }) {
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserData(data);
-            setRole(data.role || ROLES.CUSTOMER);
+            setRole(data.role || (user.email?.toLowerCase() === "tyresathi@gmail.com" ? ROLES.ADMIN : ROLES.CUSTOMER));
+            try {
+              localStorage.setItem("tyresaathi_user_cache", JSON.stringify(data));
+            } catch {}
           } else {
             const fallbackData = {
               uid: user.uid,
               email: user.email,
               name: user.displayName || user.email?.split("@")[0] || "User",
-              role: ROLES.CUSTOMER,
+              role: user.email?.toLowerCase() === "tyresathi@gmail.com" ? ROLES.ADMIN : ROLES.CUSTOMER,
               photoURL: user.photoURL || "",
               phone: "",
               shopName: "",
             };
             setUserData(fallbackData);
-            setRole(ROLES.CUSTOMER);
+            setRole(fallbackData.role);
+            try {
+              localStorage.setItem("tyresaathi_user_cache", JSON.stringify(fallbackData));
+            } catch {}
           }
         } catch (err) {
-          console.error("Firestore user fetch error:", err);
-          const fallbackData = {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName || user.email?.split("@")[0] || "User",
-            role: ROLES.CUSTOMER,
-            photoURL: user.photoURL || "",
-            phone: "",
-            shopName: "",
-          };
-          setUserData(fallbackData);
-          setRole(ROLES.CUSTOMER);
+          console.warn("Firestore user fetch warning:", err);
         }
       } else {
         setUserData(null);
         setRole(ROLES.CUSTOMER);
+        try {
+          localStorage.removeItem("tyresaathi_user_cache");
+        } catch {}
       }
       setLoading(false);
     });

@@ -9,7 +9,8 @@ import {
   Settings as SettingsIcon, 
   LifeBuoy,
   BarChart3,
-  Crown
+  Crown,
+  Package
 } from "lucide-react";
 
 export const MAIN_NAV_ITEMS = [
@@ -20,6 +21,7 @@ export const MAIN_NAV_ITEMS = [
 ];
 
 export const SHOP_NAV_ITEMS = [
+  { to: "/shop/products", label: "Manage Products", icon: Package },
   { to: "/subscription", label: "Plans & Pricing", icon: Crown },
   { to: "/analytics", label: "Shop Analytics", icon: BarChart3 },
   { to: "/billing", label: "Shop Billing", icon: Receipt },

@@ -1,26 +1,50 @@
 import React, { useState, useEffect } from "react";
-import { Download, Sparkles, X } from "lucide-react";
+import { Download, Sparkles, X, CheckCircle2, AlertCircle, FileDown, ArrowRight } from "lucide-react";
 import { db } from "../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { scheduleLocalNotification, triggerHaptic } from "../utils/nativeBridge";
+import { scheduleLocalNotification, triggerHaptic, isNative } from "../utils/nativeBridge";
+import { App } from "@capacitor/app";
 
-// Current hardcoded app package build version
-export const CURRENT_APP_VERSION = "1.1.0";
-export const CURRENT_BUILD_NUMBER = 2;
+// Default app version if native bridge is not available
+export const CURRENT_APP_VERSION = "1.2.0";
+export const CURRENT_BUILD_NUMBER = 4;
 
 export default function AppUpdateChecker() {
+  const [installedVersion, setInstalledVersion] = useState(CURRENT_APP_VERSION);
+  const [installedBuild, setInstalledBuild] = useState(CURRENT_BUILD_NUMBER);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [downloadStarted, setDownloadStarted] = useState(false);
 
+  // 1. Detect actual installed package version from Android / Capacitor
   useEffect(() => {
-    // Listen for live version control updates from Firestore
+    async function getInstalledAppInfo() {
+      try {
+        if (isNative) {
+          const info = await App.getInfo();
+          if (info && info.version) {
+            setInstalledVersion(info.version);
+            setInstalledBuild(Number(info.build) || CURRENT_BUILD_NUMBER);
+          }
+        }
+      } catch (err) {
+        console.warn("[AppUpdate] Could not read native app info:", err);
+      }
+    }
+    getInstalledAppInfo();
+  }, []);
+
+  // 2. Listen for live version control updates from Firestore
+  useEffect(() => {
     try {
       const unsub = onSnapshot(doc(db, "app_settings", "version_control"), (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          const remoteVersion = data.latestVersion || "1.1.0";
-          const isNewer = compareVersions(remoteVersion, CURRENT_APP_VERSION) > 0;
+          const remoteVersion = data.latestVersion || "1.2.0";
+          const remoteBuild = Number(data.buildNumber) || 0;
+
+          const isNewer = compareVersions(remoteVersion, installedVersion) > 0 || (remoteBuild > 0 && remoteBuild > installedBuild);
 
           if (isNewer && !dismissed) {
             setUpdateInfo(data);
@@ -29,7 +53,7 @@ export default function AppUpdateChecker() {
             // Trigger native local notification alert on Android phone
             scheduleLocalNotification(
               "🚀 TyreSaathi Naya Version Uplabdh Hai!",
-              `Version ${remoteVersion} live hai. Naye features aur fast speed ke liye abhi update karein.`
+              `Version ${remoteVersion} live hai. Naye features aur speed ke liye abhi update karein.`
             );
             triggerHaptic("medium");
           }
@@ -42,11 +66,12 @@ export default function AppUpdateChecker() {
     } catch (e) {
       console.warn("Version check error:", e);
     }
-  }, [dismissed]);
+  }, [installedVersion, installedBuild, dismissed]);
 
   function compareVersions(v1, v2) {
-    const p1 = v1.split(".").map(Number);
-    const p2 = v2.split(".").map(Number);
+    if (!v1 || !v2) return 0;
+    const p1 = String(v1).replace(/[^0-9.]/g, "").split(".").map(Number);
+    const p2 = String(v2).replace(/[^0-9.]/g, "").split(".").map(Number);
     for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
       const n1 = p1[i] || 0;
       const n2 = p2[i] || 0;
@@ -58,7 +83,10 @@ export default function AppUpdateChecker() {
 
   const handleDownload = () => {
     triggerHaptic("success");
-    const targetUrl = updateInfo?.downloadUrl || "https://tyresaathi.en.uptodown.com/android";
+    setDownloadStarted(true);
+    const targetUrl = updateInfo?.downloadUrl || "https://github.com/tyresathi-sudo/tyresaathi/releases/latest/download/TyreSaathi.apk";
+    
+    // Open direct download link in browser / download manager
     window.open(targetUrl, "_blank");
   };
 
@@ -89,11 +117,11 @@ export default function AppUpdateChecker() {
           <span className="update-badge">⚡ NEW UPDATE AVAILABLE</span>
           <h3 className="update-title">TyreSaathi Ka Naya Version Aaya Hai!</h3>
           <p className="update-version-row">
-            Current: <code>v{CURRENT_APP_VERSION}</code> → <strong>New: v{updateInfo.latestVersion}</strong>
+            Installed: <code>v{installedVersion}</code> → <strong>New: v{updateInfo.latestVersion}</strong>
           </p>
 
           <p className="update-desc">
-            {updateInfo.releaseMessage || "Behtar speed, real-time analytics aur naye tyre features ke sath naya update taiyar hai. Kripya naya version download karein."}
+            {updateInfo.releaseMessage || "Behtar speed, live star ratings aur naye tyre tools ke sath naya update taiyar hai. Kripya naya version download karein."}
           </p>
 
           {updateInfo.highlights && Array.isArray(updateInfo.highlights) && updateInfo.highlights.length > 0 && (
@@ -106,6 +134,44 @@ export default function AppUpdateChecker() {
               </ul>
             </div>
           )}
+
+          {/* Step-by-Step Auto-Replace Instruction Guide for APK installs (WhatsApp & Direct Downloads) */}
+          <div style={{
+            background: "rgba(39, 174, 96, 0.08)",
+            border: "1.5px solid rgba(39, 174, 96, 0.3)",
+            borderRadius: "12px",
+            padding: "12px 14px",
+            marginTop: "14px",
+            fontSize: "12px",
+            color: "#e2e8f0"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#2ecc71", fontWeight: "800", marginBottom: "6px" }}>
+              <FileDown size={15} /> 🔄 App Ko Replace / Update Kaise Karein:
+            </div>
+            <ol style={{ margin: 0, paddingLeft: "18px", lineHeight: "1.5", color: "#cbd5e1" }}>
+              <li><strong>"Update Now"</strong> dabane par naya APK download shuru hoga.</li>
+              <li>Download complete hone par notification bar se APK file par tap karein.</li>
+              <li><strong>"Update (अपडेट करें)"</strong> par click karein — purana app naye version se replace ho jayega aur aapka sara data/login safe rahega.</li>
+            </ol>
+          </div>
+
+          {downloadStarted && (
+            <div style={{
+              background: "#1e3a29",
+              border: "1px solid #27ae60",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              marginTop: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              color: "#a3e635",
+              fontSize: "12.5px"
+            }}>
+              <CheckCircle2 size={16} />
+              <span>APK download link khol diya gaya hai! Download hone ke baad file open karke <strong>'Update'</strong> karein.</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -115,7 +181,7 @@ export default function AppUpdateChecker() {
           </button>
           {!updateInfo.forceUpdate && (
             <button type="button" className="btn-update-later" onClick={handleClose}>
-              Baad Me Karein (Later)
+              Baad Me Karein (Skip)
             </button>
           )}
         </div>

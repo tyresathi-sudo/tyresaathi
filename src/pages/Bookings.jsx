@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   collection,
   addDoc,
@@ -32,13 +32,22 @@ import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
 import { logBookingToSheet } from "../utils/googleSheets";
 import { triggerHaptic, showNativeToast, scheduleServiceReminder } from "../utils/nativeBridge.js";
+import { trackStoreEvent } from "../utils/analyticsTracker";
+import { sendInAppNotification } from "../utils/notificationService";
 
 export default function Bookings() {
+  const [searchParams] = useSearchParams();
+  const paramShopId = searchParams.get("shopId");
+  const paramShopName = searchParams.get("shopName");
+  const paramShopPhone = searchParams.get("shopPhone");
+  const paramService = searchParams.get("service");
+  const paramOpen = searchParams.get("openModal");
+
   const { user, profile, isVendor } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [availableShops, setAvailableShops] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(Boolean(paramOpen || paramShopName));
   const [loading, setLoading] = useState(false);
 
   // Load real registered shops from Firestore
@@ -81,11 +90,11 @@ export default function Bookings() {
 
   // New Booking Form State
   const [newBooking, setNewBooking] = useState({
-    serviceId: SERVICE_TYPES[0]?.id || "puncture",
-    serviceName: SERVICE_TYPES[0]?.name || "Tubeless Puncture Repair",
-    shopId: "",
-    shopName: profile?.shopName || "TyreSaathi Partner Hub",
-    shopPhone: profile?.phone || "",
+    serviceId: paramService || SERVICE_TYPES[0]?.id || "puncture",
+    serviceName: paramService ? (SERVICE_TYPES.find(s => s.id === paramService)?.name || paramService) : (SERVICE_TYPES[0]?.name || "Tubeless Puncture Repair"),
+    shopId: paramShopId || "",
+    shopName: paramShopName || profile?.shopName || "TyreSaathi Partner Hub",
+    shopPhone: paramShopPhone || profile?.phone || "",
     customerName: profile?.name || "",
     customerPhone: profile?.phone || "",
     vehicleType: "Car / SUV",
@@ -94,6 +103,21 @@ export default function Bookings() {
     timeSlot: "10:00 AM - 11:00 AM",
     notes: "",
   });
+
+  // Sync if URL search params change
+  useEffect(() => {
+    if (paramShopName || paramShopId || paramService) {
+      setNewBooking((prev) => ({
+        ...prev,
+        shopId: paramShopId || prev.shopId,
+        shopName: paramShopName || prev.shopName,
+        shopPhone: paramShopPhone || prev.shopPhone,
+        serviceId: paramService || prev.serviceId,
+        serviceName: paramService ? (SERVICE_TYPES.find(s => s.id === paramService)?.name || paramService) : prev.serviceName
+      }));
+      setModalOpen(true);
+    }
+  }, [paramShopName, paramShopId, paramShopPhone, paramService]);
 
   // Fetch real bookings from Firestore if available
   useEffect(() => {
@@ -136,6 +160,21 @@ export default function Bookings() {
           bookingId,
           status: newStatus,
         });
+
+        // 🔔 Send in-app notification to Customer
+        sendInAppNotification({
+          recipientId: existing.customerId || "all",
+          recipientRole: "customer",
+          title: `🔄 Booking Status Update: ${newStatus.toUpperCase()}`,
+          message: `Aapki "${existing.serviceName || 'Tyre Service'}" booking at "${existing.shopName || 'Shop'}" ka status ab "${newStatus}" ho gaya hai.`,
+          type: "booking_status",
+          link: "/bookings",
+          data: {
+            bookingId,
+            status: newStatus,
+            shopName: existing.shopName,
+          }
+        });
       }
     } catch (e) {
       console.warn("Firestore update notice:", e);
@@ -159,20 +198,63 @@ export default function Bookings() {
       createdAt: new Date().toISOString(),
     };
 
+    let finalBookingId = "b-" + Date.now();
+
     try {
       const docRef = await addDoc(collection(db, "bookings"), {
         ...bookingData,
         createdAtServer: serverTimestamp(),
       });
+      finalBookingId = docRef.id;
       const finalBooking = { id: docRef.id, ...bookingData };
       setBookings((prev) => [finalBooking, ...prev]);
       logBookingToSheet(finalBooking);
+      trackStoreEvent("booking", {
+        shopId: bookingData.shopId || "",
+        shopName: bookingData.shopName || "",
+        service: bookingData.serviceType || "",
+        customerName: bookingData.customerName,
+      });
     } catch (err) {
       console.warn("Local fallback save for booking:", err);
-      const fallbackBooking = { id: "b-" + Date.now(), ...bookingData };
+      const fallbackBooking = { id: finalBookingId, ...bookingData };
       setBookings((prev) => [fallbackBooking, ...prev]);
       logBookingToSheet(fallbackBooking);
+      trackStoreEvent("booking", {
+        shopId: bookingData.shopId || "",
+        shopName: bookingData.shopName || "",
+        service: bookingData.serviceType || "",
+        customerName: bookingData.customerName,
+      });
     } finally {
+      // 🔔 1. Notify the Shop Owner in real-time
+      sendInAppNotification({
+        recipientId: bookingData.shopId || "all",
+        recipientRole: "shop_owner",
+        title: `📅 Nayi Service Booking Aayi!`,
+        message: `${bookingData.customerName} (${bookingData.customerPhone}) ne "${bookingData.serviceName}" (${bookingData.vehicleNumber}) ke liye booking ki hai.`,
+        type: "booking_created",
+        link: "/bookings",
+        data: {
+          bookingId: finalBookingId,
+          shopId: bookingData.shopId,
+          customerName: bookingData.customerName,
+          customerPhone: bookingData.customerPhone,
+          serviceName: bookingData.serviceName,
+          vehicleNumber: bookingData.vehicleNumber,
+        }
+      });
+
+      // 🔔 2. Send confirmation to the Customer
+      sendInAppNotification({
+        recipientId: user?.uid || "guest_cust",
+        recipientRole: "customer",
+        title: `✅ Booking Confirmed`,
+        message: `Aapki "${bookingData.serviceName}" booking at "${bookingData.shopName}" receive ho gayi hai. Shop owner se confirmation yahan update hoga.`,
+        type: "booking_created",
+        link: "/bookings",
+      });
+
       setLoading(false);
       setModalOpen(false);
       triggerHaptic("success");
@@ -277,9 +359,29 @@ export default function Bookings() {
       <div className="bookings-list-grid">
         {filteredBookings.length === 0 ? (
           <div className="no-bookings-card">
-            <Calendar size={48} color="#aaa" />
+            <div style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "16px",
+              background: "#fef2f2",
+              border: "1px solid #fee2e2",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#c0392b",
+              boxShadow: "0 4px 12px rgba(192, 57, 43, 0.1)"
+            }}>
+              <Calendar size={28} />
+            </div>
             <h3>No Bookings in this status</h3>
-            <p>Aap "Book New Service" button dabakar nayi booking create kar sakte hain.</p>
+            <p>Abhi is filter me koi booking nahi hai. Aap "Book New Service" button dabakar direct nayi booking bana sakte hain.</p>
+            <button
+              className="btn-header-new-booking"
+              style={{ marginTop: "6px" }}
+              onClick={() => setModalOpen(true)}
+            >
+              <Plus size={15} /> Book New Service (नई बुकिंग)
+            </button>
           </div>
         ) : (
           filteredBookings.map((b) => (
@@ -587,31 +689,31 @@ export default function Bookings() {
         .bookings-page-container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 20px 16px 80px 16px;
+          padding: 24px 16px 80px 16px;
           font-family: 'Inter', sans-serif;
-          color: #f3f4f6;
+          color: #0f172a;
         }
 
         .bookings-header-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
+          margin-bottom: 24px;
           flex-wrap: wrap;
-          gap: 14px;
+          gap: 16px;
         }
 
         .page-heading {
-          font-size: 22px;
+          font-size: 24px;
           font-weight: 800;
-          color: #ffffff;
+          color: #0f172a;
           margin: 0;
           letter-spacing: -0.5px;
         }
 
         .page-sub {
-          font-size: 13px;
-          color: #94a3b8;
+          font-size: 13.5px;
+          color: #64748b;
           margin: 4px 0 0 0;
         }
 
@@ -626,18 +728,18 @@ export default function Bookings() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: rgba(59, 130, 246, 0.15);
-          border: 1px solid rgba(59, 130, 246, 0.35);
-          color: #60a5fa;
-          padding: 9px 14px;
+          background: #eff6ff;
+          border: 1.5px solid #bfdbfe;
+          color: #1d4ed8;
+          padding: 9px 15px;
           border-radius: 10px;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           text-decoration: none;
           transition: all 0.2s;
         }
         .btn-header-insights:hover {
-          background: rgba(59, 130, 246, 0.25);
+          background: #dbeafe;
           transform: translateY(-1px);
         }
 
@@ -646,17 +748,18 @@ export default function Bookings() {
           align-items: center;
           gap: 6px;
           background: #059669;
-          color: #fff;
+          color: #ffffff;
           border: none;
-          padding: 9px 14px;
+          padding: 9px 15px;
           border-radius: 10px;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
           transition: all 0.2s;
         }
         .btn-header-excel:hover {
-          background: #10b981;
+          background: #047857;
           transform: translateY(-1px);
         }
 
@@ -664,138 +767,170 @@ export default function Bookings() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          color: #fff;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: #ffffff;
           border: none;
-          padding: 9px 16px;
+          padding: 9px 18px;
           border-radius: 10px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
           transition: all 0.2s;
         }
         .btn-header-new-booking:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.45);
         }
 
-        /* Filter Tabs (Exact image 2 styling) */
+        /* 🏷️ Clean Filter Tabs */
         .booking-filter-tabs {
           display: flex;
-          gap: 8px;
+          gap: 9px;
           overflow-x: auto;
-          padding-bottom: 8px;
-          margin-bottom: 20px;
+          padding: 4px 2px 12px 2px;
+          margin-bottom: 22px;
         }
 
         .filter-tab {
-          background: rgba(30, 41, 59, 0.6);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #94a3b8;
-          padding: 9px 18px;
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          color: #64748b;
+          padding: 8px 18px;
           border-radius: 24px;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
           transition: all 0.2s ease;
         }
         .filter-tab:hover {
-          background: rgba(30, 41, 59, 0.9);
-          color: #fff;
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #0f172a;
         }
         .tab-active {
-          background: #3b82f6 !important;
-          color: #fff !important;
-          border-color: #3b82f6 !important;
+          background: #0f172a !important;
+          color: #ffffff !important;
+          border-color: #0f172a !important;
+          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.25) !important;
         }
-        .tab-pending {
-          background: #f59e0b !important;
-          border-color: #f59e0b !important;
+        .tab-pending.tab-active {
+          background: #d97706 !important;
+          color: #ffffff !important;
+          border-color: #d97706 !important;
+          box-shadow: 0 3px 10px rgba(217, 119, 6, 0.3) !important;
         }
-        .tab-accepted {
-          background: #10b981 !important;
-          border-color: #10b981 !important;
+        .tab-accepted.tab-active {
+          background: #16a34a !important;
+          color: #ffffff !important;
+          border-color: #16a34a !important;
+          box-shadow: 0 3px 10px rgba(22, 163, 74, 0.3) !important;
         }
-        .tab-inprogress {
-          background: #6366f1 !important;
-          border-color: #6366f1 !important;
+        .tab-inprogress.tab-active {
+          background: #7c3aed !important;
+          color: #ffffff !important;
+          border-color: #7c3aed !important;
+          box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3) !important;
         }
-        .tab-completed {
-          background: #059669 !important;
-          border-color: #059669 !important;
+        .tab-completed.tab-active {
+          background: #0284c7 !important;
+          color: #ffffff !important;
+          border-color: #0284c7 !important;
+          box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3) !important;
         }
-        .tab-rejected {
-          background: #ef4444 !important;
-          border-color: #ef4444 !important;
+        .tab-rejected.tab-active {
+          background: #dc2626 !important;
+          color: #ffffff !important;
+          border-color: #dc2626 !important;
+          box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3) !important;
         }
 
-        /* Bookings List Grid & Cards */
+        /* Bookings List Grid & Clean Cards */
         .bookings-list-grid {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
         }
 
         .no-bookings-card {
           text-align: center;
-          padding: 50px 20px;
-          background: rgba(30, 41, 59, 0.4);
-          border: 1px dashed rgba(255, 255, 255, 0.1);
-          border-radius: 14px;
+          padding: 60px 24px;
+          background: #ffffff;
+          border: 1.5px dashed #cbd5e1;
+          border-radius: 16px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+        .no-bookings-card h3 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0;
+        }
+        .no-bookings-card p {
+          font-size: 13.5px;
+          color: #64748b;
+          margin: 0;
+          max-width: 440px;
         }
 
         .booking-item-card {
-          background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-left: 4px solid #3b82f6;
-          border-radius: 14px;
-          padding: 18px 20px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-left: 5px solid #c0392b;
+          border-radius: 16px;
+          padding: 20px 22px;
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
           transition: all 0.2s ease;
         }
         .booking-item-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(255, 255, 255, 0.18);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+          border-color: #cbd5e1;
         }
 
         .status-border-pending { border-left-color: #f59e0b; }
         .status-border-accepted { border-left-color: #10b981; }
-        .status-border-in_progress { border-left-color: #6366f1; }
-        .status-border-completed { border-left-color: #059669; }
+        .status-border-in_progress { border-left-color: #7c3aed; }
+        .status-border-completed { border-left-color: #0284c7; }
         .status-border-rejected { border-left-color: #ef4444; }
 
         .booking-card-top {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 12px;
         }
 
         .service-info-group {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
         }
 
         .service-icon-circle {
-          width: 40px;
-          height: 40px;
-          background: rgba(59, 130, 246, 0.15);
-          color: #38bdf8;
-          border-radius: 10px;
+          width: 44px;
+          height: 44px;
+          background: #fef2f2;
+          color: #c0392b;
+          border: 1px solid #fee2e2;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
         .booking-service-title {
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 800;
-          color: #ffffff;
+          color: #0f172a;
           margin: 0;
         }
 
@@ -803,58 +938,65 @@ export default function Bookings() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          font-size: 12px;
-          color: #94a3b8;
-          margin-top: 2px;
+          font-size: 12.5px;
+          color: #64748b;
+          margin-top: 3px;
+        }
+
+        .booking-vehicle-tag strong {
+          color: #0f172a;
         }
 
         .status-badge {
           font-size: 12px;
-          font-weight: 700;
-          padding: 5px 12px;
+          font-weight: 800;
+          padding: 5px 14px;
           border-radius: 20px;
         }
-        .badge-pending { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
-        .badge-accepted { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
-        .badge-inprogress { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.4); }
-        .badge-completed { background: rgba(5, 150, 105, 0.2); color: #10b981; border: 1px solid rgba(5, 150, 105, 0.4); }
-        .badge-rejected { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .badge-pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .badge-accepted { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-inprogress { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+        .badge-completed { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-rejected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
         .booking-meta-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 14px;
-          background: rgba(15, 23, 42, 0.5);
-          padding: 12px 14px;
-          border-radius: 10px;
-          margin-bottom: 12px;
+          background: #f8fafc;
+          border: 1px solid #f1f5f9;
+          padding: 14px 16px;
+          border-radius: 12px;
+          margin-bottom: 14px;
         }
 
         .meta-block {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 3px;
         }
 
         .meta-label {
           font-size: 11px;
           color: #64748b;
-          font-weight: 600;
+          font-weight: 700;
           text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
 
         .meta-value {
-          font-size: 13px;
-          font-weight: 700;
-          color: #f1f5f9;
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #0f172a;
         }
 
         .meta-phone-link {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          color: #38bdf8;
-          font-size: 12px;
+          color: #0284c7;
+          font-size: 12.5px;
+          font-weight: 700;
           text-decoration: none;
           margin-top: 2px;
         }
@@ -862,25 +1004,25 @@ export default function Bookings() {
 
         .meta-subtext {
           font-size: 12px;
-          color: #94a3b8;
+          color: #64748b;
         }
 
         .booking-notes-box {
-          background: rgba(245, 158, 11, 0.08);
-          border: 1px solid rgba(245, 158, 11, 0.2);
-          padding: 8px 12px;
-          border-radius: 8px;
-          font-size: 12px;
-          color: #fcd34d;
-          margin-bottom: 12px;
+          background: #fffbeb;
+          border: 1px solid #fef3c7;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-size: 12.5px;
+          color: #92400e;
+          margin-bottom: 14px;
         }
 
         .booking-card-actions {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-top: 10px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          padding-top: 14px;
+          border-top: 1px solid #f1f5f9;
           flex-wrap: wrap;
           gap: 10px;
         }
@@ -889,6 +1031,9 @@ export default function Bookings() {
           font-size: 12px;
           color: #64748b;
           font-family: monospace;
+          background: #f1f5f9;
+          padding: 3px 8px;
+          border-radius: 6px;
         }
 
         .action-buttons-group {
@@ -902,100 +1047,130 @@ export default function Bookings() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: #10b981;
+          background: #16a34a;
           color: #fff;
           border: none;
-          padding: 7px 12px;
+          padding: 7px 14px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
+          box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2);
         }
+        .btn-action-accept:hover {
+          background: #15803d;
+        }
+
         .btn-action-reject {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: rgba(239, 68, 68, 0.2);
-          border: 1px solid rgba(239, 68, 68, 0.4);
-          color: #f87171;
-          padding: 7px 12px;
+          background: #fee2e2;
+          border: 1px solid #fecaca;
+          color: #b91c1c;
+          padding: 7px 14px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
         }
+        .btn-action-reject:hover {
+          background: #fecaca;
+        }
+
         .btn-action-progress {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: #6366f1;
+          background: #7c3aed;
           color: #fff;
           border: none;
-          padding: 7px 12px;
+          padding: 7px 14px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
+          box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
         }
+        .btn-action-progress:hover {
+          background: #6d28d9;
+        }
+
         .btn-action-complete {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: #059669;
+          background: #0284c7;
           color: #fff;
           border: none;
-          padding: 7px 12px;
+          padding: 7px 14px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
+          box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
         }
+        .btn-action-complete:hover {
+          background: #0369a1;
+        }
+
         .btn-action-call {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          background: rgba(59, 130, 246, 0.15);
-          color: #38bdf8;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          padding: 6px 10px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          text-decoration: none;
-        }
-        .btn-action-whatsapp {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: rgba(37, 211, 102, 0.15);
-          color: #25d366;
-          border: 1px solid rgba(37, 211, 102, 0.3);
-          padding: 6px 10px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          text-decoration: none;
-        }
-        .btn-action-bill-shortcut {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          color: #ffffff;
-          padding: 6px 11px;
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
           text-decoration: none;
-          box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+        }
+        .btn-action-call:hover {
+          background: #dcfce7;
         }
 
-        /* Modal Styles */
+        .btn-action-whatsapp {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: #f0fdf4;
+          color: #16a34a;
+          border: 1px solid #bbf7d0;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+        }
+        .btn-action-whatsapp:hover {
+          background: #dcfce7;
+        }
+
+        .btn-action-bill-shortcut {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: #ffffff;
+          padding: 6px 13px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 800;
+          text-decoration: none;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+        }
+        .btn-action-bill-shortcut:hover {
+          transform: translateY(-1px);
+        }
+
+        /* 🪟 Clean White Modal Styles */
         .modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.75);
-          backdrop-filter: blur(6px);
+          background: rgba(15, 23, 42, 0.6);
+          backdrop-filter: blur(4px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1004,13 +1179,13 @@ export default function Bookings() {
         }
 
         .modal-card {
-          background: #1e293b;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 16px;
-          max-width: 520px;
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 20px;
+          max-width: 540px;
           width: 100%;
-          padding: 22px;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+          padding: 24px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
           max-height: 90vh;
           overflow-y: auto;
         }
@@ -1019,85 +1194,114 @@ export default function Bookings() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
+          margin-bottom: 18px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .modal-title {
-          font-size: 17px;
+          font-size: 18px;
           font-weight: 800;
-          color: #ffffff;
+          color: #0f172a;
           margin: 0;
         }
 
         .modal-close-btn {
-          background: transparent;
+          background: #f1f5f9;
           border: none;
-          color: #94a3b8;
-          font-size: 18px;
+          color: #64748b;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
+          transition: all 0.2s;
+        }
+        .modal-close-btn:hover {
+          background: #e2e8f0;
+          color: #0f172a;
         }
 
         .modal-form {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
 
         .modal-field {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 5px;
         }
 
         .modal-field label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #cbd5e1;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #334155;
         }
 
         .modal-field input, .modal-field select, .modal-field textarea {
-          background: #0f172a;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          padding: 9px 12px;
-          color: #ffffff;
-          font-size: 13px;
+          background: #f8fafc;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px 14px;
+          color: #0f172a;
+          font-size: 13.5px;
           outline: none;
+          transition: all 0.2s;
+        }
+        .modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus {
+          border-color: #c0392b;
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
         }
 
         .modal-grid-2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 10px;
+          gap: 12px;
         }
 
         .modal-actions {
           display: flex;
           justify-content: flex-end;
           gap: 10px;
-          margin-top: 10px;
+          margin-top: 14px;
+          padding-top: 14px;
+          border-top: 1px solid #f1f5f9;
         }
 
         .btn-cancel {
-          background: rgba(255, 255, 255, 0.08);
-          border: none;
-          color: #cbd5e1;
-          padding: 9px 16px;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-        }
-
-        .btn-submit-booking {
-          background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-          color: #ffffff;
-          border: none;
-          padding: 9px 18px;
-          border-radius: 8px;
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          color: #475569;
+          padding: 10px 18px;
+          border-radius: 10px;
           font-size: 13px;
           font-weight: 700;
           cursor: pointer;
+        }
+        .btn-cancel:hover {
+          background: #e2e8f0;
+          color: #0f172a;
+        }
+
+        .btn-submit-booking {
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: #ffffff;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
+        }
+        .btn-submit-booking:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.4);
         }
 
         @media (max-width: 768px) {

@@ -19,11 +19,13 @@ import {
   Settings as SettingsIcon,
   LifeBuoy,
   ShieldCheck,
-  Crown
+  Crown,
+  Package
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { MEGA_MENU_BRANDS, TYRE_CATEGORIES } from "../config/tyreCatalog";
+import NotificationBell from "./NotificationBell.jsx";
 
 export default function Navbar({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
@@ -96,6 +98,9 @@ export default function Navbar({ onMenuClick }) {
           </div>
 
           <div className="top-right-tools">
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Quick Theme Toggle */}
             <button className="utility-tool-btn" onClick={toggleTheme} title="Toggle Theme">
               {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -147,9 +152,14 @@ export default function Navbar({ onMenuClick }) {
                         </Link>
                       )}
                       {isVendor && (
-                        <Link to="/shop/add-product" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
-                          <PlusCircle size={14} /> Add Product / Service
-                        </Link>
+                        <>
+                          <Link to="/shop/products" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                            <Package size={14} color="#2980b9" /> Manage Products / Inventory
+                          </Link>
+                          <Link to="/shop/add-product" className="dropdown-item" onClick={() => setUserDropdownOpen(false)}>
+                            <PlusCircle size={14} /> Add Product / Service
+                          </Link>
+                        </>
                       )}
                       <div className="dropdown-divider" />
                       <button className="dropdown-item logout-item" onClick={handleLogout}>
@@ -316,6 +326,8 @@ export default function Navbar({ onMenuClick }) {
 
           {/* Mobile Right Action Group (Clean, balanced app-bar buttons) */}
           <div className="mobile-right-actions">
+            <NotificationBell />
+
             <button 
               className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`} 
               onClick={() => setMobileSearchOpen(!mobileSearchOpen)} 

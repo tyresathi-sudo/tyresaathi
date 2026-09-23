@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   ShieldCheck, 
   Users, 
@@ -23,6 +23,8 @@ import {
   Megaphone,
   Flame,
   Sparkles,
+  Bell,
+  Send,
   Trash2,
   Edit3,
   PlusCircle,
@@ -45,7 +47,19 @@ import {
   Upload,
   Camera,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  BarChart3,
+  Activity,
+  Compass,
+  Navigation,
+  ExternalLink,
+  Car,
+  Bike,
+  Truck,
+  MessageCircle,
+  UserCheck,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -60,6 +74,7 @@ import {
   exportMasterLinksToExcel
 } from "../utils/excelExport";
 import { getGoogleSheetUrl } from "../utils/googleSheets";
+import { sendInAppNotification } from "../utils/notificationService";
 import { INITIAL_SHOP_ADS, AD_THEMES } from "../config/shopAdsData";
 import { 
   getActiveSubscriptionConfig, 
@@ -78,6 +93,56 @@ const SAMPLE_ADMIN_SHOPS = [];
 const SAMPLE_GLOBAL_BOOKINGS = [];
 const SAMPLE_ADMIN_INVOICES = [];
 const SAMPLE_ADMIN_TICKETS = [];
+
+export function formatSafeDate(rawDate, fallback = "Recent") {
+  if (!rawDate) return fallback;
+  if (typeof rawDate === "string") {
+    if (rawDate.includes("T")) return rawDate.split("T")[0];
+    return rawDate;
+  }
+  if (typeof rawDate === "number") {
+    try {
+      return new Date(rawDate).toISOString().split("T")[0];
+    } catch {
+      return fallback;
+    }
+  }
+  if (typeof rawDate === "object") {
+    if (typeof rawDate.toDate === "function") {
+      try {
+        return rawDate.toDate().toISOString().split("T")[0];
+      } catch {
+        return fallback;
+      }
+    }
+    if (typeof rawDate.seconds === "number") {
+      try {
+        return new Date(rawDate.seconds * 1000).toISOString().split("T")[0];
+      } catch {
+        return fallback;
+      }
+    }
+    if (rawDate instanceof Date) {
+      try {
+        return rawDate.toISOString().split("T")[0];
+      } catch {
+        return fallback;
+      }
+    }
+  }
+  return fallback;
+}
+
+export function formatSafeText(val, fallback = "—") {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === "object") {
+    if (typeof val.seconds === "number" || typeof val.toDate === "function" || val instanceof Date) {
+      return formatSafeDate(val, fallback);
+    }
+    return fallback;
+  }
+  return String(val);
+}
 
 export function getAdScheduleStatus(ad) {
   if (ad.isActive === false) {
@@ -123,12 +188,38 @@ const POPULAR_CITIES = [
 export default function AdminPanel() {
   const { user, profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("overview"); // overview, shops, bookings, tickets, ads, excel
+  const navTabsRef = useRef(null);
+
+  const scrollNavTabs = (direction) => {
+    if (navTabsRef.current) {
+      navTabsRef.current.scrollBy({
+        left: direction === "left" ? -240 : 240,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const handleTabsWheel = (e) => {
+    if (navTabsRef.current) {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        navTabsRef.current.scrollLeft += e.deltaY;
+      }
+    }
+  };
 
   // Admin Datasets State
   const [users, setUsers] = useState(SAMPLE_ADMIN_SHOPS);
   const [bookings, setBookings] = useState(SAMPLE_GLOBAL_BOOKINGS);
   const [invoices, setInvoices] = useState(SAMPLE_ADMIN_INVOICES);
   const [tickets, setTickets] = useState(SAMPLE_ADMIN_TICKETS);
+  const [analyticsEvents, setAnalyticsEvents] = useState([]);
+  const [trafficTimeframe, setTrafficTimeframe] = useState("7d"); // '7d' or '30d'
+  const [trafficSearchTerm, setTrafficSearchTerm] = useState("");
+  const [selectedShopFilter, setSelectedShopFilter] = useState("all");
+  const [analyticsDataMode, setAnalyticsDataMode] = useState("real"); // 'real' (100% Live Firestore) or 'preview' (Demo Sample)
+  const [analyticsSubTab, setAnalyticsSubTab] = useState("shops"); // 'shops' (Shop Traffic & Performance) or 'customers' (Customer Insights & Directory)
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [customerVehicleFilter, setCustomerVehicleFilter] = useState("all");
 
   // Shop Ads State
   const [ads, setAds] = useState(() => {
@@ -335,6 +426,88 @@ export default function AdminPanel() {
     }
   };
 
+  // 🚀 App Version Control & Broadcast Notifications State
+  const [versionControl, setVersionControl] = useState({
+    latestVersion: "1.2.0",
+    buildNumber: 5,
+    downloadUrl: "https://github.com/tyresathi-sudo/tyresaathi/releases/latest/download/TyreSaathi.apk",
+    releaseMessage: "TyreSaathi me live star ratings, instant booking notifications aur fast store search shuru!",
+    highlights: [
+      "⭐ Real-Time Customer Star Ratings & Review System",
+      "🔔 Live In-App Notifications for Bookings & Store Actions",
+      "🚀 Fast Store Directions & Nearest Tyre Hubs Finder",
+      "📊 Live Analytics & Google Sheet Auto-Sync"
+    ],
+    forceUpdate: false // false = allows 'Baad Me Karein (Skip)'
+  });
+  const [versionSuccessMsg, setVersionSuccessMsg] = useState("");
+  const [savingVersion, setSavingVersion] = useState(false);
+  const [newHighlightText, setNewHighlightText] = useState("");
+
+  const handleAddHighlight = () => {
+    if (!newHighlightText.trim()) return;
+    setVersionControl((prev) => ({
+      ...prev,
+      highlights: [...(prev.highlights || []), newHighlightText.trim()]
+    }));
+    setNewHighlightText("");
+  };
+
+  const handleRemoveHighlight = (index) => {
+    setVersionControl((prev) => ({
+      ...prev,
+      highlights: prev.highlights.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSaveVersionControl = async (e) => {
+    if (e) e.preventDefault();
+    setSavingVersion(true);
+    try {
+      await setDoc(doc(db, "app_settings", "version_control"), versionControl, { merge: true });
+      setVersionSuccessMsg("✅ Naya App Version & Update Notification Firestore me live save ho gaya hai! Sabhi purane app users ko update prompt jayega.");
+      setTimeout(() => setVersionSuccessMsg(""), 6000);
+    } catch (err) {
+      alert("Version update error: " + err.message);
+    } finally {
+      setSavingVersion(false);
+    }
+  };
+
+  // 📢 Broadcast Alert Form State
+  const [broadcastForm, setBroadcastForm] = useState({
+    title: "⭐ TyreSaathi Live Update & Star Reviews",
+    message: "TyreSaathi par apne pasandida shop ko star rating dein aur naye live updates check karein!",
+    type: "announcement",
+    targetRole: "all"
+  });
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastSuccessMsg, setBroadcastSuccessMsg] = useState("");
+
+  const handleSendBroadcast = async (e) => {
+    if (e) e.preventDefault();
+    if (!broadcastForm.title.trim() || !broadcastForm.message.trim()) {
+      alert("Kripya title aur message zaroor bharein!");
+      return;
+    }
+    setBroadcasting(true);
+    try {
+      await sendInAppNotification({
+        recipientId: broadcastForm.targetRole === "all" ? "all" : broadcastForm.targetRole,
+        title: broadcastForm.title,
+        message: broadcastForm.message,
+        type: broadcastForm.type,
+        link: broadcastForm.type === "star_rating" ? "/stores" : (broadcastForm.type === "booking" ? "/bookings" : "/")
+      });
+      setBroadcastSuccessMsg(`✅ Broadcast notification successfully bhej diya gaya! (${broadcastForm.targetRole.toUpperCase()})`);
+      setTimeout(() => setBroadcastSuccessMsg(""), 5000);
+    } catch (err) {
+      alert("Broadcast error: " + err.message);
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
   // Load Real Data from Firestore if available
   useEffect(() => {
     async function loadAdminData() {
@@ -374,6 +547,35 @@ export default function AdminPanel() {
         }
       } catch (err) {
         console.warn("Firestore bookings load:", err);
+      }
+
+      try {
+        const anSnap = await getDocs(collection(db, "shop_analytics_events"));
+        if (!anSnap.empty) {
+          setAnalyticsEvents(anSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        } else {
+          const local = localStorage.getItem("tyresaathi_analytics_events");
+          if (local) setAnalyticsEvents(JSON.parse(local));
+        }
+      } catch (err) {
+        const local = localStorage.getItem("tyresaathi_analytics_events");
+        if (local) setAnalyticsEvents(JSON.parse(local));
+      }
+
+      try {
+        const appSetSnap = await getDocs(collection(db, "app_settings"));
+        appSetSnap.forEach((d) => {
+          if (d.id === "version_control") {
+            const data = d.data();
+            setVersionControl((prev) => ({
+              ...prev,
+              ...data,
+              highlights: Array.isArray(data.highlights) ? data.highlights : prev.highlights
+            }));
+          }
+        });
+      } catch (e) {
+        console.warn("Firestore app_settings load:", e);
       }
     }
     loadAdminData();
@@ -638,13 +840,278 @@ export default function AdminPanel() {
   const openTickets = tickets.filter((t) => t.status === "open").length;
   const activeAdsCount = ads.filter((a) => a.isActive !== false).length;
 
-  const filteredAds = ads.filter((a) => {
+  // 📊 Shop-Wise & Customer Analytics Calculations
+  const isRealMode = analyticsDataMode === "real";
+  const rawShops = users.filter((u) => u.role === "vendor" || u.role === "shop_owner" || u.role === "admin" || u.shopName);
+  const baseShops = rawShops.length > 0 ? rawShops : [
+    { uid: "shop_1", shopName: "Bharat super tyre", city: "Raipur", phone: "8877277757", rating: 4.9 },
+    { uid: "shop_2", shopName: "Tyre Saathi Partner Hub", city: "Raipur", phone: "8877277757", rating: 4.9 },
+    { uid: "shop_3", shopName: "R k tyre repairing shop", city: "Raipur", phone: "8877277757", rating: 4.8 },
+  ];
+
+  const shopTrafficList = baseShops.map((shop, idx) => {
+    const sName = (shop.shopName || shop.name || "").toLowerCase();
+    const sId = shop.uid || shop.id || `shop_${idx}`;
+
+    const shopEvents = analyticsEvents.filter((ev) => {
+      const evShopName = (ev.metadata?.shopName || "").toLowerCase();
+      const evShopId = ev.metadata?.shopId;
+      return (sId && evShopId === sId) || (sName && evShopName && (evShopName.includes(sName) || sName.includes(evShopName)));
+    });
+
+    const shopBookings = bookings.filter((b) => {
+      const bShopName = (b.shopName || "").toLowerCase();
+      const bShopId = b.shopId;
+      return (sId && bShopId === sId) || (sName && bShopName && (bShopName.includes(sName) || sName.includes(bShopName)));
+    });
+
+    const realViews = shopEvents.filter((e) => e.type === "view").length;
+    const realMaps = shopEvents.filter((e) => e.type === "map_direction").length;
+    const realCalls = shopEvents.filter((e) => e.type === "call_lead").length;
+    const realBookingsCount = shopBookings.length;
+
+    // In Real Mode: strictly use real database numbers; In Preview Mode: provide illustrative baseline
+    const views = isRealMode ? realViews : (realViews || (18 + (idx === 0 ? 46 : (idx === 1 ? 28 : (idx === 2 ? 14 : 6)))));
+    const mapClicks = isRealMode ? realMaps : (realMaps || (6 + (idx === 0 ? 19 : (idx === 1 ? 12 : (idx === 2 ? 5 : 2)))));
+    const callLeads = isRealMode ? realCalls : (realCalls || (4 + (idx === 0 ? 15 : (idx === 1 ? 8 : (idx === 2 ? 3 : 1)))));
+    const bookingsCount = isRealMode ? realBookingsCount : (realBookingsCount || (idx === 0 ? 8 : (idx === 1 ? 4 : (idx === 2 ? 2 : 1))));
+
+    const totalInteractions = views + mapClicks + callLeads + bookingsCount;
+    const trafficScore = views * 1 + mapClicks * 3 + callLeads * 4 + bookingsCount * 8;
+
+    return {
+      id: sId,
+      name: shop.shopName || shop.name || "Partner Hub",
+      owner: shop.name || "Shop Partner",
+      city: shop.city || "Raipur",
+      phone: shop.phone || "8877277757",
+      views,
+      mapClicks,
+      callLeads,
+      bookingsCount,
+      totalInteractions,
+      trafficScore,
+      rating: shop.rating || 4.9,
+    };
+  });
+
+  // Sort shops by highest traffic score descending
+  shopTrafficList.sort((a, b) => b.trafficScore - a.trafficScore);
+
+  const totalNetworkViews = shopTrafficList.reduce((acc, s) => acc + s.views, 0);
+  const totalNetworkMaps = shopTrafficList.reduce((acc, s) => acc + s.mapClicks, 0);
+  const totalNetworkCalls = shopTrafficList.reduce((acc, s) => acc + s.callLeads, 0);
+  const totalNetworkBookings = shopTrafficList.reduce((acc, s) => acc + s.bookingsCount, 0);
+  const totalNetworkInteractions = shopTrafficList.reduce((acc, s) => acc + s.totalInteractions, 0) || (isRealMode ? 0 : 1);
+
+  const topTrafficShop = shopTrafficList[0] || { name: "Bharat super tyre", city: "Raipur", totalInteractions: 0 };
+  const maxShopTraffic = Math.max(...shopTrafficList.map((s) => s.totalInteractions), 1);
+
+  // Generate daily points for network traffic trend curve
+  const daysCount = trafficTimeframe === "7d" ? 7 : 30;
+  const trafficDailyPoints = [];
+  const todayDate = new Date();
+  for (let i = daysCount - 1; i >= 0; i--) {
+    const d = new Date(todayDate);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    const dayEvents = analyticsEvents.filter((e) => (e.dateStr || e.timestamp?.split("T")[0]) === dateStr);
+    const dayBookings = bookings.filter((b) => (b.date || b.createdAt?.split("T")[0]) === dateStr);
+    const dayTotal = dayEvents.length + dayBookings.length;
+    const valueToShow = isRealMode ? dayTotal : Math.max(dayTotal, Math.round(14 + Math.sin(i * 1.3) * 6 + (daysCount - i) * 2));
+    trafficDailyPoints.push({
+      dateStr,
+      label: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+      val: valueToShow,
+    });
+  }
+
+  const trafficChartMax = Math.max(...trafficDailyPoints.map((p) => p.val), 5);
+  const trafficChartPoints = trafficDailyPoints.map((p, idx) => {
+    const x = 40 + (idx / Math.max(trafficDailyPoints.length - 1, 1)) * (540 - 80);
+    const y = 170 - 25 - (p.val / trafficChartMax) * (170 - 55);
+    return { x, y, val: p.val, label: p.label, dateStr: p.dateStr };
+  });
+
+  const trafficPathD = trafficChartPoints.reduce((acc, p, i, arr) => {
+    if (i === 0) return `M ${p.x},${p.y}`;
+    const prev = arr[i - 1];
+    const cx = (prev.x + p.x) / 2;
+    return `${acc} C ${cx},${prev.y} ${cx},${p.y} ${p.x},${p.y}`;
+  }, "");
+
+  const trafficAreaD = trafficChartPoints.length > 0
+    ? `${trafficPathD} L ${trafficChartPoints[trafficChartPoints.length - 1].x},155 L ${trafficChartPoints[0].x},155 Z`
+    : "";
+
+  const filteredTrafficShops = shopTrafficList.filter((s) => {
+    if (!trafficSearchTerm.trim()) return true;
+    const q = trafficSearchTerm.toLowerCase();
+    return s.name.toLowerCase().includes(q) || s.city.toLowerCase().includes(q) || s.owner.toLowerCase().includes(q);
+  });
+
+  // 👥 CUSTOMER DATA & DIRECTORY AGGREGATION
+  const customerMap = new Map();
+
+  // 1. From Users collection (Customers)
+  users.forEach((u) => {
+    const isCustomer = u.role === "customer" || (!u.shopName && u.role !== "admin" && u.role !== "vendor" && u.role !== "shop_owner");
+    if (isCustomer) {
+      const safePhone = formatSafeText(u.phone, "");
+      const safeEmail = formatSafeText(u.email, "");
+      const key = (safePhone || safeEmail || u.uid || "").trim().toLowerCase();
+      if (!key) return;
+      customerMap.set(key, {
+        id: u.uid || key,
+        name: formatSafeText(u.name, "Registered Customer"),
+        email: formatSafeText(u.email, "—"),
+        phone: formatSafeText(u.phone, "—"),
+        city: formatSafeText(u.city, "Raipur"),
+        address: formatSafeText(u.address, "—"),
+        vehicleType: formatSafeText(u.vehicleType, "Car / SUV"),
+        vehicleNumber: formatSafeText(u.vehicleNumber, "—"),
+        vehicleModel: formatSafeText(u.vehicleModel || u.carModel, ""),
+        createdAt: formatSafeDate(u.createdAt, "Recent"),
+        totalBookings: 0,
+        totalSpent: 0,
+        lastActive: formatSafeDate(u.createdAt || u.lastLogin, "Active"),
+        source: "Registered User",
+      });
+    }
+  });
+
+  // 2. From Bookings collection
+  bookings.forEach((b) => {
+    const safePhone = formatSafeText(b.customerPhone, "");
+    const safeEmail = formatSafeText(b.customerEmail, "");
+    const safeName = formatSafeText(b.customerName, "");
+    const key = (safePhone || safeEmail || safeName || "").trim().toLowerCase();
+    if (!key) return;
+
+    const bDate = formatSafeDate(b.date || b.createdAt, "Recent");
+
+    if (customerMap.has(key)) {
+      const c = customerMap.get(key);
+      c.totalBookings += 1;
+      c.totalSpent += Number(b.price) || 0;
+      if (safeName && c.name === "Registered Customer") c.name = safeName;
+      if (b.vehicleType && (!c.vehicleType || c.vehicleType === "Car / SUV")) c.vehicleType = formatSafeText(b.vehicleType, "Car / SUV");
+      if (b.vehicleNumber && (!c.vehicleNumber || c.vehicleNumber === "—")) c.vehicleNumber = formatSafeText(b.vehicleNumber, "—");
+      if (bDate) c.lastActive = bDate;
+    } else {
+      customerMap.set(key, {
+        id: b.id || key,
+        name: safeName || "Customer",
+        email: safeEmail || "—",
+        phone: safePhone || "—",
+        city: formatSafeText(b.city, "Raipur"),
+        address: formatSafeText(b.address, "—"),
+        vehicleType: formatSafeText(b.vehicleType, "Car / SUV"),
+        vehicleNumber: formatSafeText(b.vehicleNumber, "—"),
+        vehicleModel: formatSafeText(b.vehicleModel, ""),
+        createdAt: bDate,
+        totalBookings: 1,
+        totalSpent: Number(b.price) || 0,
+        lastActive: bDate,
+        source: "Service Booking",
+      });
+    }
+  });
+
+  // 3. From Invoices collection
+  invoices.forEach((inv) => {
+    const safePhone = formatSafeText(inv.customerPhone, "");
+    const safeName = formatSafeText(inv.customerName, "");
+    const key = (safePhone || safeName || "").trim().toLowerCase();
+    if (!key) return;
+
+    const invDate = formatSafeDate(inv.createdAt, "Recent");
+
+    if (customerMap.has(key)) {
+      const c = customerMap.get(key);
+      c.totalSpent += Number(inv.grandTotal) || 0;
+      if (safeName && (!c.name || c.name === "Customer")) c.name = safeName;
+      if (inv.vehicleNumber && (!c.vehicleNumber || c.vehicleNumber === "—")) c.vehicleNumber = formatSafeText(inv.vehicleNumber, "—");
+      if (inv.vehicleName && (!c.vehicleModel || c.vehicleModel === "")) c.vehicleModel = formatSafeText(inv.vehicleName, "");
+      if (invDate) c.lastActive = invDate;
+    } else {
+      customerMap.set(key, {
+        id: inv.id || key,
+        name: safeName || "Customer",
+        email: "—",
+        phone: safePhone || "—",
+        city: formatSafeText(inv.customerCity, "Raipur"),
+        address: formatSafeText(inv.customerAddress, "—"),
+        vehicleType: formatSafeText(inv.vehicleType, "Car / SUV"),
+        vehicleNumber: formatSafeText(inv.vehicleNumber, "—"),
+        vehicleModel: formatSafeText(inv.vehicleName, ""),
+        createdAt: invDate,
+        totalBookings: 1,
+        totalSpent: Number(inv.grandTotal) || 0,
+        lastActive: invDate,
+        source: "In-Store Billing",
+      });
+    }
+  });
+
+  let rawCustomerList = Array.from(customerMap.values());
+
+  // If real database is empty and preview mode is on, provide helpful preview sample customers
+  if (rawCustomerList.length === 0 && !isRealMode) {
+    rawCustomerList = [
+      { id: "c_1", name: "Rahul Sharma", phone: "9826112345", email: "rahul.sharma@gmail.com", city: "Raipur", vehicleType: "Car / SUV", vehicleNumber: "CG 04 MB 1234", vehicleModel: "Hyundai Creta", totalBookings: 3, totalSpent: 4500, lastActive: "2026-09-22", source: "Registered Customer" },
+      { id: "c_2", name: "Vikram Verma", phone: "9425298765", email: "vikram.verma@yahoo.com", city: "Bhilai", vehicleType: "Commercial / Truck", vehicleNumber: "CG 07 CA 9081", vehicleModel: "Tata 407", totalBookings: 5, totalSpent: 18200, lastActive: "2026-09-23", source: "Service Booking" },
+      { id: "c_3", name: "Amit Patel", phone: "9755567890", email: "amit.patel@gmail.com", city: "Bilaspur", vehicleType: "Bike / Scooter", vehicleNumber: "CG 10 AB 4567", vehicleModel: "Honda Activa 6G", totalBookings: 2, totalSpent: 1200, lastActive: "2026-09-20", source: "In-Store Billing" },
+      { id: "c_4", name: "Suresh Sahu", phone: "9131012456", email: "suresh.sahu@gmail.com", city: "Raipur", vehicleType: "Tractor / Agri", vehicleNumber: "CG 04 TR 5521", vehicleModel: "Mahindra 575 DI", totalBookings: 1, totalSpent: 14500, lastActive: "2026-09-18", source: "Service Booking" },
+      { id: "c_5", name: "Pooja Deshmukh", phone: "8878901234", email: "pooja.d@outlook.com", city: "Durg", vehicleType: "Car / SUV", vehicleNumber: "CG 07 KT 7788", vehicleModel: "Maruti Swift", totalBookings: 2, totalSpent: 2800, lastActive: "2026-09-21", source: "Registered Customer" },
+    ];
+  }
+
+  const totalRegisteredCustomers = rawCustomerList.length;
+  const activeBookerCustomers = rawCustomerList.filter((c) => c.totalBookings > 0).length;
+  const totalCustomerSpend = rawCustomerList.reduce((sum, c) => sum + (c.totalSpent || 0), 0);
+  const returningCustomers = rawCustomerList.filter((c) => c.totalBookings > 1).length;
+
+  // Vehicle Breakdown Counts
+  const vehicleDistribution = {
+    car: rawCustomerList.filter((c) => (c.vehicleType || "").toLowerCase().includes("car") || (c.vehicleType || "").toLowerCase().includes("suv")).length,
+    bike: rawCustomerList.filter((c) => (c.vehicleType || "").toLowerCase().includes("bike") || (c.vehicleType || "").toLowerCase().includes("scooter") || (c.vehicleType || "").toLowerCase().includes("2")).length,
+    commercial: rawCustomerList.filter((c) => (c.vehicleType || "").toLowerCase().includes("truck") || (c.vehicleType || "").toLowerCase().includes("commercial") || (c.vehicleType || "").toLowerCase().includes("bus")).length,
+    tractor: rawCustomerList.filter((c) => (c.vehicleType || "").toLowerCase().includes("tractor") || (c.vehicleType || "").toLowerCase().includes("agri")).length,
+  };
+  const totalVehiclesCount = Object.values(vehicleDistribution).reduce((a, b) => a + b, 0) || 1;
+
+  const filteredCustomerList = rawCustomerList.filter((c) => {
+    const q = customerSearchTerm.toLowerCase().trim();
+    const matchSearch = !q || (
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").toLowerCase().includes(q) ||
+      (c.email || "").toLowerCase().includes(q) ||
+      (c.city || "").toLowerCase().includes(q) ||
+      (c.vehicleNumber || "").toLowerCase().includes(q) ||
+      (c.vehicleModel || "").toLowerCase().includes(q)
+    );
+
+    const matchVehicle =
+      customerVehicleFilter === "all" ||
+      (customerVehicleFilter === "car" && ((c.vehicleType || "").toLowerCase().includes("car") || (c.vehicleType || "").toLowerCase().includes("suv"))) ||
+      (customerVehicleFilter === "bike" && ((c.vehicleType || "").toLowerCase().includes("bike") || (c.vehicleType || "").toLowerCase().includes("scooter") || (c.vehicleType || "").toLowerCase().includes("2"))) ||
+      (customerVehicleFilter === "commercial" && ((c.vehicleType || "").toLowerCase().includes("truck") || (c.vehicleType || "").toLowerCase().includes("commercial"))) ||
+      (customerVehicleFilter === "tractor" && ((c.vehicleType || "").toLowerCase().includes("tractor") || (c.vehicleType || "").toLowerCase().includes("agri")));
+
+    return matchSearch && matchVehicle;
+  });
+
+  // Shop Ads Filtered List
+  const filteredAds = ads.filter((ad) => {
     if (!adSearchTerm.trim()) return true;
-    const term = adSearchTerm.toLowerCase();
+    const q = adSearchTerm.toLowerCase();
     return (
-      a.shopName?.toLowerCase().includes(term) ||
-      a.city?.toLowerCase().includes(term) ||
-      a.offerBadge?.toLowerCase().includes(term)
+      (ad.shopName || "").toLowerCase().includes(q) ||
+      (ad.city || "").toLowerCase().includes(q) ||
+      (ad.offerBadge || "").toLowerCase().includes(q) ||
+      (ad.description || "").toLowerCase().includes(q) ||
+      (ad.tagline || "").toLowerCase().includes(q)
     );
   });
 
@@ -691,70 +1158,110 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* 🧭 Admin Navigation Tabs */}
-      <div className="admin-nav-tabs">
+      {/* 🧭 Admin Navigation Tabs (Scrollable & Slidable) */}
+      <div className="admin-nav-tabs-wrapper">
         <button
-          className={`admin-tab ${activeTab === "overview" ? "tab-active" : ""}`}
-          onClick={() => setActiveTab("overview")}
+          type="button"
+          className="nav-tabs-arrow-btn arrow-left"
+          onClick={() => scrollNavTabs("left")}
+          title="Scroll Left (बाएं सरकाएं)"
         >
-          <TrendingUp size={16} /> Overview
+          <ChevronLeft size={16} />
         </button>
 
-        <button
-          className={`admin-tab ${activeTab === "ads" ? "tab-active tab-ads-active" : ""}`}
-          onClick={() => setActiveTab("ads")}
+        <div
+          className="admin-nav-tabs"
+          ref={navTabsRef}
+          onWheel={handleTabsWheel}
         >
-          <Megaphone size={16} /> 📢 Shop Ads Manager ({ads.length})
-          <span className="tab-bubble" style={{ background: "#27ae60" }}>{activeAdsCount} Active</span>
-        </button>
+          <button
+            className={`admin-tab ${activeTab === "overview" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("overview")}
+          >
+            <TrendingUp size={16} /> Overview
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "traffic" ? "tab-active tab-traffic-active" : ""}`}
+            onClick={() => setActiveTab("traffic")}
+          >
+            <BarChart3 size={16} /> 📊 Traffic & Graphs
+            <span className="tab-bubble" style={{ background: "#e67e22" }}>🔥 Real-Time</span>
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "ads" ? "tab-active tab-ads-active" : ""}`}
+            onClick={() => setActiveTab("ads")}
+          >
+            <Megaphone size={16} /> 📢 Shop Ads Manager ({ads.length})
+            <span className="tab-bubble" style={{ background: "#27ae60" }}>{activeAdsCount} Active</span>
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "shops" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("shops")}
+          >
+            <Store size={16} /> Shops & Users ({users.length})
+            {pendingApprovals > 0 && <span className="tab-bubble">{pendingApprovals} Pending</span>}
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "pricing" ? "tab-active tab-pricing-active" : ""}`}
+            onClick={() => setActiveTab("pricing")}
+          >
+            <Crown size={16} /> 👑 Plans & Pricing Control
+            {subConfig.launchFreeMode ? (
+              <span className="tab-bubble" style={{ background: "#27ae60" }}>🚀 Free Launch Active</span>
+            ) : (
+              <span className="tab-bubble" style={{ background: "#c0392b" }}>💰 Paid Mode</span>
+            )}
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "bank" ? "tab-active tab-bank-active" : ""}`}
+            onClick={() => setActiveTab("bank")}
+          >
+            <Building2 size={16} /> 🏦 Bank Account & UPI
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "bookings" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("bookings")}
+          >
+            <Calendar size={16} /> Global Bookings ({bookings.length})
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "tickets" ? "tab-active" : ""}`}
+            onClick={() => setActiveTab("tickets")}
+          >
+            <LifeBuoy size={16} /> Support Tickets ({tickets.length})
+            {openTickets > 0 && <span className="tab-bubble tab-bubble-red">{openTickets} Open</span>}
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "excel" ? "tab-active tab-excel-active" : ""}`}
+            onClick={() => setActiveTab("excel")}
+          >
+            <FileSpreadsheet size={16} /> 📥 Excel Sheet Exports
+          </button>
+
+          <button
+            className={`admin-tab ${activeTab === "updates" ? "tab-active tab-updates-active" : ""}`}
+            onClick={() => setActiveTab("updates")}
+          >
+            <Bell size={16} /> 🔔 App Updates & Notifications
+            <span className="tab-bubble" style={{ background: "#8e44ad" }}>Live Push</span>
+          </button>
+        </div>
 
         <button
-          className={`admin-tab ${activeTab === "shops" ? "tab-active" : ""}`}
-          onClick={() => setActiveTab("shops")}
+          type="button"
+          className="nav-tabs-arrow-btn arrow-right"
+          onClick={() => scrollNavTabs("right")}
+          title="Scroll Right (दाएं सरकाएं)"
         >
-          <Store size={16} /> Shops & Users ({users.length})
-          {pendingApprovals > 0 && <span className="tab-bubble">{pendingApprovals} Pending</span>}
-        </button>
-
-        <button
-          className={`admin-tab ${activeTab === "pricing" ? "tab-active tab-pricing-active" : ""}`}
-          onClick={() => setActiveTab("pricing")}
-        >
-          <Crown size={16} /> 👑 Plans & Pricing Control
-          {subConfig.launchFreeMode ? (
-            <span className="tab-bubble" style={{ background: "#27ae60" }}>🚀 Free Launch Active</span>
-          ) : (
-            <span className="tab-bubble" style={{ background: "#c0392b" }}>💰 Paid Mode</span>
-          )}
-        </button>
-
-        <button
-          className={`admin-tab ${activeTab === "bank" ? "tab-active tab-bank-active" : ""}`}
-          onClick={() => setActiveTab("bank")}
-        >
-          <Building2 size={16} /> 🏦 Bank Account & UPI
-        </button>
-
-        <button
-          className={`admin-tab ${activeTab === "bookings" ? "tab-active" : ""}`}
-          onClick={() => setActiveTab("bookings")}
-        >
-          <Calendar size={16} /> Global Bookings ({bookings.length})
-        </button>
-
-        <button
-          className={`admin-tab ${activeTab === "tickets" ? "tab-active" : ""}`}
-          onClick={() => setActiveTab("tickets")}
-        >
-          <LifeBuoy size={16} /> Support Tickets ({tickets.length})
-          {openTickets > 0 && <span className="tab-bubble tab-bubble-red">{openTickets} Open</span>}
-        </button>
-
-        <button
-          className={`admin-tab ${activeTab === "excel" ? "tab-active tab-excel-active" : ""}`}
-          onClick={() => setActiveTab("excel")}
-        >
-          <FileSpreadsheet size={16} /> 📥 Excel Sheet Exports
+          <ChevronRight size={16} />
         </button>
       </div>
 
@@ -812,6 +1319,13 @@ export default function AdminPanel() {
 
           {/* Quick Shortcuts Grid */}
           <div className="admin-quick-links-grid">
+            <div className="shortcut-box" onClick={() => setActiveTab("traffic")} style={{ borderLeft: "4px solid #e67e22" }}>
+              <div className="sc-icon">📊</div>
+              <h4>Shop Traffic & Customer Graphs</h4>
+              <p>Check karein kis dukan par sabse zyada customer traffic, views aur bookings hain (Live Visual Graphs).</p>
+              <span className="sc-arrow" style={{ color: "#e67e22", fontWeight: 700 }}>Open Traffic Graphs →</span>
+            </div>
+
             <div className="shortcut-box" onClick={() => setActiveTab("shops")}>
               <div className="sc-icon">🏪</div>
               <h4>Shop Partner Approvals</h4>
@@ -833,6 +1347,789 @@ export default function AdminPanel() {
               <span className="sc-arrow">Open Excel Center →</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB 1.5: 📈 SHOP TRAFFIC & CUSTOMER ANALYTICS (VISUAL GRAPHS)
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "traffic" && (
+        <div className="admin-traffic-analytics-container">
+          {/* Top Traffic Header & Controls */}
+          <div className="traffic-banner-header">
+            <div className="traffic-banner-left">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "6px" }}>
+                <span className="traffic-badge-pill">
+                  <BarChart3 size={14} /> PLATFORM ANALYTICS SUITE
+                </span>
+
+                {/* 🔴 Real Database vs Preview Indicator & Toggle */}
+                <button
+                  type="button"
+                  className={`data-mode-toggle-btn ${isRealMode ? "mode-real-active" : "mode-preview-active"}`}
+                  onClick={() => setAnalyticsDataMode(isRealMode ? "preview" : "real")}
+                  title="Click to toggle between 100% Real Live Database Data and Demo Preview Simulation"
+                >
+                  <span className={`status-dot ${isRealMode ? "dot-live-pulse" : "dot-demo"}`} />
+                  {isRealMode ? "🟢 100% Live Real Database" : "✨ Sample Demo Preview"}
+                  <span className="mode-switch-hint">({isRealMode ? "Click for Preview" : "Click for Live Real Data"})</span>
+                </button>
+              </div>
+
+              <h2 className="traffic-title">
+                {analyticsSubTab === "shops" 
+                  ? "🏪 Shop Traffic & Store Analytics (दुकानों का ट्रैफिक)" 
+                  : "👥 Customer Insights & Directory (ग्राहकों का डेटा और विश्लेषण)"}
+              </h2>
+              <p className="traffic-desc">
+                {analyticsSubTab === "shops"
+                  ? "देखें किस दुकान पर ग्राहक सबसे ज़्यादा आ रहे हैं, किसका मैप खोला गया और कहाँ से कॉल्स व बुकिंग्स हो रही हैं।"
+                  : "प्लेटफॉर्म के सभी रजिस्टर्ड व बुकिंग कराने वाले ग्राहकों का पूरा डेटा, गाड़ियाँ, संपर्क, बुकिंग इतिहास व खर्च विवरण।"}
+              </p>
+            </div>
+
+            <div className="traffic-timeframe-controls">
+              <div className="timeframe-pill-toggle">
+                <button
+                  className={`tf-btn ${trafficTimeframe === "7d" ? "tf-btn-active" : ""}`}
+                  onClick={() => setTrafficTimeframe("7d")}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  className={`tf-btn ${trafficTimeframe === "30d" ? "tf-btn-active" : ""}`}
+                  onClick={() => setTrafficTimeframe("30d")}
+                >
+                  Last 30 Days
+                </button>
+              </div>
+
+              <Link to="/store-location" className="btn-view-stores-map" title="View Stores Live">
+                <Compass size={15} /> Store Locator
+              </Link>
+            </div>
+          </div>
+
+          {/* 🔀 TWO DEDICATED SUB-TABS (Shops vs Customers) */}
+          <div className="analytics-subnav-row">
+            <button
+              className={`subnav-pill ${analyticsSubTab === "shops" ? "subnav-pill-active subnav-shops-active" : ""}`}
+              onClick={() => setAnalyticsSubTab("shops")}
+            >
+              <Store size={18} />
+              <span>🏪 Shop Traffic & Store Leaderboard (दुकानों का ट्रैफिक)</span>
+              <span className="subnav-badge">{shopTrafficList.length} Shops</span>
+            </button>
+
+            <button
+              className={`subnav-pill ${analyticsSubTab === "customers" ? "subnav-pill-active subnav-customers-active" : ""}`}
+              onClick={() => setAnalyticsSubTab("customers")}
+            >
+              <Users size={18} />
+              <span>👥 Customer Insights & Directory (ग्राहकों का डेटा)</span>
+              <span className="subnav-badge" style={{ background: "#2563eb" }}>{totalRegisteredCustomers} Customers</span>
+            </button>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SUB-TAB A: 🏪 SHOP TRAFFIC & LEADERBOARD
+          ══════════════════════════════════════════════════════════════════ */}
+          {analyticsSubTab === "shops" && (
+            <>
+              {/* 5 High-Impact KPI Metric Cards */}
+              <div className="traffic-kpi-grid">
+                <div className="traffic-kpi-card">
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(59, 130, 246, 0.12)", color: "#2563eb" }}>
+                    <Eye size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Total Store Views</span>
+                    <h3 className="kpi-value">{totalNetworkViews.toLocaleString()}</h3>
+                    <small className="kpi-subtext">👁️ Customer visits on shop pages</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card">
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(34, 197, 94, 0.12)", color: "#16a34a" }}>
+                    <Navigation size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Map Route Directions</span>
+                    <h3 className="kpi-value">{totalNetworkMaps.toLocaleString()}</h3>
+                    <small className="kpi-subtext">📍 Customers navigating to shops</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card">
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(245, 158, 11, 0.12)", color: "#d97706" }}>
+                    <Phone size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Direct Phone Calls</span>
+                    <h3 className="kpi-value">{totalNetworkCalls.toLocaleString()}</h3>
+                    <small className="kpi-subtext">📞 Call inquiries from customers</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card">
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(239, 68, 68, 0.12)", color: "#dc2626" }}>
+                    <Calendar size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Total Service Bookings</span>
+                    <h3 className="kpi-value">{totalNetworkBookings.toLocaleString()}</h3>
+                    <small className="kpi-subtext">🚗 Confirmed service appointments</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card highlight-leader-kpi">
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(230, 126, 34, 0.15)", color: "#e67e22" }}>
+                    <Flame size={24} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label" style={{ color: "#d35400" }}>🔥 #1 Top Traffic Hub</span>
+                    <h3 className="kpi-value" style={{ fontSize: "17px", color: "#c0392b" }}>{topTrafficShop.name}</h3>
+                    <small className="kpi-subtext">{topTrafficShop.city} • {topTrafficShop.totalInteractions} Interactions</small>
+                  </div>
+                </div>
+              </div>
+
+              {/* 📊 Visual Graph Section (2 Columns: Bar Comparison & Trend Curve) */}
+              <div className="traffic-charts-two-col">
+                {/* Chart 1: Shop Traffic Comparison Bar Graph */}
+                <div className="chart-card-box">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-box-title">📊 Shop Traffic Comparison (दुकान अनुसार ट्रैफिक तुलना)</h3>
+                      <p className="chart-box-subtitle">
+                        नीचे दिए गए विज़ुअल बार से देखें किस दुकान को कितने ग्राहक, मैप क्लिक्स व कॉल्स मिले हैं:
+                      </p>
+                    </div>
+                    <span className="chart-pill-tag">Ranked by Traffic</span>
+                  </div>
+
+                  <div className="shop-bars-container">
+                    {shopTrafficList.map((shop, idx) => {
+                      const percent = Math.round((shop.totalInteractions / maxShopTraffic) * 100) || (isRealMode && shop.totalInteractions === 0 ? 0 : 5);
+                      const networkShare = totalNetworkInteractions > 0 ? Math.round((shop.totalInteractions / totalNetworkInteractions) * 100) : 0;
+                      const isFirst = idx === 0 && shop.totalInteractions > 0;
+
+                      return (
+                        <div key={shop.id} className={`shop-bar-row ${isFirst ? "bar-row-leader" : ""}`}>
+                          <div className="shop-bar-top-info">
+                            <div className="shop-rank-name">
+                              <span className={`rank-badge-circle ${isFirst ? "rank-gold" : idx === 1 ? "rank-silver" : idx === 2 ? "rank-bronze" : "rank-norm"}`}>
+                                {isFirst ? "🏆 #1" : `#${idx + 1}`}
+                              </span>
+                              <strong className="shop-title-link">{shop.name}</strong>
+                              <span className="shop-city-chip">{shop.city}</span>
+                              {isFirst && <span className="top-badge-flame">🔥 Most Visited Hub</span>}
+                            </div>
+
+                            <div className="shop-metrics-mini-chips">
+                              <span className="mini-chip chip-views" title="Store Views">👁️ {shop.views}</span>
+                              <span className="mini-chip chip-maps" title="Map Directions">📍 {shop.mapClicks}</span>
+                              <span className="mini-chip chip-calls" title="Calls">📞 {shop.callLeads}</span>
+                              <span className="mini-chip chip-bookings" title="Bookings">🚗 {shop.bookingsCount}</span>
+                              <span className="mini-chip chip-total" title="Total Traffic Score"><strong>{shop.totalInteractions} Total</strong> ({networkShare}%)</span>
+                            </div>
+                          </div>
+
+                          {/* Glowing Multi-Segment Progress Bar */}
+                          <div className="bar-track">
+                            <div
+                              className="bar-fill-gradient"
+                              style={{
+                                width: `${Math.max(percent, isRealMode && shop.totalInteractions === 0 ? 0 : 3)}%`,
+                                background: isFirst
+                                  ? "linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)"
+                                  : idx === 1
+                                  ? "linear-gradient(90deg, #3b82f6 0%, #06b6d4 100%)"
+                                  : "linear-gradient(90deg, #10b981 0%, #3b82f6 100%)",
+                              }}
+                            >
+                              <span className="bar-glow-tail" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Chart 2: Network Customer Daily Trend Curve */}
+                <div className="chart-card-box">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-box-title">📈 Customer Visits Trend Curve (ट्रैफिक ग्राफ़)</h3>
+                      <p className="chart-box-subtitle">
+                        नेटवर्क पर ग्राहकों की दैनिक विज़िट और एक्टिविटी की ग्रोथ ({trafficTimeframe === "7d" ? "पिछले 7 दिन" : "पिछले 30 दिन"}):
+                      </p>
+                    </div>
+                    <span className="chart-pill-tag">Timeline Curve</span>
+                  </div>
+
+                  <div className="svg-chart-container">
+                    <svg viewBox="0 0 550 170" className="trend-svg-canvas">
+                      <defs>
+                        <linearGradient id="adminTrafficGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#c0392b" stopOpacity="0.2" />
+                          <stop offset="100%" stopColor="#c0392b" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Horizontal Grid lines */}
+                      <line x1="35" y1="35" x2="515" y2="35" stroke="rgba(148, 163, 184, 0.2)" strokeDasharray="3 3" />
+                      <line x1="35" y1="85" x2="515" y2="85" stroke="rgba(148, 163, 184, 0.2)" strokeDasharray="3 3" />
+                      <line x1="35" y1="135" x2="515" y2="135" stroke="rgba(148, 163, 184, 0.2)" strokeDasharray="3 3" />
+
+                      {/* Filled Area */}
+                      {trafficAreaD && <path d={trafficAreaD} fill="url(#adminTrafficGrad)" />}
+
+                      {/* Main Thin Curve Line */}
+                      {trafficPathD && (
+                        <path
+                          d={trafficPathD}
+                          fill="none"
+                          stroke="#c0392b"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                        />
+                      )}
+
+                      {/* Point Dots */}
+                      {trafficChartPoints.map((pt, i) => {
+                        const shouldShowDate =
+                          trafficChartPoints.length <= 8 ||
+                          i % Math.ceil(trafficChartPoints.length / 6) === 0 ||
+                          i === trafficChartPoints.length - 1;
+                        const shouldShowVal =
+                          trafficChartPoints.length <= 8 ||
+                          (pt.val > 0 && (pt.val >= trafficChartMax * 0.25 || trafficChartPoints.length <= 14));
+
+                        return (
+                          <g key={i} className="chart-point-group">
+                            <circle
+                              cx={pt.x}
+                              cy={pt.y}
+                              r={pt.val > 0 ? "3.5" : "2.5"}
+                              fill="#c0392b"
+                              stroke="#ffffff"
+                              strokeWidth="1.5"
+                            />
+                            {shouldShowVal && (
+                              <text x={pt.x} y={pt.y - 8} textAnchor="middle" fill="var(--text, #1e293b)" fontSize="9.5" fontWeight="700">
+                                {pt.val}
+                              </text>
+                            )}
+                            {shouldShowDate && (
+                              <>
+                                <line x1={pt.x} y1="148" x2={pt.x} y2="153" stroke="#cbd5e1" strokeWidth="1" />
+                                <text x={pt.x} y="165" textAnchor="middle" fill="var(--text-muted, #64748b)" fontSize="9.5" fontWeight="600">
+                                  {pt.label}
+                                </text>
+                              </>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  {/* Action Distribution Breakdown */}
+                  <div className="action-distribution-wrap">
+                    <h4 className="dist-title">Customer Interaction Breakdown:</h4>
+                    <div className="dist-bars-row">
+                      <div className="dist-item">
+                        <span className="dist-dot dot-views" />
+                        <span>Views: <strong>{totalNetworkInteractions > 0 ? Math.round((totalNetworkViews / totalNetworkInteractions) * 100) : 0}%</strong></span>
+                      </div>
+                      <div className="dist-item">
+                        <span className="dist-dot dot-maps" />
+                        <span>Map Directions: <strong>{totalNetworkInteractions > 0 ? Math.round((totalNetworkMaps / totalNetworkInteractions) * 100) : 0}%</strong></span>
+                      </div>
+                      <div className="dist-item">
+                        <span className="dist-dot dot-calls" />
+                        <span>Calls: <strong>{totalNetworkInteractions > 0 ? Math.round((totalNetworkCalls / totalNetworkInteractions) * 100) : 0}%</strong></span>
+                      </div>
+                      <div className="dist-item">
+                        <span className="dist-dot dot-bookings" />
+                        <span>Bookings: <strong>{totalNetworkInteractions > 0 ? Math.round((totalNetworkBookings / totalNetworkInteractions) * 100) : 0}%</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 📋 Detailed Shop Traffic Leaderboard Table */}
+              <div className="traffic-leaderboard-card">
+                <div className="leaderboard-header">
+                  <div>
+                    <h3 className="leaderboard-title">🏆 All Shops Traffic Leaderboard (पूरी सूची)</h3>
+                    <p className="leaderboard-subtitle">Detailed breakdown of customer engagements per registered store</p>
+                  </div>
+
+                  <div className="leaderboard-search-box">
+                    <Search size={15} />
+                    <input
+                      type="text"
+                      placeholder="Filter by shop or city..."
+                      value={trafficSearchTerm}
+                      onChange={(e) => setTrafficSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="admin-table traffic-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Shop / Hub Name</th>
+                        <th>City & Contact</th>
+                        <th>Profile Views</th>
+                        <th>Map Directions</th>
+                        <th>Phone Leads</th>
+                        <th>Service Bookings</th>
+                        <th>Total Traffic</th>
+                        <th>Network Share</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTrafficShops.map((s, idx) => {
+                        const isTop = idx === 0 && s.totalInteractions > 0;
+                        const share = totalNetworkInteractions > 0 ? Math.round((s.totalInteractions / totalNetworkInteractions) * 100) : 0;
+
+                        return (
+                          <tr key={s.id} className={isTop ? "leaderboard-row-top" : ""}>
+                            <td>
+                              <span className={`rank-pill ${isTop ? "rank-pill-first" : ""}`}>
+                                {isTop ? "🏆 #1" : `#${idx + 1}`}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="tbl-shop-info">
+                                <strong>{s.name}</strong>
+                                <small>{s.owner}</small>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="tbl-contact-info">
+                                <span>📍 {s.city}</span>
+                                <small>📞 {s.phone}</small>
+                              </div>
+                            </td>
+                            <td>
+                              <span className="stat-pill-view">👁️ {s.views}</span>
+                            </td>
+                            <td>
+                              <span className="stat-pill-map">📍 {s.mapClicks}</span>
+                            </td>
+                            <td>
+                              <span className="stat-pill-call">📞 {s.callLeads}</span>
+                            </td>
+                            <td>
+                              <span className="stat-pill-booking">🚗 {s.bookingsCount}</span>
+                            </td>
+                            <td>
+                              <strong className="stat-total-score">{s.totalInteractions}</strong>
+                            </td>
+                            <td>
+                              <div className="share-bar-cell">
+                                <span className="share-percent-text">{share}%</span>
+                                <div className="mini-share-bar">
+                                  <div className="mini-share-fill" style={{ width: `${share}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <Link
+                                to={`/store-location?shopName=${encodeURIComponent(s.name)}`}
+                                className="btn-inspect-shop"
+                                title="View Store Location"
+                              >
+                                <ExternalLink size={13} /> View
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════════
+              SUB-TAB B: 👥 CUSTOMER INSIGHTS & DIRECTORY
+          ══════════════════════════════════════════════════════════════════ */}
+          {analyticsSubTab === "customers" && (
+            <>
+              {/* 4 High-Impact Customer KPI Cards */}
+              <div className="traffic-kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+                <div className="traffic-kpi-card" style={{ borderLeft: "4px solid #2563eb" }}>
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(37, 99, 235, 0.12)", color: "#2563eb" }}>
+                    <Users size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Total Registered Customers</span>
+                    <h3 className="kpi-value">{totalRegisteredCustomers} Customers</h3>
+                    <small className="kpi-subtext">👤 Profiles in system</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card" style={{ borderLeft: "4px solid #16a34a" }}>
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(22, 163, 74, 0.12)", color: "#16a34a" }}>
+                    <Car size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Active Bookers</span>
+                    <h3 className="kpi-value">{activeBookerCustomers} Bookers</h3>
+                    <small className="kpi-subtext">🚗 Customers with confirmed service</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card" style={{ borderLeft: "4px solid #f59e0b" }}>
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(245, 158, 11, 0.12)", color: "#d97706" }}>
+                    <DollarSign size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Total Customer Spend</span>
+                    <h3 className="kpi-value">₹{totalCustomerSpend.toLocaleString()}</h3>
+                    <small className="kpi-subtext">🧾 Cumulative invoice & booking revenue</small>
+                  </div>
+                </div>
+
+                <div className="traffic-kpi-card" style={{ borderLeft: "4px solid #9333ea" }}>
+                  <div className="kpi-icon-wrap" style={{ background: "rgba(147, 51, 234, 0.12)", color: "#9333ea" }}>
+                    <UserCheck size={22} />
+                  </div>
+                  <div className="kpi-details">
+                    <span className="kpi-label">Repeat Customers</span>
+                    <h3 className="kpi-value">{returningCustomers} Returning</h3>
+                    <small className="kpi-subtext">🔄 Customers with 2+ bookings</small>
+                  </div>
+                </div>
+              </div>
+
+              {/* 📊 Customer Vehicle Distribution & Behavioral Insights */}
+              <div className="traffic-charts-two-col">
+                {/* Chart 1: Vehicle Type Distribution */}
+                <div className="chart-card-box">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-box-title">🚗 Customer Vehicle Types (वाहन अनुसार ग्राहक)</h3>
+                      <p className="chart-box-subtitle">
+                        देखें किस वाहन श्रेणी के कितने ग्राहक प्लेटफ़ॉर्म से जुड़े हैं:
+                      </p>
+                    </div>
+                    <span className="chart-pill-tag">Vehicle Category</span>
+                  </div>
+
+                  <div className="vehicle-dist-container">
+                    <div className="veh-bar-row">
+                      <div className="veh-row-top">
+                        <span className="veh-name-label">🚗 Cars & SUVs</span>
+                        <strong className="veh-count-badge">
+                          {vehicleDistribution.car} ({Math.round((vehicleDistribution.car / totalVehiclesCount) * 100)}%)
+                        </strong>
+                      </div>
+                      <div className="veh-bar-track">
+                        <div
+                          className="veh-bar-fill"
+                          style={{
+                            width: `${Math.max(Math.round((vehicleDistribution.car / totalVehiclesCount) * 100), 5)}%`,
+                            background: "linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="veh-bar-row">
+                      <div className="veh-row-top">
+                        <span className="veh-name-label">🏍️ Bikes & Scooters (2-Wheeler)</span>
+                        <strong className="veh-count-badge">
+                          {vehicleDistribution.bike} ({Math.round((vehicleDistribution.bike / totalVehiclesCount) * 100)}%)
+                        </strong>
+                      </div>
+                      <div className="veh-bar-track">
+                        <div
+                          className="veh-bar-fill"
+                          style={{
+                            width: `${Math.max(Math.round((vehicleDistribution.bike / totalVehiclesCount) * 100), 5)}%`,
+                            background: "linear-gradient(90deg, #10b981 0%, #059669 100%)",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="veh-bar-row">
+                      <div className="veh-row-top">
+                        <span className="veh-name-label">🚚 Commercial & Heavy Trucks</span>
+                        <strong className="veh-count-badge">
+                          {vehicleDistribution.commercial} ({Math.round((vehicleDistribution.commercial / totalVehiclesCount) * 100)}%)
+                        </strong>
+                      </div>
+                      <div className="veh-bar-track">
+                        <div
+                          className="veh-bar-fill"
+                          style={{
+                            width: `${Math.max(Math.round((vehicleDistribution.commercial / totalVehiclesCount) * 100), 5)}%`,
+                            background: "linear-gradient(90deg, #f59e0b 0%, #d97706 100%)",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="veh-bar-row">
+                      <div className="veh-row-top">
+                        <span className="veh-name-label">🚜 Tractors & Agriculture Equipment</span>
+                        <strong className="veh-count-badge">
+                          {vehicleDistribution.tractor} ({Math.round((vehicleDistribution.tractor / totalVehiclesCount) * 100)}%)
+                        </strong>
+                      </div>
+                      <div className="veh-bar-track">
+                        <div
+                          className="veh-bar-fill"
+                          style={{
+                            width: `${Math.max(Math.round((vehicleDistribution.tractor / totalVehiclesCount) * 100), 5)}%`,
+                            background: "linear-gradient(90deg, #8b5cf6 0%, #6d28d9 100%)",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chart 2: Customer Behavioral Channels */}
+                <div className="chart-card-box">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-box-title">⚡ Customer Action Stream (ग्राहक एक्टिविटी)</h3>
+                      <p className="chart-box-subtitle">
+                        ग्राहक दुकानों के साथ किस माध्यम से संपर्क कर रहे हैं:
+                      </p>
+                    </div>
+                    <span className="chart-pill-tag">Live Activity Channels</span>
+                  </div>
+
+                  <div className="customer-activity-grid">
+                    <div className="action-stat-box" style={{ borderColor: "#3b82f6" }}>
+                      <div className="action-stat-header">
+                        <Eye size={18} color="#2563eb" />
+                        <span>Store Page Views</span>
+                      </div>
+                      <h4 className="action-stat-num">{totalNetworkViews}</h4>
+                      <small>Browsed tyre inventory & pricing</small>
+                    </div>
+
+                    <div className="action-stat-box" style={{ borderColor: "#10b981" }}>
+                      <div className="action-stat-header">
+                        <Navigation size={18} color="#059669" />
+                        <span>Map Navigations</span>
+                      </div>
+                      <h4 className="action-stat-num">{totalNetworkMaps}</h4>
+                      <small>Used GPS to reach partner hub</small>
+                    </div>
+
+                    <div className="action-stat-box" style={{ borderColor: "#f59e0b" }}>
+                      <div className="action-stat-header">
+                        <Phone size={18} color="#d97706" />
+                        <span>Direct Calls</span>
+                      </div>
+                      <h4 className="action-stat-num">{totalNetworkCalls}</h4>
+                      <small>Called shop for tyre enquiry</small>
+                    </div>
+
+                    <div className="action-stat-box" style={{ borderColor: "#ef4444" }}>
+                      <div className="action-stat-header">
+                        <Calendar size={18} color="#dc2626" />
+                        <span>Service Appointments</span>
+                      </div>
+                      <h4 className="action-stat-num">{totalNetworkBookings}</h4>
+                      <small>Confirmed roadside & shop bookings</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 📋 Complete Customer Master Directory Table */}
+              <div className="traffic-leaderboard-card">
+                <div className="leaderboard-header" style={{ flexWrap: "wrap", gap: "12px" }}>
+                  <div>
+                    <h3 className="leaderboard-title">👥 Customer Master Directory ({filteredCustomerList.length} Records)</h3>
+                    <p className="leaderboard-subtitle">Detailed profiles, contact numbers, vehicles, and booking history</p>
+                  </div>
+
+                  {/* Filters & Search Toolbar */}
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+                    {/* Vehicle Filter Pills */}
+                    <div className="customer-veh-filter-row">
+                      <button
+                        className={`veh-filter-btn ${customerVehicleFilter === "all" ? "veh-filter-active" : ""}`}
+                        onClick={() => setCustomerVehicleFilter("all")}
+                      >
+                        All
+                      </button>
+                      <button
+                        className={`veh-filter-btn ${customerVehicleFilter === "car" ? "veh-filter-active" : ""}`}
+                        onClick={() => setCustomerVehicleFilter("car")}
+                      >
+                        🚗 Car/SUV
+                      </button>
+                      <button
+                        className={`veh-filter-btn ${customerVehicleFilter === "bike" ? "veh-filter-active" : ""}`}
+                        onClick={() => setCustomerVehicleFilter("bike")}
+                      >
+                        🏍️ Bike
+                      </button>
+                      <button
+                        className={`veh-filter-btn ${customerVehicleFilter === "commercial" ? "veh-filter-active" : ""}`}
+                        onClick={() => setCustomerVehicleFilter("commercial")}
+                      >
+                        🚚 Truck
+                      </button>
+                      <button
+                        className={`veh-filter-btn ${customerVehicleFilter === "tractor" ? "veh-filter-active" : ""}`}
+                        onClick={() => setCustomerVehicleFilter("tractor")}
+                      >
+                        🚜 Tractor
+                      </button>
+                    </div>
+
+                    <div className="leaderboard-search-box" style={{ minWidth: "240px" }}>
+                      <Search size={15} />
+                      <input
+                        type="text"
+                        placeholder="Search by customer name, phone, vehicle no..."
+                        value={customerSearchTerm}
+                        onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="table-responsive">
+                  <table className="admin-table traffic-table">
+                    <thead>
+                      <tr>
+                        <th>Customer Details</th>
+                        <th>Contact Number</th>
+                        <th>City / Location</th>
+                        <th>Registered Vehicle</th>
+                        <th>Bookings Done</th>
+                        <th>Total Spent (₹)</th>
+                        <th>Last Active</th>
+                        <th>Quick Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCustomerList.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "36px 16px", color: "var(--text-muted)" }}>
+                            <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔍</div>
+                            <strong>Koi customer record nahi mila.</strong>
+                            <p style={{ margin: "4px 0 0", fontSize: "12.5px" }}>Filter change karke ya search clear karke dobara dekhein.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCustomerList.map((c) => {
+                          const cleanPhone = (c.phone || "").replace(/[^0-9]/g, "");
+
+                          return (
+                            <tr key={c.id}>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <div className="customer-avatar-badge">
+                                    {(c.name || "C").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="tbl-shop-info">
+                                    <strong style={{ fontSize: "14px", color: "var(--text, #0f172a)" }}>{c.name}</strong>
+                                    <small style={{ color: "#64748b" }}>{c.email !== "—" ? c.email : c.source}</small>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="tbl-contact-info">
+                                  <strong style={{ color: "#0f172a" }}>📞 {c.phone}</strong>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="tbl-contact-info">
+                                  <span>📍 {c.city || "Raipur"}</span>
+                                  {c.address && c.address !== "—" && <small style={{ maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.address}</small>}
+                                </div>
+                              </td>
+
+                              <td>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                                  <span className="customer-veh-pill">
+                                    {c.vehicleType?.toLowerCase().includes("bike") ? "🏍️" : c.vehicleType?.toLowerCase().includes("truck") ? "🚚" : c.vehicleType?.toLowerCase().includes("tractor") ? "🚜" : "🚗"} {c.vehicleType || "Car / SUV"}
+                                  </span>
+                                  <strong style={{ fontSize: "12px", color: "#1e293b", fontFamily: "monospace" }}>
+                                    {c.vehicleNumber !== "—" ? c.vehicleNumber : (c.vehicleModel || "—")}
+                                  </strong>
+                                </div>
+                              </td>
+
+                              <td>
+                                <span className="stat-pill-booking" style={{ fontSize: "13px", fontWeight: "700" }}>
+                                  🚗 {c.totalBookings} Bookings
+                                </span>
+                              </td>
+
+                              <td>
+                                <strong style={{ color: "#16a34a", fontSize: "14px", fontWeight: "800" }}>
+                                  ₹{(c.totalSpent || 0).toLocaleString()}
+                                </strong>
+                              </td>
+
+                              <td>
+                                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                  {c.lastActive || "Recent"}
+                                </span>
+                              </td>
+
+                              <td>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  {cleanPhone ? (
+                                    <>
+                                      <a
+                                        href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Namaste ${c.name}, TyreSaathi par aapka swagat hai!`)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn-quick-wa"
+                                        title="WhatsApp Message"
+                                      >
+                                        <MessageCircle size={14} /> WhatsApp
+                                      </a>
+                                      <a
+                                        href={`tel:${cleanPhone}`}
+                                        className="btn-quick-call"
+                                        title="Call Customer"
+                                      >
+                                        <Phone size={14} /> Call
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <span style={{ fontSize: "11px", color: "#94a3b8" }}>—</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1678,27 +2975,27 @@ export default function AdminPanel() {
                 {bookings.map((b) => (
                   <tr key={b.id}>
                     <td>
-                      <strong>#{b.id}</strong>
-                      <small className="user-subtext">{b.date} • {b.timeSlot}</small>
+                      <strong>#{formatSafeText(b.id)}</strong>
+                      <small className="user-subtext">{formatSafeDate(b.date || b.createdAt)} • {formatSafeText(b.timeSlot || b.time, "10:00 AM")}</small>
                     </td>
                     <td>
-                      <strong>{b.customerName}</strong>
-                      <small className="user-subtext">📞 {b.customerPhone}</small>
+                      <strong>{formatSafeText(b.customerName, "Customer")}</strong>
+                      <small className="user-subtext">📞 {formatSafeText(b.customerPhone, "—")}</small>
                     </td>
                     <td>
-                      <span>{b.vehicleType}</span>
-                      <small className="reg-badge">{b.vehicleNumber}</small>
+                      <span>{formatSafeText(b.vehicleType, "Car / SUV")}</span>
+                      <small className="reg-badge">{formatSafeText(b.vehicleNumber, "—")}</small>
                     </td>
                     <td>
-                      <strong>{b.serviceName}</strong>
-                      {b.notes && <small className="user-subtext">"{b.notes}"</small>}
+                      <strong>{formatSafeText(b.serviceName, "Tyre Service")}</strong>
+                      {b.notes && <small className="user-subtext">"{formatSafeText(b.notes)}"</small>}
                     </td>
                     <td>
-                      <span className="hub-tag">🏪 {b.shopName}</span>
+                      <span className="hub-tag">🏪 {formatSafeText(b.shopName, "Partner Hub")}</span>
                     </td>
                     <td>
-                      <span className={`status-badge-ticket status-${b.status}`}>
-                        {b.status.toUpperCase()}
+                      <span className={`status-badge-ticket status-${formatSafeText(b.status, "pending")}`}>
+                        {formatSafeText(b.status, "PENDING").toUpperCase()}
                       </span>
                     </td>
                   </tr>
@@ -1746,29 +3043,29 @@ export default function AdminPanel() {
                 {tickets.map((t) => (
                   <tr key={t.id}>
                     <td>
-                      <strong>#{t.ticketNo}</strong>
-                      <small className="user-subtext">{t.createdAt}</small>
+                      <strong>#{formatSafeText(t.ticketNo, t.id)}</strong>
+                      <small className="user-subtext">{formatSafeDate(t.createdAt)}</small>
                     </td>
                     <td>
-                      <strong>{t.userName}</strong>
-                      <small className="user-subtext">📞 {t.userPhone}</small>
+                      <strong>{formatSafeText(t.userName, "User")}</strong>
+                      <small className="user-subtext">📞 {formatSafeText(t.userPhone, "—")}</small>
                     </td>
                     <td>
-                      <span>{t.category}</span>
-                      <small className={`priority-tag priority-${t.priority}`}>{t.priority.toUpperCase()}</small>
+                      <span>{formatSafeText(t.category, "General")}</span>
+                      <small className={`priority-tag priority-${formatSafeText(t.priority, "medium")}`}>{formatSafeText(t.priority, "MEDIUM").toUpperCase()}</small>
                     </td>
                     <td>
-                      <strong style={{ display: "block" }}>{t.subject}</strong>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>{t.description}</p>
+                      <strong style={{ display: "block" }}>{formatSafeText(t.subject, "Support Request")}</strong>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>{formatSafeText(t.description, "")}</p>
                       {t.adminReply && (
                         <div className="admin-reply-snippet">
-                          <strong>Reply:</strong> {t.adminReply}
+                          <strong>Reply:</strong> {formatSafeText(t.adminReply)}
                         </div>
                       )}
                     </td>
                     <td>
-                      <span className={`status-badge-ticket status-${t.status}`}>
-                        {t.status.toUpperCase()}
+                      <span className={`status-badge-ticket status-${formatSafeText(t.status, "open")}`}>
+                        {formatSafeText(t.status, "OPEN").toUpperCase()}
                       </span>
                     </td>
                     <td>
@@ -2558,6 +3855,397 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB 7: APP UPDATES & BROADCAST NOTIFICATIONS CONTROLLER
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "updates" && (
+        <div className="admin-updates-section" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {/* Section Header */}
+          <div style={{
+            background: "linear-gradient(135deg, #2c3e50 0%, #1a252f 100%)",
+            borderRadius: "16px",
+            padding: "22px 26px",
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "16px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <div style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #8e44ad, #9b59b6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontSize: "22px"
+              }}>
+                <Bell size={24} />
+              </div>
+              <div>
+                <h2 style={{ margin: "0 0 4px", fontSize: "20px", fontWeight: "800" }}>
+                  App Version Updates & Real-Time Broadcasts
+                </h2>
+                <p style={{ margin: 0, fontSize: "12.5px", color: "#bdc3c7" }}>
+                  Purane app users ko naye update ka notification popup bhejein (Skip option ke sath) aur live alerts broadcast karein.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{
+                background: "rgba(142, 68, 173, 0.25)",
+                color: "#e8d8f0",
+                border: "1px solid #8e44ad",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: "700"
+              }}>
+                Current Live Version: v{versionControl.latestVersion}
+              </span>
+            </div>
+          </div>
+
+          {/* Success Alerts */}
+          {versionSuccessMsg && (
+            <div style={{ background: "#eafaf1", border: "1.5px solid #27ae60", color: "#1e824c", padding: "12px 18px", borderRadius: "10px", fontWeight: 700, fontSize: "13.5px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} color="#27ae60" />
+              <span>{versionSuccessMsg}</span>
+            </div>
+          )}
+
+          {broadcastSuccessMsg && (
+            <div style={{ background: "#eafaf1", border: "1.5px solid #27ae60", color: "#1e824c", padding: "12px 18px", borderRadius: "10px", fontWeight: 700, fontSize: "13.5px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} color="#27ae60" />
+              <span>{broadcastSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* 2-Column Controller Grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "24px" }}>
+            
+            {/* ═══ Left Card: App Version Control & Release Manager ═══ */}
+            <div style={{
+              background: "var(--surface)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "16px",
+              padding: "22px",
+              boxShadow: "0 4px 18px rgba(0,0,0,0.04)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+                <Rocket size={20} color="#8e44ad" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
+                    1. App Version Release Controller
+                  </h3>
+                  <small style={{ color: "var(--text-muted)", fontSize: "11.5px" }}>
+                    Naye update ka notification popup sabhi purane app users ke screen par turant bhejta hai.
+                  </small>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveVersionControl} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                      Latest Version (वर्ज़न नंबर)
+                    </label>
+                    <input
+                      type="text"
+                      value={versionControl.latestVersion}
+                      onChange={(e) => setVersionControl({ ...versionControl, latestVersion: e.target.value.trim() })}
+                      placeholder="e.g. 1.2.0"
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", fontWeight: "700", boxSizing: "border-box" }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                      Build Code (बिल्ड नंबर)
+                    </label>
+                    <input
+                      type="number"
+                      value={versionControl.buildNumber || 3}
+                      onChange={(e) => setVersionControl({ ...versionControl, buildNumber: Number(e.target.value) })}
+                      placeholder="e.g. 3"
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    APK / Store Download Link (डाउनलोड लिंक)
+                  </label>
+                  <input
+                    type="url"
+                    value={versionControl.downloadUrl}
+                    onChange={(e) => setVersionControl({ ...versionControl, downloadUrl: e.target.value.trim() })}
+                    placeholder="https://tyresaathi.en.uptodown.com/android ya Google Play link"
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Release Summary Message (अपडेट संदेश)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={versionControl.releaseMessage}
+                    onChange={(e) => setVersionControl({ ...versionControl, releaseMessage: e.target.value })}
+                    placeholder="Naye tyre tools, live ratings aur fast booking ke sath naya update taiyar hai..."
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                {/* Highlights List */}
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    ✨ What's New Bullet Points (मुख्य बदलाव)
+                  </label>
+                  
+                  <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                    <input
+                      type="text"
+                      value={newHighlightText}
+                      onChange={(e) => setNewHighlightText(e.target.value)}
+                      placeholder="उदा: ⭐ New Star Rating System added"
+                      style={{ flex: 1, padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--border)", fontSize: "12px" }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddHighlight(); } }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddHighlight}
+                      style={{ background: "#8e44ad", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer" }}
+                    >
+                      + Add
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {versionControl.highlights?.map((h, idx) => (
+                      <div key={idx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg, #f8fafc)", padding: "6px 10px", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                        <span style={{ fontSize: "12px" }}>✓ {h}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveHighlight(idx)}
+                          style={{ background: "transparent", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "12px" }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Skip / Force Update Control */}
+                <div style={{
+                  background: versionControl.forceUpdate ? "#fdedec" : "#eafaf1",
+                  border: `1.5px solid ${versionControl.forceUpdate ? "#e74c3c" : "#27ae60"}`,
+                  borderRadius: "10px",
+                  padding: "12px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between"
+                }}>
+                  <div>
+                    <strong style={{ fontSize: "13px", color: versionControl.forceUpdate ? "#c0392b" : "#27ae60" }}>
+                      {versionControl.forceUpdate ? "🔴 Mandatory Force Update" : "🟢 Optional Update (Skip Allowed)"}
+                    </strong>
+                    <p style={{ margin: "2px 0 0", fontSize: "11.5px", color: "#666" }}>
+                      {versionControl.forceUpdate
+                        ? "User ko bina update kiye app aage use karne ki anumati nahi hogi."
+                        : "User 'Baad Me Karein (Skip)' button dabakar bina rukawat app use kar sakte hain."}
+                    </p>
+                  </div>
+
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={versionControl.forceUpdate}
+                      onChange={(e) => setVersionControl({ ...versionControl, forceUpdate: e.target.checked })}
+                    />
+                    <span className="slider round" />
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={savingVersion}
+                  style={{
+                    background: "linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%)",
+                    color: "#fff",
+                    border: "none",
+                    padding: "12px 18px",
+                    borderRadius: "8px",
+                    fontWeight: "800",
+                    fontSize: "13.5px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    marginTop: "8px",
+                    boxShadow: "0 4px 14px rgba(142, 68, 173, 0.3)"
+                  }}
+                >
+                  <Save size={16} /> {savingVersion ? "Publishing to Cloud..." : "🚀 Publish Version Update to All Users"}
+                </button>
+              </form>
+            </div>
+
+            {/* ═══ Right Card: Broadcast Notifications & Live Star Rating Alerts ═══ */}
+            <div style={{
+              background: "var(--surface)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "16px",
+              padding: "22px",
+              boxShadow: "0 4px 18px rgba(0,0,0,0.04)",
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", borderBottom: "1px solid var(--border)", paddingBottom: "12px" }}>
+                <Megaphone size={20} color="#e67e22" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800" }}>
+                    2. Instant Broadcast Push Notification
+                  </h3>
+                  <small style={{ color: "var(--text-muted)", fontSize: "11.5px" }}>
+                    Sabhi customers ya shop owners ko ek sath live in-app notification & sound alert bhejein.
+                  </small>
+                </div>
+              </div>
+
+              <form onSubmit={handleSendBroadcast} style={{ display: "flex", flexDirection: "column", gap: "14px", flex: 1 }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Target Audience (किसे भेजना है)
+                  </label>
+                  <select
+                    value={broadcastForm.targetRole}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, targetRole: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                  >
+                    <option value="all">👥 Sabhi Users & Shop Owners (All Users)</option>
+                    <option value="vendor">🏪 Sirf Tyre Shop Owners / Vendors</option>
+                    <option value="customer">🚗 Sirf Registered Customers</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Notification Category (सूचना का प्रकार)
+                  </label>
+                  <select
+                    value={broadcastForm.type}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, type: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                  >
+                    <option value="announcement">📢 General Announcement / Offer Notice</option>
+                    <option value="star_rating">⭐ Star Ratings & Store Reviews Alert</option>
+                    <option value="booking">📅 Service Bookings & Status Update</option>
+                    <option value="update">🚀 App Update & New Feature Notice</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Notification Title (शीर्षक)
+                  </label>
+                  <input
+                    type="text"
+                    value={broadcastForm.title}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, title: e.target.value })}
+                    placeholder="उदा: ⭐ TyreSaathi New Star Ratings Live!"
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", fontWeight: "700", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Notification Message Body (संदेश)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={broadcastForm.message}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                    placeholder="Apna pasandida shop review karein aur real-time live notification paayein..."
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "12.5px", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                {/* Preview Box */}
+                <div style={{
+                  background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+                  borderRadius: "12px",
+                  padding: "12px 16px",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginTop: "auto"
+                }}>
+                  <div style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "#e67e22",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontWeight: "800"
+                  }}>
+                    🔔
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: "13px", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {broadcastForm.title || "Notification Title"}
+                    </strong>
+                    <p style={{ margin: 0, fontSize: "11.5px", color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {broadcastForm.message || "Message content will appear here..."}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={broadcasting}
+                  style={{
+                    background: "linear-gradient(135deg, #e67e22 0%, #d35400 100%)",
+                    color: "#fff",
+                    border: "none",
+                    padding: "12px 18px",
+                    borderRadius: "8px",
+                    fontWeight: "800",
+                    fontSize: "13.5px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    marginTop: "6px",
+                    boxShadow: "0 4px 14px rgba(230, 126, 34, 0.3)"
+                  }}
+                >
+                  <Send size={16} /> {broadcasting ? "Sending Broadcast..." : "📢 Send Real-Time Broadcast Notification"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .admin-page-container {
           max-width: 1350px;
@@ -2618,50 +4306,118 @@ export default function AdminPanel() {
           box-shadow: 0 4px 12px rgba(39, 174, 96, 0.25);
         }
 
-        /* Nav Tabs */
+        /* 🧭 Nav Tabs Wrapper & Controls */
+        .admin-nav-tabs-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 20px;
+          position: relative;
+          width: 100%;
+        }
+
+        .nav-tabs-arrow-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          min-width: 32px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 1.5px solid #cbd5e1;
+          color: #0f172a;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          z-index: 3;
+          transition: all 0.2s ease;
+        }
+        .nav-tabs-arrow-btn:hover {
+          background: #f1f5f9;
+          border-color: #94a3b8;
+          transform: scale(1.1);
+          color: #c0392b;
+        }
+        .nav-tabs-arrow-btn:active {
+          transform: scale(0.95);
+        }
+
         .admin-nav-tabs {
           display: flex;
-          gap: 6px;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 8px;
-          margin-bottom: 16px;
+          gap: 8px;
           overflow-x: auto;
+          scroll-behavior: smooth;
           -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
+          padding: 6px 2px 10px 2px;
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+          flex: 1;
         }
         .admin-nav-tabs::-webkit-scrollbar {
-          display: none;
+          height: 4px;
         }
+        .admin-nav-tabs::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .admin-nav-tabs::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+        .admin-nav-tabs::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
         .admin-tab {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          padding: 6px 12px;
-          border-radius: 16px;
-          font-size: 0.75rem; /* text-xs */
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          padding: 7px 14px;
+          border-radius: 20px;
+          font-size: 0.8125rem;
           font-weight: 700;
-          color: var(--text);
+          color: #334155;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           white-space: nowrap;
           flex-shrink: 0;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+          transition: all 0.2s ease;
+        }
+        .admin-tab:hover {
+          background: #f8fafc;
+          border-color: #cbd5e1;
+          color: #0f172a;
+          transform: translateY(-1px);
         }
         .tab-active {
           background: #c0392b !important;
           color: white !important;
-          border-color: #c0392b;
+          border-color: #c0392b !important;
+          box-shadow: 0 3px 10px rgba(192, 57, 43, 0.3) !important;
+        }
+        .tab-traffic-active {
+          background: #d35400 !important;
+          border-color: #d35400 !important;
+          box-shadow: 0 3px 10px rgba(211, 84, 0, 0.3) !important;
+        }
+        .tab-ads-active {
+          background: #16a34a !important;
+          border-color: #16a34a !important;
+          box-shadow: 0 3px 10px rgba(22, 163, 74, 0.3) !important;
         }
         .tab-excel-active {
           background: #27ae60 !important;
           border-color: #27ae60 !important;
+          box-shadow: 0 3px 10px rgba(39, 174, 96, 0.3) !important;
         }
         .tab-bubble {
           background: #f39c12;
           color: white;
           font-size: 0.6875rem;
-          padding: 1px 5px;
-          border-radius: 8px;
+          padding: 2px 6px;
+          border-radius: 10px;
+          font-weight: 800;
         }
         .tab-bubble-red {
           background: #e74c3c;
@@ -3376,6 +5132,849 @@ export default function AdminPanel() {
         .btn-ad-act-cancel:hover {
           background: var(--surface-2);
           color: var(--text);
+        }
+        /* ══════════════════════════════════════════════════════════════════
+           📊 SHOP TRAFFIC & CUSTOMER ANALYTICS STYLES
+        ══════════════════════════════════════════════════════════════════ */
+        .admin-traffic-analytics-container {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .tab-traffic-active {
+          background: #e67e22 !important;
+          color: white !important;
+          box-shadow: 0 4px 14px rgba(230, 126, 34, 0.4);
+        }
+
+        .traffic-banner-header {
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          color: white;
+          border-radius: 16px;
+          padding: 24px 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 16px;
+          box-shadow: 0 10px 28px rgba(15, 23, 42, 0.15);
+        }
+
+        .traffic-badge-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(230, 126, 34, 0.2);
+          color: #fbbf24;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        }
+
+        .traffic-title {
+          font-size: 22px;
+          font-weight: 800;
+          margin: 0 0 6px;
+          letter-spacing: -0.5px;
+        }
+
+        .traffic-desc {
+          margin: 0;
+          font-size: 13px;
+          color: #cbd5e1;
+          max-width: 650px;
+          line-height: 1.5;
+        }
+
+        .traffic-timeframe-controls {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .timeframe-pill-toggle {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 10px;
+          padding: 3px;
+          display: flex;
+          gap: 4px;
+        }
+
+        .tf-btn {
+          background: transparent;
+          border: none;
+          color: #cbd5e1;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .tf-btn-active {
+          background: #c0392b;
+          color: white;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.5);
+        }
+
+        .btn-view-stores-map {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.15);
+          color: white;
+          padding: 8px 14px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: background 0.2s;
+        }
+        .btn-view-stores-map:hover { background: rgba(255, 255, 255, 0.25); }
+
+        .traffic-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 16px;
+        }
+
+        .traffic-kpi-card {
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 14px;
+          padding: 18px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+          transition: transform 0.2s;
+        }
+        .traffic-kpi-card:hover {
+          transform: translateY(-2px);
+          border-color: #cbd5e1;
+        }
+
+        .highlight-leader-kpi {
+          border-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.04);
+        }
+
+        .kpi-icon-wrap {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .kpi-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+          display: block;
+          margin-bottom: 2px;
+        }
+
+        .kpi-value {
+          font-size: 22px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+          margin: 0 0 2px;
+          line-height: 1.1;
+        }
+
+        .kpi-subtext {
+          font-size: 11px;
+          color: var(--text-muted, #94a3b8);
+          display: block;
+        }
+
+        /* 2-Column Charts */
+        .traffic-charts-two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+
+        @media (max-width: 990px) {
+          .traffic-charts-two-col { grid-template-columns: 1fr; }
+        }
+
+        .chart-card-box {
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+          display: flex;
+          flex-direction: column;
+        }
+
+        .chart-card-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+
+        .chart-box-title {
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+          margin: 0 0 4px;
+        }
+
+        .chart-box-subtitle {
+          font-size: 12px;
+          color: var(--text-muted, #64748b);
+          margin: 0;
+        }
+
+        .chart-pill-tag {
+          font-size: 11px;
+          font-weight: 700;
+          background: var(--bg, #f1f5f9);
+          color: var(--text-muted, #475569);
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        /* Shop Progress Bars */
+        .shop-bars-container {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          flex: 1;
+        }
+
+        .shop-bar-row {
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 12px;
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .bar-row-leader {
+          border-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.05);
+        }
+
+        .shop-bar-top-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .shop-rank-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .rank-badge-circle {
+          font-size: 11px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 6px;
+        }
+        .rank-gold { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .rank-silver { background: #e2e8f0; color: #334155; }
+        .rank-bronze { background: #ffedd5; color: #9a3412; }
+        .rank-norm { background: var(--bg, #f1f5f9); color: #64748b; }
+
+        .shop-title-link {
+          font-size: 14px;
+          color: var(--text, #0f172a);
+        }
+
+        .shop-city-chip {
+          font-size: 11px;
+          background: rgba(0,0,0,0.05);
+          padding: 1px 6px;
+          border-radius: 4px;
+          color: var(--text-muted, #64748b);
+        }
+
+        .top-badge-flame {
+          font-size: 10.5px;
+          font-weight: 800;
+          background: #fee2e2;
+          color: #dc2626;
+          padding: 2px 6px;
+          border-radius: 4px;
+        }
+
+        .shop-metrics-mini-chips {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .mini-chip {
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #cbd5e1);
+        }
+        .chip-views { color: #2563eb; }
+        .chip-maps { color: #16a34a; }
+        .chip-calls { color: #d97706; }
+        .chip-bookings { color: #dc2626; }
+        .chip-total { background: #1e293b; color: #fff; border-color: #0f172a; }
+
+        .bar-track {
+          width: 100%;
+          height: 10px;
+          background: #e2e8f0;
+          border-radius: 20px;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .bar-fill-gradient {
+          height: 100%;
+          border-radius: 20px;
+          transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* SVG Trend Canvas */
+        .svg-chart-container {
+          width: 100%;
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 12px;
+          padding: 12px;
+          margin-bottom: 14px;
+        }
+
+        .trend-svg-canvas {
+          width: 100%;
+          height: auto;
+          overflow: visible;
+        }
+
+        .action-distribution-wrap {
+          border-top: 1px solid var(--border, #e2e8f0);
+          padding-top: 12px;
+        }
+
+        .dist-title {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+          margin: 0 0 8px;
+        }
+
+        .dist-bars-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+          font-size: 12px;
+          color: var(--text, #334155);
+        }
+
+        .dist-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .dist-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .dot-views { background: #2563eb; }
+        .dot-maps { background: #16a34a; }
+        .dot-calls { background: #d97706; }
+        .dot-bookings { background: #dc2626; }
+
+        /* Leaderboard Table */
+        .traffic-leaderboard-card {
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+        }
+
+        .leaderboard-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .leaderboard-title {
+          font-size: 17px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+          margin: 0 0 2px;
+        }
+
+        .leaderboard-subtitle {
+          font-size: 12px;
+          color: var(--text-muted, #64748b);
+          margin: 0;
+        }
+
+        .leaderboard-search-box {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .leaderboard-search-box svg {
+          position: absolute;
+          left: 10px;
+          color: #94a3b8;
+        }
+        .leaderboard-search-box input {
+          padding: 8px 12px 8px 32px;
+          border-radius: 8px;
+          border: 1px solid var(--border, #cbd5e1);
+          background: var(--bg, #f8fafc);
+          color: var(--text, #0f172a);
+          font-size: 12.5px;
+          outline: none;
+        }
+
+        .traffic-table th {
+          font-size: 11.5px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+
+        .leaderboard-row-top {
+          background: rgba(245, 158, 11, 0.05);
+        }
+
+        .rank-pill {
+          font-size: 12px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 6px;
+          background: var(--bg, #f1f5f9);
+          color: var(--text, #334155);
+        }
+        .rank-pill-first {
+          background: #fef3c7;
+          color: #b45309;
+        }
+
+        .tbl-shop-info {
+          display: flex;
+          flex-direction: column;
+        }
+        .tbl-shop-info strong { font-size: 13.5px; color: var(--text, #0f172a); }
+        .tbl-shop-info small { font-size: 11.5px; color: var(--text-muted, #64748b); }
+
+        .tbl-contact-info {
+          display: flex;
+          flex-direction: column;
+          font-size: 11.5px;
+          color: var(--text-muted, #475569);
+        }
+
+        .stat-pill-view {
+          font-size: 12px;
+          font-weight: 700;
+          color: #2563eb;
+          background: #eff6ff;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        .stat-pill-map {
+          font-size: 12px;
+          font-weight: 700;
+          color: #16a34a;
+          background: #f0fdf4;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        .stat-pill-call {
+          font-size: 12px;
+          font-weight: 700;
+          color: #d97706;
+          background: #fffbeb;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        .stat-pill-booking {
+          font-size: 12px;
+          font-weight: 700;
+          color: #dc2626;
+          background: #fef2f2;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        .stat-total-score {
+          font-size: 14px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+
+        .share-bar-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          width: 80px;
+        }
+
+        .share-percent-text {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text, #334155);
+        }
+
+        .mini-share-bar {
+          width: 100%;
+          height: 6px;
+          background: #e2e8f0;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .mini-share-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #c0392b 0%, #f59e0b 100%);
+          border-radius: 10px;
+        }
+
+        .btn-inspect-shop {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 10px;
+          border-radius: 6px;
+          border: 1px solid var(--border, #cbd5e1);
+          background: var(--surface, #fff);
+          color: var(--text, #334155);
+          font-size: 11.5px;
+          font-weight: 700;
+          text-decoration: none;
+        }
+        .btn-inspect-shop:hover {
+          background: #eff6ff;
+          border-color: #93c5fd;
+          color: #1d4ed8;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           🔀 SUBNAV PILLS & DATA MODE TOGGLE STYLES
+        ══════════════════════════════════════════════════════════════════ */
+        .analytics-subnav-row {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .subnav-pill {
+          flex: 1;
+          min-width: 260px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 14px 20px;
+          background: var(--surface, #ffffff);
+          border: 2px solid var(--border, #e2e8f0);
+          border-radius: 14px;
+          font-size: 14px;
+          font-weight: 800;
+          color: var(--text, #334155);
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          transition: all 0.2s ease;
+        }
+
+        .subnav-pill:hover {
+          border-color: #cbd5e1;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        }
+
+        .subnav-pill-active {
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .subnav-shops-active {
+          background: linear-gradient(135deg, #e67e22 0%, #d35400 100%) !important;
+          border-color: #d35400 !important;
+          color: #ffffff !important;
+        }
+
+        .subnav-customers-active {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+          border-color: #1d4ed8 !important;
+          color: #ffffff !important;
+        }
+
+        .subnav-badge {
+          font-size: 11px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 20px;
+          background: rgba(0, 0, 0, 0.15);
+          color: white;
+        }
+
+        /* Mode Toggle Button in Header */
+        .data-mode-toggle-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          border: 1.5px solid transparent;
+          transition: all 0.2s ease;
+        }
+
+        .mode-real-active {
+          background: rgba(34, 197, 94, 0.18);
+          color: #4ade80;
+          border-color: rgba(74, 222, 128, 0.4);
+        }
+
+        .mode-preview-active {
+          background: rgba(245, 158, 11, 0.18);
+          color: #fbbf24;
+          border-color: rgba(251, 191, 36, 0.4);
+        }
+
+        .mode-switch-hint {
+          font-size: 10px;
+          font-weight: 600;
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+
+        .dot-live-pulse {
+          background: #22c55e;
+          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+          animation: pulseGlow 1.8s infinite;
+        }
+
+        @keyframes pulseGlow {
+          0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+          70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .dot-demo {
+          background: #f59e0b;
+        }
+
+        /* 🚗 Customer Vehicle Distribution Styles */
+        .vehicle-dist-container {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .veh-bar-row {
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 10px;
+          padding: 10px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .veh-row-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .veh-name-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text, #1e293b);
+        }
+
+        .veh-count-badge {
+          font-size: 12px;
+          font-weight: 800;
+          color: #2563eb;
+        }
+
+        .veh-bar-track {
+          width: 100%;
+          height: 8px;
+          background: #e2e8f0;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .veh-bar-fill {
+          height: 100%;
+          border-radius: 8px;
+          transition: width 0.4s ease;
+        }
+
+        /* Customer Activity Stat Boxes */
+        .customer-activity-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        @media (max-width: 500px) {
+          .customer-activity-grid { grid-template-columns: 1fr; }
+        }
+
+        .action-stat-box {
+          background: var(--bg, #f8fafc);
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 12px;
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .action-stat-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-muted, #64748b);
+        }
+
+        .action-stat-num {
+          margin: 4px 0 0;
+          font-size: 20px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+        }
+
+        .action-stat-box small {
+          font-size: 11px;
+          color: var(--text-muted, #94a3b8);
+        }
+
+        /* Vehicle Filter Buttons */
+        .customer-veh-filter-row {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .veh-filter-btn {
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #cbd5e1);
+          border-radius: 20px;
+          padding: 4px 10px;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: var(--text, #475569);
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .veh-filter-btn:hover {
+          border-color: #2563eb;
+          color: #2563eb;
+        }
+
+        .veh-filter-active {
+          background: #2563eb !important;
+          color: #ffffff !important;
+          border-color: #2563eb !important;
+        }
+
+        /* Customer Row Avatar & Badges */
+        .customer-avatar-badge {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
+
+        .customer-veh-pill {
+          display: inline-block;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 4px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          width: fit-content;
+        }
+
+        .btn-quick-wa {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 9px;
+          border-radius: 6px;
+          background: #25D366;
+          color: #ffffff;
+          font-size: 11.5px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: opacity 0.2s ease;
+        }
+        .btn-quick-wa:hover { opacity: 0.88; }
+
+        .btn-quick-call {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 9px;
+          border-radius: 6px;
+          background: #f1f5f9;
+          color: #0f172a;
+          border: 1px solid #cbd5e1;
+          font-size: 11.5px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.2s ease;
+        }
+        .btn-quick-call:hover {
+          background: #e2e8f0;
         }
       `}</style>
     </div>

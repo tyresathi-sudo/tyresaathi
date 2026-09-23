@@ -24,6 +24,7 @@ import SupportTickets from "./pages/SupportTickets.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx";
 import ShopAnalytics from "./pages/ShopAnalytics.jsx";
 import Subscription from "./pages/Subscription.jsx";
+import ManageProducts from "./pages/ManageProducts.jsx";
 
 export default function App() {
   const navigate = useNavigate();
@@ -81,6 +82,8 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/store-location" element={<StoreLocation />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/shop/products" element={<ManageProducts />} />
+        <Route path="/shop/inventory" element={<ManageProducts />} />
         <Route path="/shop/add-product" element={<AddProduct />} />
         <Route path="/shop/edit-product/:id" element={<AddProduct />} />
 

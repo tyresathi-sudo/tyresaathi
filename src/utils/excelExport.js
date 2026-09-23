@@ -138,6 +138,7 @@ export function exportTicketsToExcel(tickets) {
 
 export function exportMasterLinksToExcel() {
   const masterLinksData = [
+    { category: "Official App Download", name: "GitHub Latest Release APK (Direct)", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/latest/download/TyreSaathi.apk", status: "Active (Recommended)", desc: "Direct APK download for Android users & WhatsApp sharing" },
     { category: "App Store Listing", name: "Uptodown Developer Portal", url: "https://developers.uptodown.com/", status: "In Review (v1.1)", desc: "Official Uptodown release console for TyreSaathi APK" },
     { category: "Source Code", name: "GitHub Main Repository", url: "https://github.com/tyresathi-sudo/tyresaathi", status: "Active", desc: "Complete source code, Android Capacitor app and React codebase" },
     { category: "CI/CD & APK Build", name: "GitHub Actions Workflow", url: "https://github.com/tyresathi-sudo/tyresaathi/actions", status: "Automated", desc: "Auto-compiles release & debug signed APKs on every git push" },

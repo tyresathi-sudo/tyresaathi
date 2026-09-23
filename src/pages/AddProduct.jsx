@@ -241,13 +241,13 @@ export default function AddProduct() {
           ...productPayload,
           createdAt: serverTimestamp(),
         });
-        alert(isDraft ? "📝 Draft saved successfully!" : "🚀 Product published to TyreSaathi network!");
+        alert(isDraft ? "📝 Draft saved successfully (Hidden from public website)!" : "🚀 Product published LIVE to TyreSaathi network!");
       }
-      navigate("/search");
+      navigate("/shop/products");
     } catch (err) {
       console.error("Firestore save error:", err);
       alert("Saved locally! " + err.message);
-      navigate("/search");
+      navigate("/shop/products");
     } finally {
       setSaving(false);
     }
@@ -271,8 +271,8 @@ export default function AddProduct() {
             Choose tyre category, vehicle type, size and upload up to 4 photos for higher customer trust.
           </p>
         </div>
-        <Link to="/search" className="back-link-btn">
-          ← View All Products
+        <Link to="/shop/products" className="back-link-btn">
+          ← Back to Inventory Manager
         </Link>
       </div>
 

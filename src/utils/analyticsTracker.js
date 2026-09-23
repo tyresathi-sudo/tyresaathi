@@ -56,7 +56,7 @@ function calculateGrowth(points) {
 /**
  * Fetch all real analytics events and calculate actual metrics & graph curves (100% Real Data)
  */
-export async function getRealAnalyticsData(timeframe = "7d") {
+export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) {
   const daysCount = timeframe === "7d" ? 7 : 30;
   const today = new Date();
 
@@ -98,6 +98,10 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     realBookings = localB ? JSON.parse(localB) : [];
   }
 
+  // Target shop matching identifiers
+  const targetId = typeof targetShop === "object" ? (targetShop?.id || targetShop?.uid) : targetShop;
+  const targetName = typeof targetShop === "object" ? (targetShop?.shopName || targetShop?.name) : null;
+
   // 3. Initialize daily counters with 0
   const dailyViews = {};
   const dailyMaps = {};
@@ -111,18 +115,45 @@ export async function getRealAnalyticsData(timeframe = "7d") {
     dailyBookings[k] = 0;
   });
 
-  // Populate from real events
+  // Populate from real events with shop-specific filter
   allEvents.forEach((ev) => {
+    if (targetShop) {
+      const meta = ev.metadata || {};
+      const evShopId = meta.shopId || ev.shopId;
+      const evShopName = meta.shopName || ev.shopName;
+
+      const matchId = targetId && evShopId && String(evShopId).toLowerCase() === String(targetId).toLowerCase();
+      const matchName = targetName && evShopName && String(evShopName).toLowerCase() === String(targetName).toLowerCase();
+
+      // If event belongs to another specific shop, skip it
+      if (!matchId && !matchName && (evShopId || evShopName)) {
+        return;
+      }
+    }
+
     const date = ev.dateStr || (ev.timestamp ? ev.timestamp.split("T")[0] : null);
     if (date && dailyViews[date] !== undefined) {
-      if (ev.type === "view") dailyViews[date]++;
-      if (ev.type === "map_direction") dailyMaps[date]++;
-      if (ev.type === "call_lead") dailyCalls[date]++;
+      if (ev.type === "view" || ev.type === "view_shop_profile" || ev.type === "store_view" || ev.type === "page_view") {
+        dailyViews[date]++;
+      } else if (ev.type === "map_direction" || ev.type === "direction" || ev.type === "map_click") {
+        dailyMaps[date]++;
+      } else if (ev.type === "call_lead" || ev.type === "call" || ev.type === "whatsapp" || ev.type === "call_click") {
+        dailyCalls[date]++;
+      }
     }
   });
 
-  // Populate from real bookings
+  // Populate from real bookings with shop-specific filter
   realBookings.forEach((b) => {
+    if (targetShop) {
+      const matchId = targetId && b.shopId && String(b.shopId).toLowerCase() === String(targetId).toLowerCase();
+      const matchName = targetName && b.shopName && String(b.shopName).toLowerCase() === String(targetName).toLowerCase();
+
+      if (!matchId && !matchName && (b.shopId || b.shopName)) {
+        return;
+      }
+    }
+
     const date = b.date || (b.createdAt ? b.createdAt.split("T")[0] : null);
     if (date && dailyBookings[date] !== undefined) {
       dailyBookings[date]++;

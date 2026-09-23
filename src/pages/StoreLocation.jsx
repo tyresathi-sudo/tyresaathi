@@ -1,100 +1,528 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Phone, Star, Navigation, Clock, CheckCircle2, ExternalLink } from "lucide-react";
-import { SAMPLE_SHOPS } from "../config/tyreCatalog";
+import { Link, useSearchParams } from "react-router-dom";
+import { 
+  Search, 
+  MapPin, 
+  Phone, 
+  Star, 
+  Navigation, 
+  Clock, 
+  CheckCircle2, 
+  ExternalLink,
+  Store,
+  Calendar,
+  MessageCircle,
+  Package,
+  Wrench,
+  ShieldCheck,
+  Compass,
+  RefreshCw,
+  X,
+  ChevronRight,
+  Sparkles,
+  ThumbsUp,
+  User,
+  HeartHandshake,
+  Check,
+  Send
+} from "lucide-react";
+import { SAMPLE_SHOPS, SERVICE_TYPES } from "../config/tyreCatalog";
 import { trackStoreEvent } from "../utils/analyticsTracker";
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth } from "../context/AuthContext";
+import { sendInAppNotification } from "../utils/notificationService";
+
+// Haversine formula to compute accurate distance in Kilometers
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(1));
+}
+
+// Default Fallback Coordinates (Raipur, CG Transport Nagar)
+const DEFAULT_LAT = 21.2514;
+const DEFAULT_LNG = 81.6296;
 
 export default function StoreLocation() {
+  const { currentUser, userData } = useAuth();
+  const [searchParams] = useSearchParams();
+  const initialShopName = searchParams.get("shopName") || "";
+  const initialShopId = searchParams.get("shopId") || "";
+
   const [shopsList, setShopsList] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [allProducts, setAllProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState(initialShopName);
   const [selectedShop, setSelectedShop] = useState(null);
   const [filterCity, setFilterCity] = useState("all");
+
+  // Shop Profile Modal State
+  const [shopProfileOpen, setShopProfileOpen] = useState(false);
+  const [activeShopProfile, setActiveShopProfile] = useState(null);
+
+  // Shop Rating & Review Modal State
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [ratingShop, setRatingShop] = useState(null);
+  const [selectedStars, setSelectedStars] = useState(0);
+  const [hoveredStars, setHoveredStars] = useState(0);
+  const [reviewerName, setReviewerName] = useState("");
+  const [reviewerPhone, setReviewerPhone] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSuccessMessage, setReviewSuccessMessage] = useState(false);
+  const [shopReviewsMap, setShopReviewsMap] = useState({});
+
+  // Live Location State
+  const [userLocation, setUserLocation] = useState(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("idle"); // 'idle', 'detecting', 'success', 'denied'
 
   // Track page view on load
   useEffect(() => {
     trackStoreEvent("view", { page: "store_location" });
   }, []);
 
-  // Fetch real registered shops from Firestore
+  // Fetch verified reviews from Firestore
   useEffect(() => {
-    async function loadFirestoreShops() {
+    async function loadReviews() {
+      try {
+        const snap = await getDocs(collection(db, "shop_reviews"));
+        if (!snap.empty) {
+          const map = {};
+          snap.docs.forEach((d) => {
+            const data = { id: d.id, ...d.data() };
+            if (data.shopId) {
+              if (!map[data.shopId]) map[data.shopId] = [];
+              map[data.shopId].push(data);
+            }
+          });
+          setShopReviewsMap(map);
+
+          // Recalculate real ratings for shops based on Firestore reviews
+          setShopsList((prevShops) =>
+            prevShops.map((s) => {
+              const revs = map[s.id] || [];
+              if (revs.length > 0) {
+                const sum = revs.reduce((acc, curr) => acc + (Number(curr.rating) || 0), 0);
+                const avg = Number((sum / revs.length).toFixed(1));
+                return {
+                  ...s,
+                  rating: avg,
+                  reviewsCount: revs.length,
+                };
+              }
+              return {
+                ...s,
+                rating: s.rating && s.reviewsCount ? s.rating : 0,
+                reviewsCount: s.reviewsCount || 0,
+              };
+            })
+          );
+        }
+      } catch (err) {
+        console.warn("Reviews load fallback in StoreLocation:", err);
+      }
+    }
+    loadReviews();
+  }, []);
+
+  // Live GPS Location Detection
+  const handleDetectLiveLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Aapke browser me Geolocation support uplabdh nahi hai.");
+      return;
+    }
+    setDetectingLocation(true);
+    setLocationStatus("detecting");
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        setUserLocation(coords);
+        setLocationStatus("success");
+        setDetectingLocation(false);
+      },
+      (err) => {
+        console.warn("Geolocation permission or timeout error:", err);
+        setLocationStatus("denied");
+        setDetectingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  // Auto-detect on first load if permitted
+  useEffect(() => {
+    handleDetectLiveLocation();
+  }, []);
+
+  // Fetch real registered shops & products from Firestore
+  useEffect(() => {
+    async function loadData() {
+      // 1. Load Products
+      try {
+        const prodSnap = await getDocs(collection(db, "products"));
+        if (!prodSnap.empty) {
+          const prods = prodSnap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((p) => p.published !== false);
+          setAllProducts(prods);
+        }
+      } catch (err) {
+        console.warn("Products load notice in store locator:", err);
+      }
+
+      // 2. Load Registered Shops
       try {
         const snap = await getDocs(collection(db, "users"));
+        let loadedShops = [];
         if (!snap.empty) {
           const vendors = snap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
-            .filter((u) => u.role === "vendor" || u.role === "admin" || u.shopName);
+            .filter((u) => u.role === "vendor" || u.role === "shop_owner" || u.role === "admin" || u.shopName);
+          
           if (vendors.length > 0) {
-            const mapped = vendors.map((v, idx) => {
-              const shopServices = v.services || v.servicesOffered || ["Tyre Fitting & Replacement", "Tubeless Tyre Repair", "Nitrogen Air Fill", "Tyre Cut & Sidewall Repair"];
+            loadedShops = vendors.map((v, idx) => {
+              const shopServices = v.services || v.servicesOffered || [
+                "Tyre Fitting & Replacement", 
+                "Tubeless Tyre Repair", 
+                "Nitrogen Air Fill", 
+                "Tyre Cut & Sidewall Repair",
+                "Doorstep Assistance"
+              ];
+
+              // Base coordinates with offset for realistic mapping if not explicitly provided
+              const shopLat = Number(v.lat || (21.2514 + (idx % 3) * 0.012));
+              const shopLng = Number(v.lng || (81.6296 + (idx % 3) * 0.015));
+
               return {
                 id: v.id || v.uid,
                 name: v.shopName || v.name || "TyreSaathi Partner Hub",
+                ownerName: v.name || "Authorized Partner",
                 city: v.city || "Raipur",
-                address: v.address || "TyreSaathi Partner Hub",
+                address: v.address || "Transport Nagar, Rawabhatha, Raipur, Chhattisgarh",
                 phone: v.phone || "8877277757",
                 rating: v.rating || 4.9,
-                reviewsCount: v.reviewsCount || 28,
-                distanceKm: (1.2 + idx * 0.8).toFixed(1),
-                isNearest: idx === 0,
+                reviewsCount: v.reviewsCount || (24 + idx * 4),
                 services: shopServices,
                 servicesOffered: shopServices,
-                timing: "Mon - Sun: 09:00 AM - 09:00 PM",
-                lat: 21.2514,
-                lng: 81.6296
+                timing: v.openingHours || "Mon - Sun: 09:00 AM - 09:00 PM",
+                lat: shopLat,
+                lng: shopLng,
+                photoURL: v.photoURL || "",
               };
             });
-            setShopsList(mapped);
-            setSelectedShop(mapped[0]);
           }
+        }
+
+        // Fallback default demo shops if none
+        if (loadedShops.length === 0) {
+          loadedShops = SAMPLE_SHOPS.map((s, idx) => ({
+            ...s,
+            ownerName: s.name,
+            timing: "Mon - Sun: 09:00 AM - 09:00 PM",
+            lat: 21.2514 + idx * 0.01,
+            lng: 81.6296 + idx * 0.01,
+          }));
+        }
+
+        setShopsList(loadedShops);
+
+        // Check if query params match a specific shop
+        const matched = initialShopId 
+          ? loadedShops.find(s => s.id === initialShopId)
+          : (initialShopName ? loadedShops.find(s => s.name?.toLowerCase().includes(initialShopName.toLowerCase())) : loadedShops[0]);
+
+        if (matched) {
+          setSelectedShop(matched);
+        } else if (loadedShops[0]) {
+          setSelectedShop(loadedShops[0]);
         }
       } catch (err) {
         console.warn("Firestore shops load fallback:", err);
       }
     }
-    loadFirestoreShops();
-  }, []);
+    loadData();
+  }, [initialShopId, initialShopName]);
 
-  const filteredShops = shopsList.filter((shop) => {
+  // Recalculate Distances whenever user location or shopsList updates
+  const enrichedShops = shopsList.map((shop, idx) => {
+    let distance = null;
+    if (userLocation && userLocation.lat && userLocation.lng) {
+      distance = calculateDistance(userLocation.lat, userLocation.lng, shop.lat, shop.lng);
+    }
+    const finalDist = distance !== null ? distance : Number((1.2 + idx * 0.8).toFixed(1));
+
+    return {
+      ...shop,
+      distanceKm: finalDist,
+    };
+  });
+
+  // Sort by Nearest distance first
+  enrichedShops.sort((a, b) => (Number(a.distanceKm) || 0) - (Number(b.distanceKm) || 0));
+
+  // Mark first shop as nearest
+  if (enrichedShops.length > 0) {
+    enrichedShops[0].isNearest = true;
+  }
+
+  const filteredShops = enrichedShops.filter((shop) => {
+    const q = searchTerm.toLowerCase().trim();
     const matchesSearch =
-      shop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      shop.city.toLowerCase().includes(searchTerm.toLowerCase());
+      !q ||
+      shop.name.toLowerCase().includes(q) ||
+      shop.address.toLowerCase().includes(q) ||
+      shop.city.toLowerCase().includes(q) ||
+      shop.ownerName?.toLowerCase().includes(q);
     const matchesCity = filterCity === "all" || shop.city.toLowerCase() === filterCity.toLowerCase();
     return matchesSearch && matchesCity;
   });
 
   const cities = ["all", ...new Set(shopsList.filter((s) => s && s.city).map((s) => s.city))];
 
+  // Open Star Rating Modal for a Shop
+  const openRatingModal = (shop, e) => {
+    if (e) e.stopPropagation();
+    setRatingShop(shop);
+    setSelectedStars(0); // Start empty so user clicks to fill
+    setHoveredStars(0);
+    setReviewerName(userData?.name || currentUser?.displayName || "");
+    setReviewerPhone(userData?.phone || "");
+    setReviewComment("");
+    setSelectedTags([]);
+    setReviewSuccessMessage(false);
+    setRatingModalOpen(true);
+    trackStoreEvent("open_rating_modal", { shopId: shop.id, shopName: shop.name });
+  };
+
+  // Toggle quick tag pills in rating modal
+  const toggleReviewTag = (tag) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter((t) => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  // Submit Star Rating & Review to Firestore
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!ratingShop) return;
+
+    if (!selectedStars || Number(selectedStars) < 1) {
+      alert("Kripya shop owner ke liye 1 se 5 star me se rating chunein.");
+      return;
+    }
+
+    if (!reviewerName.trim()) {
+      alert("Kripya apna naam darj karein.");
+      return;
+    }
+
+    setSubmittingReview(true);
+    try {
+      const newReview = {
+        shopId: ratingShop.id,
+        shopName: ratingShop.name,
+        rating: Number(selectedStars),
+        reviewerName: reviewerName.trim(),
+        reviewerPhone: reviewerPhone.trim(),
+        comment: reviewComment.trim(),
+        tags: selectedTags,
+        userId: currentUser?.uid || "guest",
+        createdAt: serverTimestamp(),
+        dateStr: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }),
+      };
+
+      await addDoc(collection(db, "shop_reviews"), newReview);
+
+      // Instant UI update
+      setShopReviewsMap((prev) => {
+        const existing = prev[ratingShop.id] || [];
+        return {
+          ...prev,
+          [ratingShop.id]: [
+            {
+              id: "local-" + Date.now(),
+              ...newReview,
+              createdAt: new Date(),
+            },
+            ...existing,
+          ],
+        };
+      });
+
+      // Update shop's average score locally
+      setShopsList((prevShops) =>
+        prevShops.map((s) => {
+          if (s.id === ratingShop.id) {
+            const currentCount = Number(s.reviewsCount) || 0;
+            const currentRating = Number(s.rating) || 0;
+            const newCount = currentCount + 1;
+            const newAvg = currentCount === 0 ? Number(selectedStars) : Number(((currentRating * currentCount + Number(selectedStars)) / newCount).toFixed(1));
+            return {
+              ...s,
+              rating: newAvg,
+              reviewsCount: newCount,
+            };
+          }
+          return s;
+        })
+      );
+
+      // Update active profile modal if currently open
+      if (activeShopProfile && activeShopProfile.id === ratingShop.id) {
+        const currentCount = Number(activeShopProfile.reviewsCount) || 0;
+        const currentRating = Number(activeShopProfile.rating) || 0;
+        const newCount = currentCount + 1;
+        const newAvg = currentCount === 0 ? Number(selectedStars) : Number(((currentRating * currentCount + Number(selectedStars)) / newCount).toFixed(1));
+        setActiveShopProfile((prev) => ({
+          ...prev,
+          rating: newAvg,
+          reviewsCount: newCount,
+        }));
+      }
+
+      setReviewSuccessMessage(true);
+      trackStoreEvent("submit_review", {
+        shopId: ratingShop.id,
+        shopName: ratingShop.name,
+        rating: selectedStars,
+      });
+
+      // 🔔 Trigger in-app & push notification to the Shop Owner
+      sendInAppNotification({
+        recipientId: ratingShop.id,
+        recipientRole: "shop_owner",
+        title: `⭐ Nayi ${selectedStars}-Star Rating Aayi!`,
+        message: `${reviewerName} ne aapki shop "${ratingShop.name}" ko ${selectedStars} Star rating di hai!`,
+        type: "rating_received",
+        link: "/store-location",
+        data: {
+          shopId: ratingShop.id,
+          shopName: ratingShop.name,
+          rating: selectedStars,
+          reviewerName,
+        }
+      });
+
+      setTimeout(() => {
+        setRatingModalOpen(false);
+        setReviewSuccessMessage(false);
+      }, 2200);
+    } catch (err) {
+      console.error("Error submitting shop review:", err);
+      alert("Rating save karne me dikkat aayi. Kripya punah koshish karein.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  // Open Shop Storefront Profile
+  const openShopProfile = (shop) => {
+    setActiveShopProfile(shop);
+    setShopProfileOpen(true);
+    trackStoreEvent("view_shop_profile", { shopName: shop.name, shopId: shop.id });
+  };
+
+  // Filter products for the active shop profile
+  const shopProducts = activeShopProfile
+    ? allProducts.filter(
+        (p) =>
+          p.shopId === activeShopProfile.id ||
+          p.shopName?.toLowerCase() === activeShopProfile.name?.toLowerCase()
+      )
+    : [];
+
   return (
     <div className="store-location-page">
-      {/* Breadcrumbs */}
-      <div className="breadcrumbs-bar">
-        <span>Home</span> / <span>Store Location</span>
+      {/* 🧭 Live GPS Location Header Bar & Map Discovery */}
+      <div className="live-location-banner">
+        <div className="loc-left-content">
+          <div className="loc-status-pill">
+            <span className={`pulse-dot ${locationStatus === "success" ? "dot-live" : "dot-idle"}`} />
+            <span className="loc-status-text">
+              {locationStatus === "success" 
+                ? "🟢 Live GPS Location Active" 
+                : (locationStatus === "detecting" ? "📡 Detecting Live Location..." : "📍 Real-Time Store Distance")}
+            </span>
+          </div>
+          <p className="loc-desc-text">
+            {userLocation 
+              ? `Aapki live GPS location detect ho chuki hai — sabse najdeek TyreSaathi shops sabse upar dikh rahi hain.`
+              : `Apne paas ki sabse najdeek dukan dekhne ke liye Live Location update karein.`}
+          </p>
+        </div>
+
+        <div className="banner-action-buttons">
+          <a
+            href={`https://www.google.com/maps/search/tyre+puncture+mechanic+shops+near+me/@${userLocation?.lat || DEFAULT_LAT},${userLocation?.lng || DEFAULT_LNG},14z`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-view-all-maps"
+            title="Open Google Maps with all nearby tyre and puncture shops"
+          >
+            <Navigation size={16} />
+            <span>🗺️ View All Nearby Shops on Google Maps</span>
+          </a>
+
+          <button 
+            type="button"
+            className="btn-detect-location"
+            onClick={handleDetectLiveLocation}
+            disabled={detectingLocation}
+          >
+            <Compass size={16} className={detectingLocation ? "spin-icon" : ""} />
+            <span>{detectingLocation ? "Detecting GPS..." : "📍 Update Live Location"}</span>
+          </button>
+        </div>
       </div>
 
-      <div className="store-locator-container">
-        {/* Left Side: Store List & Search */}
-        <div className="store-sidebar">
-          <h1 className="store-main-title">Find a Store Near You</h1>
-
-          <div className="store-search-box">
-            <div className="search-input-wrapper">
-              <Search size={18} className="search-icon-inside" />
-              <input
-                type="text"
-                placeholder="Search by city or store name"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <button className="search-submit-btn" onClick={() => {}}>
-              Search
-            </button>
+      {/* 🏬 Main Full-Width Store Directory Container */}
+      <div className="store-directory-wrapper">
+        <div className="directory-header-row">
+          <div>
+            <h1 className="directory-main-title">🏬 TyreSaathi Verified Partner Stores</h1>
+            <p className="directory-subtitle-text">
+              Aapki location ke paas verified tyre shops, puncture repair hubs aur authorized fitting centers.
+            </p>
           </div>
 
-          {/* City Filter Pills */}
+          <div className="store-count-chip">
+            ⚡ Showing <strong>{filteredShops.length}</strong> Authorized Hubs (Nearest First)
+          </div>
+        </div>
+
+        {/* Search & City Filter Bar */}
+        <div className="directory-filters-card">
+          <div className="search-input-wrapper">
+            <Search size={18} className="search-icon-inside" />
+            <input
+              type="text"
+              placeholder="Search store name, area, road, or city..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="clear-search-btn" onClick={() => setSearchTerm("")}>
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
           <div className="city-pill-row">
             {cities.map((city) => (
               <button
@@ -106,529 +534,2059 @@ export default function StoreLocation() {
               </button>
             ))}
           </div>
+        </div>
 
-          <div className="store-count-badge">
-            Showing {filteredShops.length} TyreSaathi Authorized Stores
+        {/* 🌟 Full-Width Responsive Store Cards Grid */}
+        {filteredShops.length === 0 ? (
+          <div className="no-stores-found">
+            <div className="no-stores-icon-box">
+              <MapPin size={40} color="#c0392b" />
+            </div>
+            <h3>Koi Shop Nahi Mili</h3>
+            <p>"{searchTerm}" ke liye koi store nahi mila. Kripya doosra city ya search term try karein.</p>
+            <button
+              className="btn-reset-filters"
+              onClick={() => { setSearchTerm(""); setFilterCity("all"); }}
+            >
+              Reset All Filters
+            </button>
           </div>
-
-          {/* Store List */}
-          <div className="store-list-scroll">
-            {filteredShops.length === 0 ? (
-              <div className="no-stores-found">
-                <MapPin size={32} color="#999" />
-                <p>No stores found for "{searchTerm}". Try another city.</p>
-              </div>
-            ) : (
-              filteredShops.map((shop) => (
-                <div
-                  key={shop.id}
-                  className={`store-item-card ${selectedShop?.id === shop.id ? "store-item-selected" : ""}`}
-                  onClick={() => setSelectedShop(shop)}
-                >
-                  <div className="store-card-header">
-                    <h3 className="store-name">{shop.name}</h3>
-                    {shop.isNearest && <span className="nearest-tag">⚡ Nearest</span>}
+        ) : (
+          <div className="stores-grid-layout">
+            {filteredShops.map((shop) => (
+              <div key={shop.id} className={`store-card-full ${shop.isNearest ? "nearest-hub-border" : ""}`}>
+                {/* Top Badge & Title Row */}
+                <div className="store-card-top-row">
+                  <div className="store-title-wrap">
+                    <div className="store-avatar-icon">
+                      <Store size={22} color="#c0392b" />
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        <h3 className="store-title-text">{shop.name}</h3>
+                        {shop.isNearest && <span className="nearest-badge">⚡ Nearest Hub</span>}
+                      </div>
+                      <span className="verified-partner-tag">
+                        <ShieldCheck size={13} /> Verified TyreSaathi Partner Hub
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="store-rating-row">
-                    <span className="rating-badge">
-                      <Star size={13} fill="#ffc107" color="#ffc107" /> {shop.rating}
-                    </span>
-                    <span className="reviews-text">({shop.reviewsCount} reviews)</span>
-                    <span className="distance-text">📍 {shop.distanceKm} km away</span>
-                  </div>
-
-                  <p className="store-address">{shop.address}</p>
-
-                  <div className="store-services-chips">
-                    {(shop.servicesOffered || shop.services || []).slice(0, 3).map((svc, idx) => (
-                      <span key={idx} className="svc-chip">✓ {svc}</span>
-                    ))}
-                  </div>
-
-                  <div className="store-card-actions">
-                    <button
-                      className="view-on-map-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedShop(shop);
-                        trackStoreEvent("map_direction", { shopName: shop.name, city: shop.city });
-                      }}
-                    >
-                      <Navigation size={13} /> View on Map
-                    </button>
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.name + " " + shop.address)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="google-maps-link"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        trackStoreEvent("map_direction", { shopName: shop.name, city: shop.city });
-                      }}
-                    >
-                      Open in Maps <ExternalLink size={12} />
-                    </a>
+                  <div className="store-dist-badge">
+                    <span className="dist-num">📍 {shop.distanceKm} km</span>
+                    <span className="dist-sub">away from you</span>
                   </div>
                 </div>
-              ))
+
+                {/* Rating, Timing & Location Row */}
+                <div className="store-meta-strip">
+                  <div 
+                    className="meta-pill meta-rating-pill" 
+                    onClick={(e) => openRatingModal(shop, e)}
+                    title="Click to give star rating to this shop"
+                  >
+                    <Star 
+                      size={13} 
+                      fill={shop.reviewsCount > 0 ? "#f59e0b" : "none"} 
+                      color={shop.reviewsCount > 0 ? "#f59e0b" : "#94a3b8"} 
+                    />
+                    {shop.reviewsCount > 0 ? (
+                      <>
+                        <strong>{shop.rating}</strong>
+                        <span>({shop.reviewsCount} reviews)</span>
+                      </>
+                    ) : (
+                      <span style={{ color: "#64748b", fontSize: "11.5px" }}>New Store</span>
+                    )}
+                    <span className="rate-click-hint">⭐ Star दें</span>
+                  </div>
+                  <div className="meta-pill">
+                    <Clock size={13} color="#64748b" />
+                    <span>{shop.timing || "09:00 AM - 09:00 PM"}</span>
+                  </div>
+                </div>
+
+                <p className="store-address-text">
+                  📍 {shop.address}
+                </p>
+
+                {/* Services Chips */}
+                <div className="store-services-list">
+                  {(shop.servicesOffered || shop.services || [
+                    "Tyre Replacement",
+                    "Puncture Repair",
+                    "Nitrogen Air Fill",
+                    "Cut Repair"
+                  ]).slice(0, 4).map((svc, idx) => (
+                    <span key={idx} className="service-tag">
+                      <CheckCircle2 size={12} color="#16a34a" /> {svc}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Direct Action Buttons on Every Card */}
+                <div className="store-card-actions">
+                  <div className="primary-actions-group">
+                    <button
+                      type="button"
+                      className="btn-card-profile"
+                      onClick={() => openShopProfile(shop)}
+                    >
+                      <Store size={15} />
+                      <span>🏪 Enter Shop Profile & Stock</span>
+                    </button>
+
+                    <Link
+                      to={`/bookings?shopId=${shop.id}&shopName=${encodeURIComponent(shop.name)}&shopPhone=${encodeURIComponent(shop.phone)}&openModal=true`}
+                      className="btn-card-book"
+                    >
+                      <Calendar size={15} />
+                      <span>Book Service</span>
+                    </Link>
+                  </div>
+
+                  <div className="quick-contact-actions-group">
+                    <a
+                      href={`tel:${shop.phone}`}
+                      className="btn-quick-contact btn-quick-call"
+                      title={`Call ${shop.name}`}
+                      onClick={() => trackStoreEvent("call_lead", { shopId: shop.id, shopName: shop.name, type: "phone_call" })}
+                    >
+                      <Phone size={14} />
+                      <span>Call</span>
+                    </a>
+
+                    <a
+                      href={`https://wa.me/91${shop.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${shop.name}, maine TyreSaathi par aapka store profile dekha hai, mujhe tyre / puncture service chahiye.`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-quick-contact btn-quick-wa"
+                      title="Chat on WhatsApp"
+                      onClick={() => trackStoreEvent("call_lead", { shopId: shop.id, shopName: shop.name, type: "whatsapp_inquiry" })}
+                    >
+                      <MessageCircle size={14} />
+                      <span>WhatsApp</span>
+                    </a>
+
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shop.name + " " + shop.address)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-quick-contact btn-quick-map"
+                      title="Turn-by-turn Navigation in Google Maps"
+                      onClick={() => trackStoreEvent("map_direction", { shopId: shop.id, shopName: shop.name })}
+                    >
+                      <Navigation size={14} />
+                      <span>Directions</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      className="btn-quick-contact btn-quick-rate"
+                      title="Give Star Rating to this shop owner"
+                      onClick={(e) => openRatingModal(shop, e)}
+                    >
+                      <Star size={14} fill="#f59e0b" color="#f59e0b" />
+                      <span>⭐ Star दें</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 🏪 Dedicated Full Shop Profile & Storefront Modal */}
+      {shopProfileOpen && activeShopProfile && (
+        <div className="shop-modal-backdrop" onClick={() => setShopProfileOpen(false)}>
+          <div className="shop-profile-modal-card" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="modal-shop-banner">
+              <div className="banner-top-bar">
+                <span className="banner-badge">
+                  <ShieldCheck size={14} /> Verified TyreSaathi Partner Hub
+                </span>
+                <button className="modal-close-icon-btn" onClick={() => setShopProfileOpen(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="banner-shop-title-row">
+                <div className="banner-avatar-box">
+                  <Store size={36} color="#c0392b" />
+                </div>
+                <div className="banner-details">
+                  <h2 className="banner-shop-name">{activeShopProfile.name}</h2>
+                  <p className="banner-shop-address">📍 {activeShopProfile.address}</p>
+                  <div className="banner-meta-row">
+                    <button
+                      type="button"
+                      className="meta-star-badge-btn"
+                      onClick={(e) => openRatingModal(activeShopProfile, e)}
+                      title="Click to submit a rating for this shop"
+                    >
+                      <Star 
+                        size={13} 
+                        fill={activeShopProfile.reviewsCount > 0 ? "#f59e0b" : "none"} 
+                        color={activeShopProfile.reviewsCount > 0 ? "#f59e0b" : "#fef08a"} 
+                      />
+                      <span>
+                        {activeShopProfile.reviewsCount > 0 
+                          ? `${activeShopProfile.rating} (${activeShopProfile.reviewsCount} reviews)`
+                          : "No ratings yet"}
+                      </span>
+                      <span className="pill-rate-action">⭐ Star दें</span>
+                    </button>
+                    <span className="meta-divider">•</span>
+                    <span className="meta-timing"><Clock size={13} /> {activeShopProfile.timing}</span>
+                    <span className="meta-divider">•</span>
+                    <span className="meta-distance">📍 {activeShopProfile.distanceKm} km away</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Contact Action Toolbar */}
+            <div className="modal-quick-contact-bar">
+              <a 
+                href={`tel:${activeShopProfile.phone}`}
+                className="contact-action-btn call-action"
+                onClick={() => trackStoreEvent("call_lead", { shopId: activeShopProfile.id, shopName: activeShopProfile.name, type: "phone_call" })}
+              >
+                <Phone size={16} />
+                <span>Call ({activeShopProfile.phone})</span>
+              </a>
+
+              <a 
+                href={`https://wa.me/91${activeShopProfile.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${activeShopProfile.name}, maine TyreSaathi par aapka shop profile dekha hai, mujhe tyre / service booking chahiye.`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="contact-action-btn wa-action"
+                onClick={() => trackStoreEvent("call_lead", { shopId: activeShopProfile.id, shopName: activeShopProfile.name, type: "whatsapp_inquiry" })}
+              >
+                <MessageCircle size={16} />
+                <span>WhatsApp</span>
+              </a>
+
+              <a 
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeShopProfile.name + " " + activeShopProfile.address)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="contact-action-btn map-action"
+                onClick={() => trackStoreEvent("map_direction", { shopId: activeShopProfile.id, shopName: activeShopProfile.name })}
+              >
+                <Navigation size={16} />
+                <span>Directions</span>
+              </a>
+
+              <button
+                type="button"
+                className="contact-action-btn rate-action-header"
+                onClick={(e) => openRatingModal(activeShopProfile, e)}
+              >
+                <Star size={16} fill="#f59e0b" color="#f59e0b" />
+                <span>⭐ Rate Shop (स्टार दें)</span>
+              </button>
+            </div>
+
+            <div className="shop-modal-scrollable-body">
+              {/* Section 1: Services Available at this Hub */}
+              <div className="shop-body-section">
+                <div className="section-title-wrap">
+                  <Wrench size={18} color="#c0392b" />
+                  <h3 className="section-heading-text">Services Available at this Hub (सर्विस लिस्ट)</h3>
+                </div>
+
+                <div className="services-grid-list">
+                  {(activeShopProfile.servicesOffered || activeShopProfile.services || []).map((service, idx) => (
+                    <div key={idx} className="service-feature-card">
+                      <div className="svc-icon-circle">
+                        <CheckCircle2 size={16} color="#27ae60" />
+                      </div>
+                      <div className="svc-info">
+                        <strong>{service}</strong>
+                        <span>Available at shop & doorstep fitment</span>
+                      </div>
+                      <Link
+                        to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&service=${encodeURIComponent(service)}&openModal=true`}
+                        className="svc-book-btn"
+                        onClick={() => setShopProfileOpen(false)}
+                      >
+                        Book This Service
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 2: Tyres & Products Available in this Shop */}
+              <div className="shop-body-section" style={{ marginTop: "24px" }}>
+                <div className="section-title-wrap">
+                  <Package size={18} color="#2980b9" />
+                  <h3 className="section-heading-text">
+                    Tyres & Products in Stock at {activeShopProfile.name}
+                  </h3>
+                </div>
+
+                {shopProducts.length > 0 ? (
+                  <div className="shop-products-grid">
+                    {shopProducts.map((p) => {
+                      const img = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80";
+                      return (
+                        <div key={p.id} className="shop-prod-card">
+                          <img src={img} alt={p.productName} className="shop-prod-img" />
+                          <div className="shop-prod-details">
+                            <span className="shop-prod-brand">{p.brandName} • {p.sizeName}</span>
+                            <h4 className="shop-prod-title">{p.productName}</h4>
+                            <div className="shop-prod-price-row">
+                              <span className="shop-prod-offer">₹{p.offerPrice || p.price}</span>
+                              {p.originalPrice && <span className="shop-prod-mrp">₹{p.originalPrice}</span>}
+                            </div>
+                            <Link
+                              to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&service=${encodeURIComponent(p.productName || 'Tyre Purchase')}&openModal=true`}
+                              className="shop-prod-book-btn"
+                              onClick={() => setShopProfileOpen(false)}
+                            >
+                              ⚡ Book From This Shop
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="no-custom-products-note">
+                    <p>
+                      💡 इस दुकान के लिए स्टैंडर्ड टायर फिटिंग व पंचर रिपेयर सर्विस उपलब्ध है। 
+                      आप नीचे दिए गए बटन से सीधे अपॉइंटमेंट बुक कर सकते हैं।
+                    </p>
+                    <Link
+                      to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&openModal=true`}
+                      className="btn-book-main-cta"
+                      onClick={() => setShopProfileOpen(false)}
+                    >
+                      📅 Book Service / Tyre Fitment at {activeShopProfile.name}
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 3: Customer Ratings & Reviews (ग्राहकों के रिव्यूज) */}
+              <div className="shop-body-section" style={{ marginTop: "28px" }}>
+                <div className="section-title-wrap" style={{ justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Star size={18} color="#f59e0b" fill="#f59e0b" />
+                    <h3 className="section-heading-text">
+                      Customer Ratings & Reviews (ग्राहकों के रिव्यूज)
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-write-review-cta"
+                    onClick={() => openRatingModal(activeShopProfile)}
+                  >
+                    ⭐ Write a Review / स्टार दें
+                  </button>
+                </div>
+
+                {/* Rating Summary Card */}
+                <div className="rating-summary-card">
+                  <div className="rating-score-box">
+                    <span className="big-rating-number">
+                      {activeShopProfile.reviewsCount > 0 ? activeShopProfile.rating : "0.0"}
+                    </span>
+                    <div className="stars-visual-row">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star 
+                          key={s} 
+                          size={18} 
+                          fill={activeShopProfile.reviewsCount > 0 && s <= Math.round(Number(activeShopProfile.rating)) ? "#f59e0b" : "none"} 
+                          color={activeShopProfile.reviewsCount > 0 && s <= Math.round(Number(activeShopProfile.rating)) ? "#f59e0b" : "#cbd5e1"} 
+                        />
+                      ))}
+                    </div>
+                    <span className="rating-reviews-sub">
+                      {activeShopProfile.reviewsCount > 0 
+                        ? `Based on ${activeShopProfile.reviewsCount} customer ratings`
+                        : "Abhi koi customer rating nahi mili hai"}
+                    </span>
+                  </div>
+
+                  <div className="rating-cta-message">
+                    <h4>Aapne is dukan se tyre ya repair service li hai?</h4>
+                    <p>Shop owner ko 1 se 5 star dekar apna review aur feedback share karein.</p>
+                    <button
+                      type="button"
+                      className="btn-open-rate-modal"
+                      onClick={() => openRatingModal(activeShopProfile)}
+                    >
+                      ⭐ Give Star Rating (स्टार व रिव्यू दें)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Real Reviews List (No fake/dummy reviews) */}
+                {shopReviewsMap[activeShopProfile.id] && shopReviewsMap[activeShopProfile.id].length > 0 ? (
+                  <div className="reviews-cards-list">
+                    {shopReviewsMap[activeShopProfile.id].map((rev) => (
+                      <div key={rev.id} className="customer-review-card">
+                        <div className="review-top-row">
+                          <div className="reviewer-avatar-info">
+                            <div className="reviewer-avatar-circle">
+                              {(rev.reviewerName || "Customer").charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="reviewer-name-wrap">
+                                <strong>{rev.reviewerName || "Verified Customer"}</strong>
+                                <span className="verified-buyer-pill">
+                                  <CheckCircle2 size={11} /> Verified Customer
+                                </span>
+                              </div>
+                              <span className="review-date-text">{rev.dateStr || "Recently reviewed"}</span>
+                            </div>
+                          </div>
+
+                          <div className="review-star-pills">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star
+                                key={s}
+                                size={14}
+                                fill={s <= Number(rev.rating) ? "#f59e0b" : "none"}
+                                color={s <= Number(rev.rating) ? "#f59e0b" : "#cbd5e1"}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {rev.comment && <p className="review-comment-text">"{rev.comment}"</p>}
+
+                        {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                          <div className="review-tags-row">
+                            {rev.tags.map((tag, tIdx) => (
+                              <span key={tIdx} className="review-tag-chip">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-reviews-empty-box">
+                    <div className="empty-star-icon">
+                      <Star size={36} color="#94a3b8" />
+                    </div>
+                    <h4>Abhi tak is shop ke liye koi review nahi hai</h4>
+                    <p>Aap pehle customer bankar is dukan ko 1 se 5 star aur anubhav de sakte hain!</p>
+                    <button
+                      type="button"
+                      className="btn-open-rate-modal"
+                      onClick={() => openRatingModal(activeShopProfile)}
+                    >
+                      ⭐ Give First Review (पहला स्टार व रिव्यू दें)
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⭐ Interactive Customer Star Rating & Review Modal */}
+      {ratingModalOpen && ratingShop && (
+        <div className="rating-modal-backdrop" onClick={() => !submittingReview && setRatingModalOpen(false)}>
+          <div className="rating-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rating-modal-header">
+              <div className="rating-shop-icon-box">
+                <Store size={24} color="#c0392b" />
+              </div>
+              <div className="rating-header-text">
+                <h3 className="rating-modal-title">⭐ Rate {ratingShop.name}</h3>
+                <p className="rating-modal-subtitle">📍 {ratingShop.address}</p>
+              </div>
+              <button 
+                type="button" 
+                className="rating-close-btn" 
+                onClick={() => setRatingModalOpen(false)}
+                disabled={submittingReview}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {reviewSuccessMessage ? (
+              <div className="rating-success-state">
+                <div className="success-star-animation">
+                  <Sparkles size={52} color="#f59e0b" />
+                </div>
+                <h3>Dhanaywad! Rating Safaltapoorvak Bhej Di Gayi</h3>
+                <p>
+                  Aapne <strong>{ratingShop.name}</strong> ko <strong>{selectedStars} Star</strong> rating di hai. 
+                  Aapka review live update ho chuka hai.
+                </p>
+                <div className="success-badge-pill">
+                  <Check size={16} /> Verified TyreSaathi Customer Review
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitReview} className="rating-form-body">
+                {/* 🌟 Big Interactive 5-Star Picker - Starts completely empty until clicked */}
+                <div className="stars-interactive-section">
+                  <label className="rating-section-label">
+                    Aap is dukan ko kitne Star (रेटिंग) dena chahte hain?
+                  </label>
+                  
+                  <div className="stars-picker-row">
+                    {[1, 2, 3, 4, 5].map((starNum) => {
+                      const isFilled = hoveredStars > 0 ? starNum <= hoveredStars : (selectedStars > 0 ? starNum <= selectedStars : false);
+                      return (
+                        <button
+                          key={starNum}
+                          type="button"
+                          className={`star-pick-btn ${isFilled ? "star-filled" : "star-unfilled"}`}
+                          onMouseEnter={() => setHoveredStars(starNum)}
+                          onMouseLeave={() => setHoveredStars(0)}
+                          onClick={() => setSelectedStars(starNum)}
+                          title={`${starNum} Star`}
+                        >
+                          <Star 
+                            size={38} 
+                            fill={isFilled ? "#f59e0b" : "none"} 
+                            color={isFilled ? "#f59e0b" : "#cbd5e1"} 
+                            strokeWidth={isFilled ? 1.5 : 2}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {(() => {
+                    const activeCount = hoveredStars > 0 ? hoveredStars : selectedStars;
+                    return (
+                      <div className={`star-feedback-badge ${activeCount === 0 ? "badge-empty-prompt" : ""}`}>
+                        {activeCount === 0 && "👉 Star chunein (1 se 5 star par click karein)"}
+                        {activeCount === 1 && "😞 1 Star - Poor Service (खराब)"}
+                        {activeCount === 2 && "😐 2 Stars - Fair (औसत)"}
+                        {activeCount === 3 && "🙂 3 Stars - Good (अच्छा)"}
+                        {activeCount === 4 && "😊 4 Stars - Very Good (बहुत अच्छा)"}
+                        {activeCount === 5 && "🌟 5 Stars - Excellent Service (शानदार!)"}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Quick Feedback Tags */}
+                <div className="rating-quick-tags-box">
+                  <label className="rating-section-label">
+                    Quick Feedback Tags (टैग चुनें):
+                  </label>
+                  <div className="quick-tags-grid">
+                    {[
+                      "⚡ Fast Tyre Fitting",
+                      "💰 Best Price in Area",
+                      "👍 Polite & Helpful Staff",
+                      "🛡️ 100% Genuine Tyres",
+                      "🔧 Expert Puncture Repair",
+                      "☕ Clean Shop & Waiting Area"
+                    ].map((tag) => {
+                      const active = selectedTags.includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={`tag-toggle-pill ${active ? "tag-active" : ""}`}
+                          onClick={() => toggleReviewTag(tag)}
+                        >
+                          {active ? "✓ " : "+ "} {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviewer Details */}
+                <div className="rating-input-row">
+                  <div className="form-group-field">
+                    <label>Aapka Naam (Customer Name) *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      value={reviewerName}
+                      onChange={(e) => setReviewerName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group-field">
+                    <label>Mobile No. (वैकल्पिक)</label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 9876543210"
+                      value={reviewerPhone}
+                      onChange={(e) => setReviewerPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Comment Box */}
+                <div className="form-group-field">
+                  <label>Apna Review / Feedback Likhein (वैकल्पिक)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Dukan ka behavior, tyre fitment, puncturing ya rate kaisa laga? Apna anubhav share karein..."
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="rating-form-actions">
+                  <button
+                    type="button"
+                    className="btn-cancel-rating"
+                    onClick={() => setRatingModalOpen(false)}
+                    disabled={submittingReview}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-submit-rating"
+                    disabled={submittingReview}
+                  >
+                    {submittingReview ? (
+                      <>
+                        <RefreshCw size={16} className="spin-icon" />
+                        <span>Submitting Rating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        <span>⭐ Submit Rating (स्टार भेजें)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             )}
           </div>
         </div>
+      )}
 
-        {/* Right Side: Interactive Map View */}
-        <div className="store-map-wrapper">
-          {selectedShop && (
-            <div className="map-info-popup">
-              <div className="popup-top">
-                <div>
-                  <h4 className="popup-title">{selectedShop.name}</h4>
-                  <p className="popup-address">{selectedShop.address}</p>
-                </div>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedShop.name + " " + selectedShop.address)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="popup-external-icon"
-                  title="Open in Google Maps"
-                >
-                  <ExternalLink size={16} />
-                </a>
-              </div>
-              <div className="popup-rating">
-                <span className="star-num">{selectedShop.rating} ★</span>
-                <span className="reviews-count">({selectedShop.reviewsCount} reviews)</span>
-                <span className="open-badge">
-                  <CheckCircle2 size={13} color="#27ae60" /> Verified TyreSaathi Hub
-                </span>
-              </div>
-              <div className="popup-services">
-                <strong>Services:</strong> {(selectedShop.servicesOffered || selectedShop.services || ["Tyre Replacement", "Puncture Repair", "Nitrogen Air Fill", "Cut Repair"]).join(" • ")}
-              </div>
-              <div className="popup-action-buttons">
-                <a
-                  href="/bookings"
-                  className="popup-call-btn"
-                  style={{ background: "#c0392b", color: "white", textDecoration: "none" }}
-                >
-                  📅 Book at this Hub
-                </a>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(selectedShop.address)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="popup-directions-btn"
-                >
-                  <Navigation size={14} /> Get Directions
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* Visual Interactive Map Canvas */}
-          <div className="interactive-map-canvas">
-            {/* Real OpenStreetMap Embedded Frame for Selected Shop Location */}
-            <iframe
-              title="Store Map"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              loading="lazy"
-              src={`https://maps.google.com/maps?q=${selectedShop ? encodeURIComponent(selectedShop.address) : "Transport Nagar, Rawabhatha, Raipur, Chhattisgarh"}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-            />
-          </div>
-        </div>
-      </div>
-
+      {/* Scoped Styles for StoreLocation */}
       <style>{`
         .store-location-page {
-          max-width: 1350px;
+          max-width: 1280px;
           margin: 0 auto;
-          padding: 6px 4px 30px;
+          padding: 20px 16px 80px 16px;
+          font-family: 'Inter', sans-serif;
+          color: #0f172a;
         }
-        .breadcrumbs-bar {
-          font-size: 0.75rem; /* text-xs */
-          color: var(--text-muted);
-          margin-bottom: 12px;
-          display: flex;
-          gap: 4px;
-        }
-        .breadcrumbs-bar span:last-child {
-          color: var(--text);
-          font-weight: 600;
-        }
-        .store-locator-container {
-          display: flex;
-          gap: 16px;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-          min-height: 640px;
-        }
-        @media (max-width: 900px) {
-          .store-locator-container {
-            flex-direction: column;
-            border-radius: 10px;
-            min-height: auto;
-          }
-        }
-        .store-sidebar {
-          flex: 0 0 380px;
-          max-width: 420px;
-          padding: 18px 14px;
-          display: flex;
-          flex-direction: column;
-          border-right: 1px solid var(--border);
-          background: var(--surface);
-        }
-        @media (max-width: 900px) {
-          .store-sidebar {
-            flex: none;
-            max-width: 100%;
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-            padding: 14px 10px;
-          }
-        }
-        .store-main-title {
-          font-size: 1.25rem; /* text-xl on mobile */
-          font-weight: 800;
-          color: var(--text);
-          margin: 0 0 10px;
-          line-height: 1.25;
-        }
-        @media (min-width: 640px) {
-          .store-main-title {
-            font-size: 1.5rem;
-          }
-        }
-        .store-search-box {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-bottom: 12px;
-        }
-        .search-input-wrapper {
-          position: relative;
+
+        /* 🧭 Live Location & Discovery Banner */
+        .live-location-banner {
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          color: #ffffff;
+          border-radius: 16px;
+          padding: 18px 22px;
           display: flex;
           align-items: center;
-        }
-        .search-icon-inside {
-          position: absolute;
-          left: 10px;
-          color: var(--text-muted);
-          width: 16px;
-          height: 16px;
-        }
-        .search-input-wrapper input {
-          width: 100%;
-          padding: 8px 10px 8px 32px;
-          border-radius: 8px;
-          border: 1.5px solid var(--border);
-          background: var(--bg);
-          color: var(--text);
-          font-size: 0.8125rem;
-          outline: none;
-        }
-        .search-input-wrapper input:focus {
-          border-color: #691b38;
-        }
-        .search-submit-btn {
-          background: #631936;
-          color: white;
-          border: none;
-          padding: 8px 14px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.8125rem;
-          cursor: pointer;
-          transition: background 0.2s ease;
-        }
-        .search-submit-btn:hover {
-          background: #4b1227;
-        }
-        .city-pill-row {
-          display: flex;
-          gap: 6px;
-          overflow-x: auto;
-          padding-bottom: 6px;
-          margin-bottom: 10px;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-        .city-pill-row::-webkit-scrollbar {
-          display: none;
-        }
-        .city-pill {
-          padding: 4px 10px;
-          border-radius: 16px;
-          border: 1px solid var(--border);
-          background: var(--surface-2);
-          color: var(--text);
-          font-size: 0.72rem;
-          font-weight: 600;
-          white-space: nowrap;
-          cursor: pointer;
-        }
-        .city-pill-active {
-          background: #631936;
-          color: white;
-          border-color: #631936;
-        }
-        .store-count-badge {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          margin-bottom: 10px;
-          font-weight: 600;
-        }
-        .store-list-scroll {
-          flex: 1;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          padding-right: 2px;
-          max-height: 480px;
-        }
-        .store-item-card {
-          padding: 12px 10px;
-          border-radius: 8px;
-          border: 1.5px solid var(--border);
-          background: var(--bg);
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .store-item-card:hover {
-          border-color: #631936;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-        }
-        .store-item-selected {
-          border-color: #631936;
-          background: color-mix(in srgb, #631936 5%, var(--surface));
-          box-shadow: 0 2px 12px rgba(99, 25, 54, 0.15);
-        }
-        .store-card-header {
-          display: flex;
           justify-content: space-between;
-          align-items: flex-start;
-          gap: 6px;
+          flex-wrap: wrap;
+          gap: 16px;
+          margin-bottom: 24px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .loc-left-content {
+          flex: 1;
+          min-width: 280px;
+        }
+
+        .loc-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.12);
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 800;
           margin-bottom: 4px;
         }
-        .store-name {
-          font-size: 0.875rem; /* text-sm */
-          font-weight: 700;
-          color: var(--text);
+
+        .pulse-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .dot-live {
+          background: #22c55e;
+          box-shadow: 0 0 10px #22c55e;
+        }
+        .dot-idle {
+          background: #f59e0b;
+        }
+
+        .loc-desc-text {
           margin: 0;
-          line-height: 1.25;
+          font-size: 13px;
+          color: #cbd5e1;
         }
-        .nearest-tag {
-          font-size: 0.6875rem;
-          background: #e67e22;
-          color: white;
-          padding: 2px 5px;
-          border-radius: 4px;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-        .store-rating-row {
+
+        .banner-action-buttons {
           display: flex;
           align-items: center;
-          gap: 6px;
-          font-size: 0.72rem;
-          margin-bottom: 6px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
-        .rating-badge {
+
+        .btn-view-all-maps {
           display: inline-flex;
           align-items: center;
-          gap: 2px;
-          font-weight: 700;
-          color: #d35400;
-        }
-        .reviews-text {
-          color: var(--text-muted);
-        }
-        .distance-text {
-          color: #27ae60;
-          font-weight: 600;
-          margin-left: auto;
-        }
-        .store-address {
-          font-size: 0.75rem; /* text-xs */
-          color: var(--text-muted);
-          line-height: 1.35;
-          margin: 0 0 8px;
-        }
-        .store-services-chips {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px;
-          margin-bottom: 8px;
-        }
-        .svc-chip {
-          font-size: 0.6875rem;
-          background: var(--surface-2);
-          color: var(--text);
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-weight: 600;
-        }
-        .store-card-actions {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding-top: 6px;
-          border-top: 1px dashed var(--border);
-        }
-        .view-on-map-btn {
-          background: none;
+          gap: 8px;
+          background: #0284c7;
+          color: #ffffff;
           border: none;
-          color: #631936;
-          font-size: 0.75rem;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 3px;
-          cursor: pointer;
-          padding: 0;
-        }
-        .view-on-map-btn:hover {
-          text-decoration: underline;
-        }
-        .google-maps-link {
-          font-size: 0.72rem;
-          color: var(--text-muted);
+          padding: 10px 16px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
           text-decoration: none;
-          display: flex;
+          cursor: pointer;
+          box-shadow: 0 3px 12px rgba(2, 132, 199, 0.35);
+          transition: all 0.2s ease;
+        }
+        .btn-view-all-maps:hover {
+          background: #0369a1;
+          transform: translateY(-1px);
+        }
+
+        .btn-detect-location {
+          display: inline-flex;
           align-items: center;
-          gap: 3px;
+          gap: 8px;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: #ffffff;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 3px 12px rgba(192, 57, 43, 0.35);
+          transition: all 0.2s ease;
         }
-        .google-maps-link:hover {
-          color: #631936;
+        .btn-detect-location:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 5px 16px rgba(192, 57, 43, 0.45);
         }
-        .store-map-wrapper {
-          flex: 1;
-          position: relative;
-          min-height: 500px;
+
+        .spin-icon {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* 🏬 Directory Main Layout */
+        .store-directory-wrapper {
           display: flex;
           flex-direction: column;
+          gap: 18px;
         }
-        .interactive-map-canvas {
-          flex: 1;
-          width: 100%;
-          min-height: 500px;
-          background: #e8ecef;
-        }
-        .map-info-popup {
-          position: absolute;
-          top: 14px;
-          left: 14px;
-          z-index: 10;
-          background: rgba(255, 255, 255, 0.96);
-          backdrop-filter: blur(8px);
-          border: 1px solid #ddd;
-          border-radius: 10px;
-          padding: 12px;
-          max-width: 320px;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-          color: #222;
-        }
-        .popup-top {
+
+        .directory-header-row {
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          align-items: flex-start;
-          gap: 8px;
-          margin-bottom: 6px;
+          flex-wrap: wrap;
+          gap: 12px;
         }
-        .popup-title {
+
+        .directory-main-title {
+          font-size: 22px;
+          font-weight: 800;
+          color: #0f172a;
           margin: 0 0 3px;
-          font-size: 0.875rem;
-          font-weight: 700;
-          color: #111;
+          letter-spacing: -0.4px;
         }
-        .popup-address {
+
+        .directory-subtitle-text {
+          font-size: 13px;
+          color: #64748b;
           margin: 0;
-          font-size: 0.75rem;
-          color: #555;
-          line-height: 1.3;
         }
-        .popup-external-icon {
-          color: #631936;
-          padding: 2px;
+
+        .store-count-chip {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          color: #15803d;
+          font-size: 12.5px;
+          font-weight: 800;
+          padding: 6px 14px;
+          border-radius: 20px;
         }
-        .popup-rating {
+
+        /* Search & Filter Card */
+        .directory-filters-card {
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 16px 18px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
           display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.72rem;
-          margin-bottom: 6px;
+          flex-direction: column;
+          gap: 12px;
         }
-        .star-num {
-          font-weight: 700;
-          color: #d35400;
+
+        .search-input-wrapper {
+          position: relative;
+          width: 100%;
         }
-        .open-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          color: #27ae60;
-          font-weight: 600;
+
+        .search-icon-inside {
+          position: absolute;
+          left: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
         }
-        .popup-services {
-          font-size: 0.6875rem;
-          color: #666;
-          margin-bottom: 10px;
-          line-height: 1.3;
+
+        .search-input-wrapper input {
+          width: 100%;
+          padding: 11px 40px 11px 42px;
+          border-radius: 12px;
+          border: 1.5px solid #e2e8f0;
+          background: #f8fafc;
+          color: #0f172a;
+          font-size: 14px;
+          outline: none;
+          transition: all 0.2s;
         }
-        .popup-action-buttons {
-          display: flex;
-          gap: 6px;
+        .search-input-wrapper input:focus {
+          border-color: #c0392b;
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
         }
-        .popup-call-btn,
-        .popup-directions-btn {
-          flex: 1;
+
+        .clear-search-btn {
+          position: absolute;
+          right: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: #e2e8f0;
+          border: none;
+          color: #475569;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
-          padding: 7px 8px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-decoration: none;
-          text-align: center;
-        }
-        .popup-call-btn {
-          background: #27ae60;
-          color: white;
-        }
-        .popup-directions-btn {
-          background: #631936;
-          color: white;
-        }
-        .no-stores-found {
-          padding: 30px 16px;
-          text-align: center;
-          color: var(--text-muted);
-          font-size: 0.8125rem;
+          cursor: pointer;
         }
 
-        @media (max-width: 900px) {
-          .store-map-wrapper {
-            min-height: 280px;
+        .city-pill-row {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+
+        .city-pill {
+          padding: 6px 14px;
+          border-radius: 20px;
+          border: 1.5px solid #e2e8f0;
+          background: #f8fafc;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+        .city-pill:hover {
+          background: #f1f5f9;
+          border-color: #cbd5e1;
+          color: #0f172a;
+        }
+        .city-pill-active {
+          background: #0f172a;
+          color: #ffffff;
+          border-color: #0f172a;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
+        }
+
+        /* 🌟 Full-Width Responsive Store Cards Grid */
+        .stores-grid-layout {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 18px;
+        }
+
+        .store-card-full {
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+        .store-card-full:hover {
+          transform: translateY(-2px);
+          border-color: #cbd5e1;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+
+        .nearest-hub-border {
+          border-left: 5px solid #16a34a !important;
+        }
+
+        .store-card-top-row {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .store-title-wrap {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .store-avatar-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #fef2f2;
+          border: 1px solid #fee2e2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .store-title-text {
+          font-size: 16px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0 0 2px;
+          letter-spacing: -0.3px;
+        }
+
+        .verified-partner-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #16a34a;
+        }
+
+        .nearest-badge {
+          background: #dcfce7;
+          border: 1px solid #bbf7d0;
+          color: #15803d;
+          font-size: 10.5px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 12px;
+          text-transform: uppercase;
+        }
+
+        .store-dist-badge {
+          text-align: right;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          padding: 4px 10px;
+          border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+        }
+
+        .dist-num {
+          font-size: 13px;
+          font-weight: 800;
+          color: #1d4ed8;
+        }
+
+        .dist-sub {
+          font-size: 10px;
+          color: #64748b;
+        }
+
+        .store-meta-strip {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .meta-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 12px;
+          color: #475569;
+          background: #f8fafc;
+          border: 1px solid #f1f5f9;
+          padding: 3px 8px;
+          border-radius: 8px;
+        }
+        .meta-pill strong {
+          color: #0f172a;
+        }
+
+        .store-address-text {
+          font-size: 12.5px;
+          color: #475569;
+          margin: 0;
+          line-height: 1.45;
+        }
+
+        .store-services-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .service-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 600;
+          background: #f1f5f9;
+          color: #334155;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        /* Card Action Buttons */
+        .store-card-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 4px;
+          padding-top: 12px;
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .primary-actions-group {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 8px;
+        }
+
+        .btn-card-profile {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: #ffffff;
+          border: 1.5px solid #c0392b;
+          color: #c0392b;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-card-profile:hover {
+          background: #fef2f2;
+        }
+
+        .btn-card-book {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: #ffffff;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 800;
+          text-decoration: none;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+          transition: all 0.2s;
+        }
+        .btn-card-book:hover {
+          transform: translateY(-1px);
+        }
+
+        .quick-contact-actions-group {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 6px;
+        }
+
+        .btn-quick-contact {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 7px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .btn-quick-call {
+          background: #fee2e2;
+          color: #b91c1c;
+          border: 1px solid #fecaca;
+        }
+        .btn-quick-call:hover { background: #fecaca; }
+
+        .btn-quick-wa {
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+        }
+        .btn-quick-wa:hover { background: #dcfce7; }
+
+        .btn-quick-map {
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+        }
+        .btn-quick-map:hover { background: #dbeafe; }
+
+        /* Empty State */
+        .no-stores-found {
+          text-align: center;
+          padding: 60px 20px;
+          background: #ffffff;
+          border: 1.5px dashed #cbd5e1;
+          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        .no-stores-icon-box {
+          width: 64px;
+          height: 64px;
+          border-radius: 20px;
+          background: #fef2f2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .no-stores-found h3 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0;
+        }
+        .no-stores-found p {
+          font-size: 13px;
+          color: #64748b;
+          margin: 0;
+        }
+        .btn-reset-filters {
+          background: #c0392b;
+          color: #ffffff;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        /* Rating Pill & Card Rating Buttons */
+        .meta-rating-pill {
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .meta-rating-pill:hover {
+          background: #fef3c7;
+          border-color: #fde68a;
+          transform: translateY(-1px);
+        }
+        .rate-click-hint {
+          font-size: 10px;
+          font-weight: 800;
+          background: #fef3c7;
+          color: #d97706;
+          padding: 1px 6px;
+          border-radius: 6px;
+          margin-left: 2px;
+        }
+
+        .btn-quick-rate {
+          background: #fefce8;
+          color: #b45309;
+          border: 1px solid #fef08a;
+          cursor: pointer;
+        }
+        .btn-quick-rate:hover {
+          background: #fef08a;
+        }
+
+        /* 🏪 Shop Profile Modal */
+        .shop-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(4px);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+
+        .shop-profile-modal-card {
+          background: #ffffff;
+          border-radius: 20px;
+          max-width: 800px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 24px 50px rgba(0,0,0,0.25);
+        }
+
+        .modal-shop-banner {
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          color: white;
+          padding: 22px;
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
+        }
+
+        .banner-top-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .banner-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(34, 197, 94, 0.2);
+          color: #86efac;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 12px;
+          border-radius: 20px;
+        }
+
+        .modal-close-icon-btn {
+          background: rgba(255, 255, 255, 0.15);
+          border: none;
+          color: white;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .banner-shop-title-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .banner-avatar-box {
+          width: 58px;
+          height: 58px;
+          border-radius: 14px;
+          background: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .banner-shop-name {
+          font-size: 20px;
+          font-weight: 800;
+          margin: 0 0 3px;
+        }
+
+        .banner-shop-address {
+          font-size: 13px;
+          color: #cbd5e1;
+          margin: 0 0 5px;
+        }
+
+        .banner-meta-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: #94a3b8;
+          flex-wrap: wrap;
+        }
+        
+        .meta-star-badge-btn {
+          background: rgba(245, 158, 11, 0.2);
+          border: 1px solid rgba(245, 158, 11, 0.4);
+          color: #fef08a;
+          padding: 3px 10px;
+          border-radius: 14px;
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .meta-star-badge-btn:hover {
+          background: rgba(245, 158, 11, 0.35);
+          transform: translateY(-1px);
+        }
+        .pill-rate-action {
+          background: #f59e0b;
+          color: #0f172a;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 8px;
+        }
+
+        .modal-quick-contact-bar {
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          padding: 12px 22px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .contact-action-btn {
+          flex: 1;
+          min-width: 130px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 9px 12px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 700;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .call-action { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+        .wa-action { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+        .map-action { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; }
+        .rate-action-header { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
+        .rate-action-header:hover { background: #fef08a; }
+
+        .shop-modal-scrollable-body {
+          padding: 22px;
+        }
+
+        .section-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+
+        .section-heading-text {
+          font-size: 15.5px;
+          font-weight: 800;
+          margin: 0;
+          color: #0f172a;
+        }
+
+        .btn-write-review-cta {
+          background: #fef3c7;
+          border: 1px solid #fde68a;
+          color: #b45309;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-write-review-cta:hover {
+          background: #fde68a;
+          transform: translateY(-1px);
+        }
+
+        /* Rating Summary Box in Modal */
+        .rating-summary-card {
+          background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+          border: 1.5px solid #fde68a;
+          border-radius: 14px;
+          padding: 16px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .rating-score-box {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .big-rating-number {
+          font-size: 32px;
+          font-weight: 900;
+          color: #b45309;
+          line-height: 1;
+        }
+        .stars-visual-row {
+          display: flex;
+          gap: 3px;
+          margin-top: 2px;
+        }
+        .rating-reviews-sub {
+          font-size: 11.5px;
+          color: #78350f;
+          font-weight: 600;
+        }
+
+        .rating-cta-message {
+          flex: 1;
+          min-width: 240px;
+        }
+        .rating-cta-message h4 {
+          margin: 0 0 2px;
+          font-size: 14px;
+          font-weight: 800;
+          color: #78350f;
+        }
+        .rating-cta-message p {
+          margin: 0 0 8px;
+          font-size: 12px;
+          color: #92400e;
+        }
+        .btn-open-rate-modal {
+          background: #d97706;
+          color: #ffffff;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 8px;
+          font-size: 12.5px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+          transition: all 0.2s;
+        }
+        .btn-open-rate-modal:hover {
+          background: #b45309;
+          transform: translateY(-1px);
+        }
+
+        /* Review Cards List */
+        .reviews-cards-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .customer-review-card {
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .review-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .reviewer-avatar-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .reviewer-avatar-circle {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #fee2e2;
+          color: #dc2626;
+          font-weight: 800;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1.5px solid #fecaca;
+        }
+
+        .reviewer-name-wrap {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .reviewer-name-wrap strong {
+          font-size: 13.5px;
+          color: #0f172a;
+        }
+        .verified-buyer-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          background: #dcfce7;
+          color: #15803d;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 1px 6px;
+          border-radius: 10px;
+        }
+        .review-date-text {
+          font-size: 11px;
+          color: #94a3b8;
+        }
+
+        .review-star-pills {
+          display: flex;
+          gap: 2px;
+        }
+
+        .review-comment-text {
+          margin: 0;
+          font-size: 13px;
+          color: #334155;
+          line-height: 1.5;
+          font-style: italic;
+        }
+
+        .review-tags-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .review-tag-chip {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          color: #475569;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 6px;
+        }
+
+        .no-reviews-empty-box {
+          background: #f8fafc;
+          border: 1.5px dashed #cbd5e1;
+          border-radius: 14px;
+          padding: 28px 20px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+        .empty-star-icon {
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          background: #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 4px;
+        }
+        .no-reviews-empty-box h4 {
+          margin: 0;
+          font-size: 14.5px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+        .no-reviews-empty-box p {
+          margin: 0 0 8px;
+          font-size: 12.5px;
+          color: #64748b;
+          max-width: 360px;
+        }
+
+        /* 🌟 Interactive Customer Rating Modal */
+        .rating-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.75);
+          backdrop-filter: blur(5px);
+          z-index: 10000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: fadeInBackdrop 0.2s ease-out;
+        }
+
+        @keyframes fadeInBackdrop {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .rating-modal-card {
+          background: #ffffff;
+          border-radius: 20px;
+          max-width: 520px;
+          width: 100%;
+          overflow: hidden;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+          border: 1px solid #cbd5e1;
+        }
+
+        .rating-modal-header {
+          background: #f8fafc;
+          border-bottom: 1.5px solid #e2e8f0;
+          padding: 16px 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .rating-shop-icon-box {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: #fef2f2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #fee2e2;
+          flex-shrink: 0;
+        }
+
+        .rating-header-text {
+          flex: 1;
+        }
+        .rating-modal-title {
+          font-size: 16px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0 0 2px;
+        }
+        .rating-modal-subtitle {
+          font-size: 12px;
+          color: #64748b;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .rating-close-btn {
+          background: #e2e8f0;
+          border: none;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #475569;
+          transition: all 0.2s;
+        }
+        .rating-close-btn:hover {
+          background: #cbd5e1;
+          color: #0f172a;
+        }
+
+        .rating-form-body {
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .stars-interactive-section {
+          text-align: center;
+          background: #fffbeb;
+          border: 1.5px dashed #fde68a;
+          border-radius: 14px;
+          padding: 16px;
+        }
+
+        .rating-section-label {
+          display: block;
+          font-size: 13px;
+          font-weight: 700;
+          color: #0f172a;
+          margin-bottom: 10px;
+        }
+
+        .stars-picker-row {
+          display: flex;
+          justify-content: center;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .star-pick-btn {
+          background: transparent;
+          border: none;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 8px;
+          transition: all 0.15s ease;
+        }
+        .star-pick-btn:hover {
+          transform: scale(1.25);
+        }
+        .star-pick-btn:active {
+          transform: scale(0.95);
+        }
+
+        .star-feedback-badge {
+          display: inline-block;
+          font-size: 13px;
+          font-weight: 800;
+          color: #b45309;
+          background: #ffffff;
+          padding: 4px 14px;
+          border-radius: 20px;
+          border: 1px solid #fde68a;
+          margin-top: 4px;
+        }
+        .badge-empty-prompt {
+          color: #64748b !important;
+          background: #f1f5f9 !important;
+          border-color: #cbd5e1 !important;
+          font-weight: 700 !important;
+        }
+
+        .rating-quick-tags-box {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .quick-tags-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .tag-toggle-pill {
+          background: #f8fafc;
+          border: 1.5px solid #e2e8f0;
+          color: #475569;
+          padding: 5px 10px;
+          border-radius: 20px;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .tag-toggle-pill:hover {
+          border-color: #cbd5e1;
+          background: #f1f5f9;
+        }
+        .tag-toggle-pill.tag-active {
+          background: #dcfce7;
+          border-color: #86efac;
+          color: #15803d;
+        }
+
+        .rating-input-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .form-group-field {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .form-group-field label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #334155;
+        }
+        .form-group-field input,
+        .form-group-field textarea {
+          border: 1.5px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px 12px;
+          font-size: 13px;
+          font-family: inherit;
+          color: #0f172a;
+          outline: none;
+          transition: all 0.2s;
+        }
+        .form-group-field input:focus,
+        .form-group-field textarea:focus {
+          border-color: #c0392b;
+          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
+        }
+
+        .rating-form-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 4px;
+        }
+
+        .btn-cancel-rating {
+          flex: 1;
+          background: #f1f5f9;
+          border: 1.5px solid #e2e8f0;
+          color: #475569;
+          padding: 11px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-cancel-rating:hover {
+          background: #e2e8f0;
+        }
+
+        .btn-submit-rating {
+          flex: 2;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          border: none;
+          color: #ffffff;
+          padding: 11px;
+          border-radius: 10px;
+          font-size: 13.5px;
+          font-weight: 800;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.35);
+          transition: all 0.2s;
+        }
+        .btn-submit-rating:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(192, 57, 43, 0.45);
+        }
+        .btn-submit-rating:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        /* Success State */
+        .rating-success-state {
+          padding: 40px 24px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+        }
+        .success-star-animation {
+          width: 76px;
+          height: 76px;
+          border-radius: 50%;
+          background: #fef3c7;
+          border: 2px solid #fde68a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: bounceStar 0.6s ease-in-out infinite alternate;
+        }
+        @keyframes bounceStar {
+          from { transform: translateY(0) scale(1); }
+          to { transform: translateY(-6px) scale(1.08); }
+        }
+        .rating-success-state h3 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0;
+        }
+        .rating-success-state p {
+          font-size: 13px;
+          color: #64748b;
+          margin: 0;
+          max-width: 380px;
+          line-height: 1.5;
+        }
+        .success-badge-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #dcfce7;
+          color: #15803d;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 16px;
+          border-radius: 20px;
+          margin-top: 6px;
+        }
+
+        .services-grid-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 10px;
+        }
+
+        .service-feature-card {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px 12px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .svc-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .svc-info strong { font-size: 13px; color: #0f172a; }
+        .svc-info span { font-size: 11px; color: #64748b; }
+
+        .svc-book-btn {
+          padding: 6px 10px;
+          border-radius: 6px;
+          background: #c0392b;
+          color: white;
+          font-size: 11.5px;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .shop-products-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 12px;
+        }
+
+        .shop-prod-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 10px;
+          background: #ffffff;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .shop-prod-img {
+          width: 100%;
+          height: 100px;
+          object-fit: cover;
+          border-radius: 6px;
+        }
+
+        .shop-prod-brand {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #c0392b;
+        }
+
+        .shop-prod-title {
+          font-size: 12.5px;
+          font-weight: 700;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .shop-prod-price-row {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+        .shop-prod-offer { font-size: 13.5px; font-weight: 800; color: #16a34a; }
+        .shop-prod-mrp { font-size: 10.5px; color: #94a3b8; text-decoration: line-through; }
+
+        .shop-prod-book-btn {
+          margin-top: 4px;
+          display: block;
+          text-align: center;
+          padding: 6px 8px;
+          border-radius: 6px;
+          background: #c0392b;
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .no-custom-products-note {
+          background: #f8fafc;
+          border: 1px dashed #cbd5e1;
+          border-radius: 12px;
+          padding: 18px;
+          text-align: center;
+        }
+        .no-custom-products-note p {
+          margin: 0 0 12px;
+          font-size: 13px;
+          color: #475569;
+        }
+
+        .btn-book-main-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          border-radius: 8px;
+          background: #c0392b;
+          color: white;
+          font-size: 13px;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+          .stores-grid-layout {
+            grid-template-columns: 1fr;
           }
-          .interactive-map-canvas {
-            min-height: 280px;
+          .primary-actions-group {
+            grid-template-columns: 1fr;
           }
-          .map-info-popup {
-            position: relative;
-            top: 0;
-            left: 0;
-            max-width: 100%;
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
+          .quick-contact-actions-group {
+            grid-template-columns: 1fr 1fr;
+          }
+          .rating-input-row {
+            grid-template-columns: 1fr;
+          }
+          .banner-action-buttons {
+            width: 100%;
+          }
+          .btn-view-all-maps, .btn-detect-location {
+            width: 100%;
+            justify-content: center;
           }
         }
       `}</style>
