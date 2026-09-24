@@ -136,34 +136,60 @@ export default function NotificationBell() {
           <button 
             className="toast-close-btn" 
             onClick={(e) => { e.stopPropagation(); setLatestToast(null); }}
+            aria-label="Close Toast"
           >
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* 📋 Notification Dropdown Panel */}
+      {/* 📱 Mobile Soft Backdrop */}
       {isOpen && (
-        <div className="notification-dropdown-panel">
+        <div 
+          className="notif-mobile-backdrop" 
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* 📋 Notification Dropdown Panel (Responsive on all screen sizes) */}
+      {isOpen && (
+        <div className="notification-dropdown-panel" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
           <div className="notif-panel-header">
             <div className="notif-header-title">
-              <Bell size={16} color="#c0392b" />
-              <h4>Notifications (सूचनाएं)</h4>
+              <div className="notif-bell-icon-badge">
+                <Bell size={16} color="#ffffff" />
+              </div>
+              <div>
+                <h4>Notifications (सूचनाएं)</h4>
+                <small className="notif-header-sub">Updates, Bookings & Ratings</small>
+              </div>
               {unreadCount > 0 && (
                 <span className="unread-pill">{unreadCount} New</span>
               )}
             </div>
 
-            {unreadCount > 0 && (
+            <div className="notif-header-actions">
+              {unreadCount > 0 && (
+                <button 
+                  type="button" 
+                  className="btn-mark-all-read" 
+                  onClick={handleMarkAllRead}
+                  title="Mark all as read"
+                >
+                  <CheckCheck size={14} />
+                  <span>Mark read</span>
+                </button>
+              )}
               <button 
                 type="button" 
-                className="btn-mark-all-read" 
-                onClick={handleMarkAllRead}
+                className="btn-close-notif-panel"
+                onClick={() => setIsOpen(false)}
+                title="Close"
               >
-                <CheckCheck size={14} /> Mark all read
+                <X size={16} />
               </button>
-            )}
+            </div>
           </div>
 
           {/* Body List */}
@@ -171,10 +197,10 @@ export default function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="notif-empty-state">
                 <div className="notif-empty-icon">
-                  <Bell size={32} color="#94a3b8" />
+                  <Bell size={28} color="#94a3b8" />
                 </div>
                 <h5>Koi Nayi Notification Nahi Hai</h5>
-                <p>Booking, customer rating aur app updates ke alerts yaha dikhenge.</p>
+                <p>Nayi bookings, customer ratings aur system alerts yaha real-time dikhenge.</p>
               </div>
             ) : (
               <div className="notif-items-list">
@@ -190,13 +216,14 @@ export default function NotificationBell() {
                       <div className="notif-item-top">
                         <span className="notif-item-title">{notif.title}</span>
                         <span className="notif-item-time">
+                          <Clock size={10} style={{ display: "inline", marginRight: "3px" }} />
                           {notif.dateStr || "Recently"}
                         </span>
                       </div>
                       <p className="notif-item-msg">{notif.message}</p>
                     </div>
 
-                    {!notif.read && <span className="unread-dot" />}
+                    {!notif.read && <span className="unread-dot" title="Unread" />}
                   </div>
                 ))}
               </div>
@@ -315,10 +342,12 @@ export default function NotificationBell() {
           align-items: center;
           gap: 10px;
           flex: 1;
+          min-width: 0;
         }
 
         .toast-text {
           flex: 1;
+          min-width: 0;
         }
         .toast-text strong {
           display: block;
@@ -351,60 +380,92 @@ export default function NotificationBell() {
           cursor: pointer;
         }
 
-        /* Dropdown Panel */
+        /* 📱 Mobile Backdrop */
+        .notif-mobile-backdrop {
+          display: none;
+        }
+
+        /* Desktop Dropdown Panel */
         .notification-dropdown-panel {
           position: absolute;
           top: calc(100% + 10px);
           right: 0;
-          width: 360px;
-          max-width: calc(100vw - 24px);
+          width: 380px;
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
-          border-radius: 16px;
-          box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
-          z-index: 10000;
+          border-radius: 18px;
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+          z-index: 999999;
           overflow: hidden;
-          animation: dropIn 0.2s ease-out;
+          animation: dropIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes dropIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .notif-panel-header {
           background: #f8fafc;
           border-bottom: 1.5px solid #e2e8f0;
-          padding: 12px 16px;
+          padding: 14px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 8px;
         }
 
         .notif-header-title {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 10px;
+          min-width: 0;
+        }
+        .notif-bell-icon-badge {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: #c0392b;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
         .notif-header-title h4 {
           margin: 0;
-          font-size: 13.5px;
+          font-size: 14px;
           font-weight: 800;
           color: #0f172a;
+          line-height: 1.2;
+        }
+        .notif-header-sub {
+          display: block;
+          font-size: 10.5px;
+          color: #64748b;
+          margin-top: 1px;
         }
 
         .unread-pill {
           background: #fee2e2;
           color: #dc2626;
-          font-size: 10px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 2px 7px;
+          padding: 2px 8px;
           border-radius: 10px;
+          border: 1px solid #fecaca;
+          white-space: nowrap;
+        }
+
+        .notif-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
         }
 
         .btn-mark-all-read {
-          background: transparent;
-          border: none;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
           color: #2563eb;
           font-size: 11px;
           font-weight: 700;
@@ -412,47 +473,69 @@ export default function NotificationBell() {
           align-items: center;
           gap: 4px;
           cursor: pointer;
-          padding: 4px 6px;
+          padding: 5px 8px;
           border-radius: 6px;
+          transition: all 0.15s ease;
         }
         .btn-mark-all-read:hover {
-          background: #eff6ff;
+          background: #dbeafe;
+        }
+
+        .btn-close-notif-panel {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          color: #64748b;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .btn-close-notif-panel:hover {
+          background: #fee2e2;
+          color: #dc2626;
+          border-color: #fca5a5;
         }
 
         .notif-panel-body {
           max-height: 380px;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
         }
 
         .notif-empty-state {
-          padding: 36px 20px;
+          padding: 40px 20px;
           text-align: center;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
         }
         .notif-empty-icon {
-          width: 50px;
-          height: 50px;
+          width: 52px;
+          height: 52px;
           border-radius: 50%;
           background: #f1f5f9;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         .notif-empty-state h5 {
           margin: 0;
-          font-size: 13.5px;
+          font-size: 14px;
           font-weight: 800;
           color: #0f172a;
         }
         .notif-empty-state p {
           margin: 0;
-          font-size: 11.5px;
+          font-size: 12px;
           color: #64748b;
-          max-width: 240px;
+          max-width: 260px;
+          line-height: 1.4;
         }
 
         .notif-items-list {
@@ -463,8 +546,8 @@ export default function NotificationBell() {
         .notif-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
-          padding: 12px 14px;
+          gap: 12px;
+          padding: 14px 16px;
           border-bottom: 1px solid #f1f5f9;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -476,14 +559,15 @@ export default function NotificationBell() {
 
         .notif-item-row.notif-unread {
           background: #fffafa;
+          border-left: 3px solid #dc2626;
         }
         .notif-item-row.notif-unread:hover {
           background: #fff1f2;
         }
 
         .notif-icon-box {
-          width: 32px;
-          height: 32px;
+          width: 36px;
+          height: 36px;
           border-radius: 10px;
           display: flex;
           align-items: center;
@@ -506,29 +590,30 @@ export default function NotificationBell() {
           align-items: center;
           justify-content: space-between;
           gap: 8px;
-          margin-bottom: 2px;
+          margin-bottom: 3px;
         }
 
         .notif-item-title {
-          font-size: 12.5px;
+          font-size: 13px;
           font-weight: 800;
           color: #0f172a;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          line-height: 1.25;
         }
 
         .notif-item-time {
-          font-size: 10px;
+          font-size: 10.5px;
           color: #94a3b8;
+          font-weight: 600;
           flex-shrink: 0;
+          white-space: nowrap;
         }
 
         .notif-item-msg {
           margin: 0;
-          font-size: 11.5px;
+          font-size: 12px;
           color: #475569;
-          line-height: 1.35;
+          line-height: 1.4;
+          word-break: break-word;
         }
 
         .unread-dot {
@@ -538,33 +623,75 @@ export default function NotificationBell() {
           background: #dc2626;
           margin-top: 6px;
           flex-shrink: 0;
+          box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
         }
 
         .notif-panel-footer {
           background: #f8fafc;
           border-top: 1.5px solid #e2e8f0;
-          padding: 8px 12px;
+          padding: 10px 14px;
           display: flex;
-          gap: 8px;
+          gap: 10px;
         }
 
         .btn-view-bookings, .btn-view-shops {
           flex: 1;
           background: #ffffff;
-          border: 1px solid #cbd5e1;
+          border: 1.5px solid #cbd5e1;
           color: #334155;
-          padding: 6px 8px;
+          padding: 8px 10px;
           border-radius: 8px;
-          font-size: 11px;
+          font-size: 11.5px;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 5px;
+          transition: all 0.15s ease;
         }
         .btn-view-bookings:hover, .btn-view-shops:hover {
           background: #f1f5f9;
+          border-color: #94a3b8;
+        }
+
+        /* 📱 Mobile Responsive Full View (< 640px) */
+        @media (max-width: 640px) {
+          .notif-mobile-backdrop {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(3px);
+            z-index: 999990;
+            animation: fadeInBackdrop 0.2s ease-out;
+          }
+
+          @keyframes fadeInBackdrop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          .notification-dropdown-panel {
+            position: fixed !important;
+            top: 62px !important;
+            left: 10px !important;
+            right: 10px !important;
+            width: auto !important;
+            max-width: 440px !important;
+            margin: 0 auto !important;
+            max-height: calc(100vh - 120px) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+            z-index: 999999 !important;
+          }
+
+          .notif-panel-body {
+            max-height: calc(100vh - 240px) !important;
+          }
         }
       `}</style>
     </div>
