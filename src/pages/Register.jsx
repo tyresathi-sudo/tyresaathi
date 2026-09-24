@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { friendlyError } from "./Login.jsx";
 import { logUserActivityToSheet } from "../utils/googleSheets";
 
 export default function Register() {
-  const { register } = useAuth();
+  const { user, register, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const emailParam = searchParams.get("email") || "";
@@ -18,6 +18,12 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      navigate("/", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();

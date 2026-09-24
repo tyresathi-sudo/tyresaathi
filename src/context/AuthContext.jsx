@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
       return ROLES.CUSTOMER;
     }
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Login
   async function login(email, password) {

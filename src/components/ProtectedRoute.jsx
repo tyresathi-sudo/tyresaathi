@@ -6,12 +6,14 @@ import Loading from "../pages/Loading.jsx";
 // Wrap any route that needs login: <Route element={<ProtectedRoute />}>...
 // Pass allowRoles={["admin"]} to also restrict by role (Phase 4/7 will use this).
 export default function ProtectedRoute({ children, allowRoles }) {
-  const { user, role, loading } = useAuth();
+  const { user, userData, role, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <Loading label="Check kar rahe hain..." />;
+  if (loading && !userData) return <Loading label="TyreSaathi start ho raha hai..." />;
 
-  if (!user) {
+  const isAuthenticated = !!(user || userData);
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

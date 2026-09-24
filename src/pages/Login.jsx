@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Lock, Mail, Store, User, Sparkles, Eye, EyeOff, AlertTriangle, KeyRound, UserPlus } from "lucide-react";
 import { logUserActivityToSheet } from "../utils/googleSheets";
@@ -28,8 +28,9 @@ export function friendlyError(code) {
 }
 
 export default function Login() {
-  const { login, resetPassword } = useAuth();
+  const { user, login, resetPassword, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,6 +38,14 @@ export default function Login() {
   const [resetSuccess, setResetSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  // Auto-redirect if session is active
+  useEffect(() => {
+    if (user && !authLoading) {
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location]);
 
   async function handleSubmit(e) {
     e.preventDefault();

@@ -1,6 +1,11 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { 
+  getAuth, 
+  initializeAuth, 
+  indexedDBLocalPersistence, 
+  browserLocalPersistence 
+} from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -12,7 +17,7 @@ const firebaseConfig = {
   appId: "1:71107233578:web:b662874092abc23bd54053",
 };
 
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
@@ -20,6 +25,16 @@ export const db = initializeFirestore(app, {
   })
 });
 
-export const auth = getAuth(app);
+// Configure Auth with multi-layer persistence (IndexedDB + LocalStorage) for reliable Android APK & Web session retention
+let authInstance;
+try {
+  authInstance = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence]
+  });
+} catch {
+  authInstance = getAuth(app);
+}
+
+export const auth = authInstance;
 export const storage = getStorage(app);
 export default app;

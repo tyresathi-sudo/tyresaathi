@@ -6,8 +6,8 @@ import { scheduleLocalNotification, triggerHaptic, isNative } from "../utils/nat
 import { App } from "@capacitor/app";
 
 // Default app version if native bridge is not available
-export const CURRENT_APP_VERSION = "1.2.0";
-export const CURRENT_BUILD_NUMBER = 4;
+export const CURRENT_APP_VERSION = "1.2.1";
+export const CURRENT_BUILD_NUMBER = 5;
 
 export default function AppUpdateChecker() {
   const [installedVersion, setInstalledVersion] = useState(CURRENT_APP_VERSION);
