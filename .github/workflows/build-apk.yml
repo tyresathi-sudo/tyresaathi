@@ -77,16 +77,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.1
-          name: "TyreSaathi Android App v1.2.1 (Official Release)"
+          tag_name: v1.2.2
+          name: "TyreSaathi Android App v1.2.2 (Official Release)"
           body: |
-            ⚡ TyreSaathi Official Android APK Release v1.2.1
-            - 🔐 Permanent Session & Auto-Login Persistence (No Auto Logout)
-            - ⭐ Real-Time Customer Star Rating & Review System
-            - 🔔 Live In-App & Push Notification Hub
-            - 🚀 Automatic App Update & Auto-Replace System
-            - 📍 Nearest Tyre Hubs & Turn-by-Turn GPS Direction Routing
-            - 📊 Private Store Analytics & Live Customer Insights
+            ⚡ TyreSaathi Official Android APK Release v1.2.2
+            - 👥 Staff & Sub-Admin Role-Based Delegation & PIN Login
+            - 🔒 Bank Account & Master Pricing Security Lock
+            - 🔔 Mobile Responsive Centered Notification Dropdown
+            - 🏪 In-Place Direct Store Booking with Autofill
+            - 🎫 Sequential Support Ticket ID Numbering (#TS-TCK-01)
+            - 🔐 Permanent Session & Auto-Login Persistence
           draft: false
           prerelease: false
           files: output-apks/*.apk
