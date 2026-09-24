@@ -80,6 +80,20 @@ export default function StoreLocation() {
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState(false);
   const [shopReviewsMap, setShopReviewsMap] = useState({});
 
+  // 🛠️ In-Place Shop Service Booking Modal State
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [bookingShop, setBookingShop] = useState(null);
+  const [bookingService, setBookingService] = useState("Tubeless Puncture Repair");
+  const [bookingCustomerName, setBookingCustomerName] = useState(userData?.name || currentUser?.displayName || "");
+  const [bookingCustomerPhone, setBookingCustomerPhone] = useState(userData?.phone || "");
+  const [bookingVehicleType, setBookingVehicleType] = useState("Car / SUV");
+  const [bookingVehicleNumber, setBookingVehicleNumber] = useState("");
+  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [bookingTimeSlot, setBookingTimeSlot] = useState("10:00 AM - 11:00 AM");
+  const [bookingNotes, setBookingNotes] = useState("");
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [bookingSuccessAlert, setBookingSuccessAlert] = useState(null);
+
   // Live Location State
   const [userLocation, setUserLocation] = useState(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -308,6 +322,96 @@ export default function StoreLocation() {
     trackStoreEvent("open_rating_modal", { shopId: shop.id, shopName: shop.name });
   };
 
+  // 🛠️ Open In-Place Shop Service Booking Modal
+  const handleOpenBookingModal = (shop, serviceName = "Tubeless Puncture Repair", e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setBookingShop(shop);
+    setBookingService(serviceName || "Tubeless Puncture Repair");
+    setBookingCustomerName(userData?.name || currentUser?.displayName || "");
+    setBookingCustomerPhone(userData?.phone || "");
+    setBookingVehicleType("Car / SUV");
+    setBookingVehicleNumber("");
+    setBookingDate(new Date().toISOString().split("T")[0]);
+    setBookingTimeSlot("10:00 AM - 11:00 AM");
+    setBookingNotes("");
+    setBookingModalOpen(true);
+    trackStoreEvent("open_booking_modal", { shopId: shop.id, shopName: shop.name, service: serviceName });
+  };
+
+  // Confirm In-Place Shop Booking
+  const handleConfirmBooking = async (e) => {
+    e.preventDefault();
+    if (!bookingCustomerName.trim() || !bookingCustomerPhone.trim()) {
+      alert("Kripya apna Naam aur Mobile Number zaroor bharein!");
+      return;
+    }
+
+    setSubmittingBooking(true);
+    const bookingId = `TS-BKG-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const newBookingRecord = {
+      id: bookingId,
+      bookingId: bookingId,
+      shopId: bookingShop?.id || "hub_partner",
+      shopName: bookingShop?.name || "TyreSaathi Partner Hub",
+      shopPhone: bookingShop?.phone || "",
+      shopCity: bookingShop?.city || "",
+      shopAddress: bookingShop?.address || "",
+      serviceName: bookingService || "Tyre Service",
+      customerName: bookingCustomerName.trim(),
+      customerPhone: bookingCustomerPhone.trim(),
+      vehicleType: bookingVehicleType,
+      vehicleNumber: bookingVehicleNumber.trim(),
+      date: bookingDate,
+      timeSlot: bookingTimeSlot,
+      notes: bookingNotes.trim(),
+      status: "confirmed",
+      userId: currentUser?.uid || "guest",
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      await addDoc(collection(db, "bookings"), {
+        ...newBookingRecord,
+        timestamp: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn("Firestore booking sync fallback:", err);
+    }
+
+    try {
+      const existing = JSON.parse(localStorage.getItem("tyresaathi_user_bookings") || "[]");
+      localStorage.setItem("tyresaathi_user_bookings", JSON.stringify([newBookingRecord, ...existing]));
+    } catch (err) {}
+
+    // Send in-app notification
+    try {
+      if (currentUser?.uid) {
+        sendInAppNotification({
+          userId: currentUser.uid,
+          title: `🚗 Service Booking Confirmed at ${bookingShop?.name}!`,
+          message: `Booking #${bookingId} for ${bookingService} on ${bookingDate} (${bookingTimeSlot}) successfully booked.`,
+          type: "booking",
+          bookingId: bookingId,
+        });
+      }
+    } catch (e) {}
+
+    setSubmittingBooking(false);
+    setBookingModalOpen(false);
+    setBookingSuccessAlert({
+      id: bookingId,
+      shopName: bookingShop?.name,
+      serviceName: bookingService,
+      date: bookingDate,
+      timeSlot: bookingTimeSlot
+    });
+    setTimeout(() => setBookingSuccessAlert(null), 8000);
+  };
+
   // Toggle quick tag pills in rating modal
   const toggleReviewTag = (tag) => {
     if (selectedTags.includes(tag)) {
@@ -506,6 +610,45 @@ export default function StoreLocation() {
           </div>
         </div>
 
+        {/* 🌟 In-Place Booking Success Alert */}
+        {bookingSuccessAlert && (
+          <div style={{
+            background: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
+            color: "#ffffff",
+            padding: "16px 20px",
+            borderRadius: "14px",
+            marginBottom: "20px",
+            boxShadow: "0 10px 25px -5px rgba(30, 58, 138, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px",
+            border: "1px solid rgba(255, 255, 255, 0.2)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <CheckCircle2 size={24} color="#ffffff" />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "800" }}>
+                  🎉 Badhaai ho! Aapki Service Booking Confirm Ho Gayi!
+                </h4>
+                <p style={{ margin: "3px 0 0", fontSize: "13px", color: "#cbd5e1" }}>
+                  <strong>{bookingSuccessAlert.shopName}</strong> par <strong>{bookingSuccessAlert.serviceName}</strong> booked on {bookingSuccessAlert.date} ({bookingSuccessAlert.timeSlot}) • 🆔 #{bookingSuccessAlert.id}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBookingSuccessAlert(null)}
+              style={{ background: "rgba(255, 255, 255, 0.15)", border: "none", color: "#fff", padding: "6px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" }}
+            >
+              ✕ Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Search & City Filter Bar */}
         <div className="directory-filters-card">
           <div className="search-input-wrapper">
@@ -636,13 +779,14 @@ export default function StoreLocation() {
                       <span>🏪 Enter Shop Profile & Stock</span>
                     </button>
 
-                    <Link
-                      to={`/bookings?shopId=${shop.id}&shopName=${encodeURIComponent(shop.name)}&shopPhone=${encodeURIComponent(shop.phone)}&openModal=true`}
+                    <button
+                      type="button"
                       className="btn-card-book"
+                      onClick={(e) => handleOpenBookingModal(shop, "Tubeless Puncture Repair", e)}
                     >
                       <Calendar size={15} />
                       <span>Book Service</span>
-                    </Link>
+                    </button>
                   </div>
 
                   <div className="quick-contact-actions-group">
@@ -808,13 +952,13 @@ export default function StoreLocation() {
                         <strong>{service}</strong>
                         <span>Available at shop & doorstep fitment</span>
                       </div>
-                      <Link
-                        to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&service=${encodeURIComponent(service)}&openModal=true`}
+                      <button
+                        type="button"
                         className="svc-book-btn"
-                        onClick={() => setShopProfileOpen(false)}
+                        onClick={(e) => handleOpenBookingModal(activeShopProfile, service, e)}
                       >
                         Book This Service
-                      </Link>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -843,13 +987,13 @@ export default function StoreLocation() {
                               <span className="shop-prod-offer">₹{p.offerPrice || p.price}</span>
                               {p.originalPrice && <span className="shop-prod-mrp">₹{p.originalPrice}</span>}
                             </div>
-                            <Link
-                              to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&service=${encodeURIComponent(p.productName || 'Tyre Purchase')}&openModal=true`}
+                            <button
+                              type="button"
                               className="shop-prod-book-btn"
-                              onClick={() => setShopProfileOpen(false)}
+                              onClick={(e) => handleOpenBookingModal(activeShopProfile, p.productName || 'Tyre Purchase', e)}
                             >
                               ⚡ Book From This Shop
-                            </Link>
+                            </button>
                           </div>
                         </div>
                       );
@@ -861,13 +1005,13 @@ export default function StoreLocation() {
                       💡 इस दुकान के लिए स्टैंडर्ड टायर फिटिंग व पंचर रिपेयर सर्विस उपलब्ध है। 
                       आप नीचे दिए गए बटन से सीधे अपॉइंटमेंट बुक कर सकते हैं।
                     </p>
-                    <Link
-                      to={`/bookings?shopId=${activeShopProfile.id}&shopName=${encodeURIComponent(activeShopProfile.name)}&shopPhone=${encodeURIComponent(activeShopProfile.phone)}&openModal=true`}
+                    <button
+                      type="button"
                       className="btn-book-main-cta"
-                      onClick={() => setShopProfileOpen(false)}
+                      onClick={(e) => handleOpenBookingModal(activeShopProfile, "Tyre Service & Fitment", e)}
                     >
                       📅 Book Service / Tyre Fitment at {activeShopProfile.name}
-                    </Link>
+                    </button>
                   </div>
                 )}
               </div>
@@ -1114,7 +1258,7 @@ export default function StoreLocation() {
                     <label>Aapka Naam (Customer Name) *</label>
                     <input
                       type="text"
-                      placeholder="e.g. Rahul Sharma"
+                      placeholder="e.g. Your Name"
                       value={reviewerName}
                       onChange={(e) => setReviewerName(e.target.value)}
                       required
@@ -1125,7 +1269,7 @@ export default function StoreLocation() {
                     <label>Mobile No. (वैकल्पिक)</label>
                     <input
                       type="tel"
-                      placeholder="e.g. 9876543210"
+                      placeholder="10 digit mobile number"
                       value={reviewerPhone}
                       onChange={(e) => setReviewerPhone(e.target.value)}
                     />
@@ -1173,6 +1317,230 @@ export default function StoreLocation() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          🛠️ DEDICATED IN-PLACE SHOP BOOKING MODAL (स्टोर हब में ही बुकिंग)
+      ══════════════════════════════════════════════════════════════════ */}
+      {bookingModalOpen && bookingShop && (
+        <div className="rating-modal-backdrop" onClick={() => setBookingModalOpen(false)}>
+          <div className="rating-modal-card" style={{ maxWidth: "560px", width: "94%" }} onClick={(e) => e.stopPropagation()}>
+            <div className="rating-modal-header" style={{ borderBottom: "1.5px solid #f1f5f9", paddingBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Wrench size={20} color="#c0392b" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#0f172a" }}>
+                    Book a Tyre Service (सर्विस बुक करें)
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>
+                    Directly at {bookingShop.name} • Instant confirmation
+                  </p>
+                </div>
+              </div>
+              <button className="rating-modal-close" onClick={() => setBookingModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Selected Shop Highlight Card */}
+            <div style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", borderRadius: "10px", padding: "10px 14px", marginTop: "14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "#64748b", letterSpacing: "0.5px" }}>
+                  Selected Shop (चुनी हुई दुकान)
+                </div>
+                <div style={{ fontSize: "14.5px", fontWeight: "800", color: "#0f172a", marginTop: "2px" }}>
+                  🏪 {bookingShop.name}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                  📍 {bookingShop.address} {bookingShop.city ? `(${bookingShop.city})` : ""}
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                <span style={{ background: "#dcfce7", color: "#15803d", padding: "3px 8px", borderRadius: "12px", fontSize: "11px", fontWeight: "700" }}>
+                  ✓ Partner Hub
+                </span>
+                {bookingShop.phone && (
+                  <span style={{ fontSize: "11px", color: "#475569", marginTop: "4px" }}>
+                    📞 {bookingShop.phone}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmBooking} style={{ marginTop: "16px" }}>
+              {/* Choose Service */}
+              <div className="form-group-field" style={{ marginBottom: "14px" }}>
+                <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                  Choose Service (सर्विस चुनें) *
+                </label>
+                <select
+                  value={bookingService}
+                  onChange={(e) => setBookingService(e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13.5px", fontWeight: "600", color: "#1e293b", background: "#fff" }}
+                  required
+                >
+                  <option value="Tubeless Puncture Repair">Tubeless Puncture Repair (पंचर रिपेयर)</option>
+                  <option value="Tyre Replacement & Fitting">Tyre Replacement & Fitting (टायर फिटिंग)</option>
+                  <option value="Tyre Cut Repair">Tyre Cut Repair (टायर कट रिपेयर)</option>
+                  <option value="Nitrogen Air Fill">Nitrogen Air Fill (नाइट्रोजन एयर)</option>
+                  <option value="Wheel Alignment & Balancing">Wheel Alignment & Balancing (व्हील अलाइनमेंट)</option>
+                  <option value="Emergency Roadside Tyre Assistance">Emergency Roadside Tyre Assistance (इमरजेंसी सहायता)</option>
+                  {bookingService && !["Tubeless Puncture Repair", "Tyre Replacement & Fitting", "Tyre Cut Repair", "Nitrogen Air Fill", "Wheel Alignment & Balancing", "Emergency Roadside Tyre Assistance"].includes(bookingService) && (
+                    <option value={bookingService}>{bookingService}</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Customer Name & Phone */}
+              <div className="rating-input-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Aapka Naam (Customer Name) *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Your Name"
+                    value={bookingCustomerName}
+                    onChange={(e) => setBookingCustomerName(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="10 digit mobile number"
+                    value={bookingCustomerPhone}
+                    onChange={(e) => setBookingCustomerPhone(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Vehicle Type & Number */}
+              <div className="rating-input-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Vehicle Type *
+                  </label>
+                  <select
+                    value={bookingVehicleType}
+                    onChange={(e) => setBookingVehicleType(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", background: "#fff", boxSizing: "border-box" }}
+                  >
+                    <option value="Car / SUV">🚗 Car / SUV</option>
+                    <option value="Bike / Scooter">🛵 Bike / Scooter</option>
+                    <option value="Commercial / Truck">🚚 Commercial / Truck</option>
+                    <option value="Tractor / Agri">🚜 Tractor / Agri</option>
+                    <option value="Auto / 3-Wheeler">🛺 Auto / 3-Wheeler</option>
+                  </select>
+                </div>
+
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Vehicle Number (गाड़ी का नंबर)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. DL 01 AB 1234"
+                    value={bookingVehicleNumber}
+                    onChange={(e) => setBookingVehicleNumber(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                  />
+                </div>
+              </div>
+
+              {/* Date & Time Slot */}
+              <div className="rating-input-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Booking Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={bookingDate}
+                    onChange={(e) => setBookingDate(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                <div className="form-group-field">
+                  <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                    Preferred Time Slot *
+                  </label>
+                  <select
+                    value={bookingTimeSlot}
+                    onChange={(e) => setBookingTimeSlot(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", background: "#fff", boxSizing: "border-box" }}
+                  >
+                    <option value="09:00 AM - 10:00 AM">09:00 AM - 10:00 AM</option>
+                    <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                    <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                    <option value="12:00 PM - 01:00 PM">12:00 PM - 01:00 PM</option>
+                    <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
+                    <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM</option>
+                    <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
+                    <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM</option>
+                    <option value="06:00 PM - 07:00 PM">06:00 PM - 07:00 PM</option>
+                    <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Problem Notes */}
+              <div className="form-group-field" style={{ marginBottom: "18px" }}>
+                <label style={{ fontSize: "12.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                  Problem Notes / Special Request
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Tell shop about tyre condition or location..."
+                  value={bookingNotes}
+                  onChange={(e) => setBookingNotes(e.target.value)}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "12px", borderTop: "1.5px solid #f1f5f9" }}>
+                <button
+                  type="button"
+                  className="btn-cancel-rating"
+                  onClick={() => setBookingModalOpen(false)}
+                  disabled={submittingBooking}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-submit-rating"
+                  style={{ background: "#c0392b" }}
+                  disabled={submittingBooking}
+                >
+                  {submittingBooking ? (
+                    <>
+                      <RefreshCw size={16} className="spin-icon" />
+                      <span>Booking Confirming...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar size={16} />
+                      <span>🚀 Confirm Booking (बुक करें)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -43,12 +43,28 @@ export default function Bookings() {
   const paramService = searchParams.get("service");
   const paramOpen = searchParams.get("openModal");
 
-  const { user, profile, isVendor } = useAuth();
+  const { user, profile, isVendor, isAdmin, isShopOwner } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [availableShops, setAvailableShops] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [modalOpen, setModalOpen] = useState(Boolean(paramOpen || paramShopName));
   const [loading, setLoading] = useState(false);
+
+  // Helper to determine if current logged-in user is the shop owner for this booking
+  const isShopManager = (b) => {
+    if (isAdmin) return true;
+    if (!isVendor && !isShopOwner) return false;
+    
+    const myUid = user?.uid;
+    const myShopName = (profile?.shopName || "").toLowerCase().trim();
+    const bShopId = b?.shopId;
+    const bShopName = (b?.shopName || "").toLowerCase().trim();
+    
+    return (
+      (bShopId && bShopId === myUid) ||
+      (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)))
+    );
+  };
 
   // Load real registered shops from Firestore
   useEffect(() => {
@@ -71,13 +87,26 @@ export default function Bookings() {
               reviewsCount: 24
             }));
             setAvailableShops(formatted);
-            if (formatted[0]) {
-              setNewBooking((prev) => ({
-                ...prev,
-                shopId: formatted[0].id,
-                shopName: formatted[0].name,
-                shopPhone: formatted[0].phone
-              }));
+            if (paramShopId || paramShopName) {
+              const matched = formatted.find(s => s.id === paramShopId || (paramShopName && s.name?.toLowerCase() === paramShopName.toLowerCase()));
+              if (matched) {
+                setNewBooking((prev) => ({
+                  ...prev,
+                  shopId: matched.id,
+                  shopName: matched.name,
+                  shopPhone: matched.phone || prev.shopPhone
+                }));
+              }
+            } else if (formatted[0]) {
+              setNewBooking((prev) => {
+                if (prev.shopId) return prev;
+                return {
+                  ...prev,
+                  shopId: formatted[0].id,
+                  shopName: formatted[0].name,
+                  shopPhone: formatted[0].phone
+                };
+              });
             }
           }
         }
@@ -144,6 +173,23 @@ export default function Bookings() {
 
   // Update Status (Accept / Reject / Complete)
   const handleUpdateStatus = async (bookingId, newStatus) => {
+    const targetBooking = bookings.find((b) => b.id === bookingId);
+    if (!targetBooking) return;
+
+    // Security check: Only Shop Owner or Admin can accept, start service, or complete.
+    // Customer can only cancel their own pending booking.
+    const isOwnerOrAdmin = isAdmin || isShopManager(targetBooking);
+    const isCustomerOwner = targetBooking.customerId === user?.uid || targetBooking.customerEmail === user?.email;
+
+    if (!isOwnerOrAdmin) {
+      if (isCustomerOwner && (newStatus === "cancelled" || newStatus === "rejected")) {
+        // Customer cancelling their own booking is allowed
+      } else {
+        alert("⚠️ Permission Denied: Sirf Shop Owner hi booking accept ya complete kar sakte hain.");
+        return;
+      }
+    }
+
     setBookings((prev) =>
       prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
     );
@@ -268,18 +314,39 @@ export default function Bookings() {
     }
   };
 
-  const filteredBookings = bookings.filter((b) => {
+  // Filter bookings based on role:
+  // - Admin: All bookings
+  // - Shop Owner: Bookings for their shop + their own bookings
+  // - Customer: Only their own bookings
+  const visibleBookings = bookings.filter((b) => {
+    if (isAdmin) return true;
+    if (isVendor || isShopOwner) {
+      const myUid = user?.uid;
+      const myShopName = (profile?.shopName || "").toLowerCase().trim();
+      const bShopId = b?.shopId;
+      const bShopName = (b?.shopName || "").toLowerCase().trim();
+      const isForMyShop = (bShopId && bShopId === myUid) || 
+                          (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)));
+      const isMyCustomerBooking = b.customerId === user?.uid || b.customerEmail === user?.email;
+      return isForMyShop || isMyCustomerBooking;
+    }
+    // Regular customer
+    return b.customerId === user?.uid || b.customerEmail === user?.email || (profile?.phone && b.customerPhone === profile?.phone);
+  });
+
+  const filteredBookings = visibleBookings.filter((b) => {
     if (activeTab === "all") return true;
+    if (activeTab === "rejected") return b.status === "rejected" || b.status === "cancelled";
     return b.status === activeTab;
   });
 
   const counts = {
-    all: bookings.length,
-    pending: bookings.filter((b) => b.status === "pending").length,
-    accepted: bookings.filter((b) => b.status === "accepted").length,
-    in_progress: bookings.filter((b) => b.status === "in_progress").length,
-    completed: bookings.filter((b) => b.status === "completed").length,
-    rejected: bookings.filter((b) => b.status === "rejected").length,
+    all: visibleBookings.length,
+    pending: visibleBookings.filter((b) => b.status === "pending").length,
+    accepted: visibleBookings.filter((b) => b.status === "accepted").length,
+    in_progress: visibleBookings.filter((b) => b.status === "in_progress").length,
+    completed: visibleBookings.filter((b) => b.status === "completed").length,
+    rejected: visibleBookings.filter((b) => b.status === "rejected" || b.status === "cancelled").length,
   };
 
   return (
@@ -452,73 +519,121 @@ export default function Bookings() {
               <div className="booking-card-actions">
                 <div className="action-left-info">
                   <span className="time-ago-text">Booking ID: #{b.id.slice(-6)}</span>
+                  {!isShopManager(b) && (
+                    <span style={{ fontSize: "11px", color: "#64748b", marginLeft: "8px", fontWeight: "600" }}>
+                      (Aapki Booking)
+                    </span>
+                  )}
                 </div>
 
                 <div className="action-buttons-group">
-                  {b.status === "pending" && (
+                  {isShopManager(b) ? (
+                    // =================== 🏪 SHOP OWNER / ADMIN ACTIONS ===================
                     <>
-                      <button
-                        className="btn-action-reject"
-                        onClick={() => handleUpdateStatus(b.id, "rejected")}
+                      {b.status === "pending" && (
+                        <>
+                          <button
+                            className="btn-action-reject"
+                            onClick={() => handleUpdateStatus(b.id, "rejected")}
+                          >
+                            <XCircle size={14} /> Reject (अस्वीकार करें)
+                          </button>
+                          <button
+                            className="btn-action-accept"
+                            onClick={() => handleUpdateStatus(b.id, "accepted")}
+                          >
+                            <CheckCircle2 size={14} /> Accept (स्वीकार करें)
+                          </button>
+                        </>
+                      )}
+
+                      {b.status === "accepted" && (
+                        <button
+                          className="btn-action-progress"
+                          onClick={() => handleUpdateStatus(b.id, "in_progress")}
+                        >
+                          <Wrench size={14} /> Start Service (काम शुरू करें)
+                        </button>
+                      )}
+
+                      {b.status === "in_progress" && (
+                        <button
+                          className="btn-action-complete"
+                          onClick={() => handleUpdateStatus(b.id, "completed")}
+                        >
+                          <CheckCircle2 size={14} /> Mark Completed (पूरा हुआ)
+                        </button>
+                      )}
+
+                      {b.customerPhone && (
+                        <>
+                          <a
+                            href={`tel:${b.customerPhone}`}
+                            className="btn-action-call"
+                            title={`Call Customer (${b.customerName})`}
+                          >
+                            <Phone size={13} /> Call ({b.customerPhone})
+                          </a>
+
+                          <a
+                            href={`https://wa.me/91${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.customerName}, TyreSaathi par aapki booking (${b.serviceName}) ke regarding...`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-action-whatsapp"
+                            title="Chat on WhatsApp"
+                          >
+                            💬 WhatsApp
+                          </a>
+                        </>
+                      )}
+
+                      <Link
+                        to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
+                        className="btn-action-bill-shortcut"
+                        title="Generate Bill for this Service"
                       >
-                        <XCircle size={14} /> Reject (अस्वीकार करें)
-                      </button>
-                      <button
-                        className="btn-action-accept"
-                        onClick={() => handleUpdateStatus(b.id, "accepted")}
-                      >
-                        <CheckCircle2 size={14} /> Accept (स्वीकार करें)
-                      </button>
+                        <Receipt size={13} /> 🧾 Bill Banayein
+                      </Link>
+                    </>
+                  ) : (
+                    // =================== 👤 CUSTOMER ACTIONS ===================
+                    <>
+                      {b.status === "pending" && (
+                        <button
+                          className="btn-action-reject"
+                          onClick={() => {
+                            if (window.confirm("Kya aap sach me ye booking cancel karna chahte hain?")) {
+                              handleUpdateStatus(b.id, "cancelled");
+                            }
+                          }}
+                        >
+                          <XCircle size={14} /> Cancel Booking (रद्द करें)
+                        </button>
+                      )}
+
+                      {b.shopPhone && (
+                        <>
+                          <a
+                            href={`tel:${b.shopPhone}`}
+                            className="btn-action-call"
+                            title={`Call Shop (${b.shopName})`}
+                          >
+                            <Phone size={13} /> Call Shop ({b.shopPhone})
+                          </a>
+
+                          <a
+                            href={`https://wa.me/91${b.shopPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.shopName}, TyreSaathi par meri service booking (#${b.id.slice(-6)} - ${b.serviceName}) ke regarding...`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-action-whatsapp"
+                            title="Chat with Shop on WhatsApp"
+                          >
+                            💬 WhatsApp Shop
+                          </a>
+                        </>
+                      )}
                     </>
                   )}
-
-                  {b.status === "accepted" && (
-                    <button
-                      className="btn-action-progress"
-                      onClick={() => handleUpdateStatus(b.id, "in_progress")}
-                    >
-                      <Wrench size={14} /> Start Service (काम शुरू करें)
-                    </button>
-                  )}
-
-                  {b.status === "in_progress" && (
-                    <button
-                      className="btn-action-complete"
-                      onClick={() => handleUpdateStatus(b.id, "completed")}
-                    >
-                      <CheckCircle2 size={14} /> Mark Completed (पूरा हुआ)
-                    </button>
-                  )}
-
-                  {b.customerPhone && (
-                    <>
-                      <a
-                        href={`tel:${b.customerPhone}`}
-                        className="btn-action-call"
-                        title={`Call ${b.customerName}`}
-                      >
-                        <Phone size={13} /> Call ({b.customerPhone})
-                      </a>
-
-                      <a
-                        href={`https://wa.me/91${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.customerName}, TyreSaathi par aapki booking (${b.serviceName}) ke regarding...`)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn-action-whatsapp"
-                        title="Chat on WhatsApp"
-                      >
-                        💬 WhatsApp
-                      </a>
-                    </>
-                  )}
-
-                  <Link
-                    to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
-                    className="btn-action-bill-shortcut"
-                    title="Generate Bill for this Service"
-                  >
-                    <Receipt size={13} /> 🧾 Bill Banayein
-                  </Link>
                 </div>
               </div>
             </div>
@@ -587,7 +702,7 @@ export default function Bookings() {
                   <input
                     type="text"
                     required
-                    placeholder="Enter your name"
+                    placeholder="Your Name"
                     value={newBooking.customerName}
                     onChange={(e) => setNewBooking({ ...newBooking, customerName: e.target.value })}
                   />
@@ -598,7 +713,7 @@ export default function Bookings() {
                   <input
                     type="tel"
                     required
-                    placeholder="98765 43210"
+                    placeholder="10 digit mobile number"
                     value={newBooking.customerPhone}
                     onChange={(e) => setNewBooking({ ...newBooking, customerPhone: e.target.value })}
                   />

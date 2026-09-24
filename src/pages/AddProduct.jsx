@@ -24,6 +24,7 @@ import {
   POPULAR_SIZES, 
   POPULAR_PATTERNS 
 } from "../config/tyreCatalog";
+import { compressImage } from "../utils/imageOptimizer";
 
 // 🌟 Product Type Selector
 const PRODUCT_TYPES = [
@@ -149,34 +150,50 @@ export default function AddProduct() {
     });
   };
 
-  // Upload individual photo slot (1 to 4)
+  // Upload individual photo slot (1 to 4) with instant preview & compression
   const handleSlotPhotoUpload = async (slotIndex, file) => {
     if (!file) return;
     setUploadingSlot(slotIndex);
 
     try {
-      const uid = activeUser?.uid || "demo_shop";
-      const storageRef = ref(storage, `products/${uid}/${Date.now()}-slot${slotIndex}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      // 1. Instant client-side compression (reduces 10MB camera photo to 100-200KB)
+      const { blob, dataUrl } = await compressImage(file, 1000, 1000, 0.82);
 
+      // 2. Set optimized preview immediately so the photo appears right away
       setForm((prev) => {
         const newImages = [...prev.images];
-        newImages[slotIndex] = downloadUrl;
+        newImages[slotIndex] = dataUrl;
         return { ...prev, images: newImages };
       });
-    } catch (error) {
-      console.warn("Storage upload fallback to base64 preview:", error);
-      // Fallback local reader for preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setForm((prev) => {
-          const newImages = [...prev.images];
-          newImages[slotIndex] = e.target.result;
-          return { ...prev, images: newImages };
-        });
-      };
-      reader.readAsDataURL(file);
+
+      // 3. Resilient background upload to Firebase Storage with safety timeout
+      try {
+        const uid = activeUser?.uid || "demo_shop";
+        const storageRef = ref(storage, `products/${uid}/${Date.now()}-slot${slotIndex}.jpg`);
+        
+        const uploadTask = (async () => {
+          await uploadBytes(storageRef, blob, { contentType: "image/jpeg" });
+          return await getDownloadURL(storageRef);
+        })();
+
+        const timeoutTask = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Storage timeout")), 5000)
+        );
+
+        const remoteUrl = await Promise.race([uploadTask, timeoutTask]);
+        if (remoteUrl) {
+          setForm((prev) => {
+            const newImages = [...prev.images];
+            newImages[slotIndex] = remoteUrl;
+            return { ...prev, images: newImages };
+          });
+        }
+      } catch (uploadError) {
+        console.warn("Storage upload timed out or failed, using optimized local dataUrl:", uploadError);
+      }
+    } catch (err) {
+      console.error("Image processing error:", err);
+      alert("Photo process karne me dikkat aayi. Kripya dobara koshish karein.");
     } finally {
       setUploadingSlot(null);
     }
@@ -971,7 +988,7 @@ export default function AddProduct() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           gap: 8px;
         }
         .section-subtext {
@@ -984,7 +1001,7 @@ export default function AddProduct() {
           font-size: 0.6875rem;
           background: #27ae60;
           color: white;
-          padding: 2px 6px;
+          padding: 3px 8px;
           border-radius: 12px;
           font-weight: 700;
           white-space: nowrap;
@@ -992,42 +1009,47 @@ export default function AddProduct() {
         .four-photo-slots-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px;
+          gap: 10px;
         }
         @media (min-width: 640px) {
           .four-photo-slots-grid {
-            gap: 12px;
+            gap: 14px;
           }
         }
         .photo-slot-box {
-          border: 1px solid var(--border);
-          border-radius: 8px;
+          border: 1.5px solid var(--border);
+          border-radius: 12px;
           overflow: hidden;
-          background: var(--bg);
+          background: var(--surface-2, #f8fafc);
+          transition: all 0.2s ease;
+        }
+        .photo-slot-box:hover {
+          border-color: #cbd5e1;
         }
         .slot-title-bar {
-          background: var(--surface-2);
-          padding: 4px 8px;
-          font-size: 0.72rem;
+          background: var(--surface, #ffffff);
+          padding: 6px 10px;
+          font-size: 0.75rem;
           font-weight: 700;
           color: var(--text);
           border-bottom: 1px solid var(--border);
         }
         .slot-upload-dropzone {
-          height: 100px;
+          min-height: 150px;
+          aspect-ratio: 4 / 3;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 3px;
+          gap: 6px;
           cursor: pointer;
-          padding: 8px 6px;
+          padding: 14px 8px;
           text-align: center;
           border: 2px dashed transparent;
-          transition: background 0.15s ease;
+          transition: all 0.15s ease;
         }
         .slot-upload-dropzone:hover {
-          background: color-mix(in srgb, #c0392b 5%, var(--bg));
+          background: color-mix(in srgb, #c0392b 6%, var(--bg));
           border-color: #c0392b;
         }
         .slot-cta-text {
@@ -1041,34 +1063,49 @@ export default function AddProduct() {
         }
         .slot-img-preview-wrap {
           position: relative;
-          height: 100px;
-          background: #000;
+          min-height: 150px;
+          aspect-ratio: 4 / 3;
+          background: #0f172a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
         }
         .slot-preview-img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          padding: 4px;
+          transition: transform 0.2s ease;
+        }
+        .slot-img-preview-wrap:hover .slot-preview-img {
+          transform: scale(1.02);
         }
         .slot-remove-btn {
           position: absolute;
-          bottom: 4px;
-          right: 4px;
-          background: rgba(192, 57, 43, 0.9);
+          bottom: 6px;
+          right: 6px;
+          background: rgba(192, 57, 43, 0.95);
           color: white;
           border: none;
-          border-radius: 4px;
-          padding: 2px 6px;
-          font-size: 0.6875rem;
+          border-radius: 6px;
+          padding: 3px 8px;
+          font-size: 0.7rem;
           font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 3px;
+          gap: 4px;
           cursor: pointer;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          backdrop-filter: blur(4px);
+        }
+        .slot-remove-btn:hover {
+          background: #c0392b;
         }
         .uploading-spinner-box {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           font-size: 0.75rem;
           color: #c0392b;
           font-weight: 700;
@@ -1138,16 +1175,18 @@ export default function AddProduct() {
         }
         .preview-main-img-box {
           position: relative;
-          height: 180px;
-          background: var(--bg);
+          height: 200px;
+          background: #0f172a;
           display: flex;
           align-items: center;
           justify-content: center;
+          overflow: hidden;
         }
         .preview-img-active {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          padding: 6px;
         }
         .preview-img-empty {
           display: flex;

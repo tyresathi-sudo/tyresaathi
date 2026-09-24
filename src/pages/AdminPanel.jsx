@@ -59,9 +59,10 @@ import {
   MessageCircle,
   UserCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db, storage } from "../firebase";
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, setDoc } from "firebase/firestore";
@@ -88,11 +89,45 @@ import {
   DEFAULT_BANK_CONFIG 
 } from "../config/paymentConfig";
 
+export const DEFAULT_SERVICE_CATEGORIES = [
+  { id: "srv_puncture", category: "Puncture & Tube", name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 200, type: "service", icon: "🛠️", description: "Tubeless tyre puncture repair with rubber strip plug", active: true },
+  { id: "srv_cut", category: "Tyre Repair", name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 3000, type: "service", icon: "✂️", description: "Major tyre sidewall cut repair & vulcanizing patch", active: true },
+  { id: "srv_fitting", category: "Fitting & Alignment", name: "New Tyre Fitting (टायर फिटिंग)", rate: 150, type: "service", icon: "🔧", description: "Automatic rim tyre fitting & bead seating", active: true },
+  { id: "srv_doorstep", category: "Emergency Roadside", name: "Doorstep Emergency Assistance (घर/रास्ते पर)", rate: 499, type: "service", icon: "🚗", description: "On-spot puncture repair & emergency spare tyre fitment", active: true },
+  { id: "srv_tube", category: "Puncture & Tube", name: "Tube Replacement / Valve Pin (ट्यूब/वॉल्व)", rate: 90, type: "service", icon: "⭕", description: "Valve nozzle change or internal tube replacement", active: true },
+  { id: "srv_rotation", category: "Fitting & Alignment", name: "Tyre Rotation & Inspection (रोटेशन)", rate: 200, type: "service", icon: "🔄", description: "4-wheel tyre cross rotation for even tread wear", active: true },
+  { id: "srv_alignment", category: "Fitting & Alignment", name: "3D Wheel Alignment (अलाइनमेंट)", rate: 450, type: "service", icon: "⚖️", description: "Laser 3D wheel alignment for steering stabilization", active: true },
+  { id: "srv_wash", category: "Care & Cleaning", name: "Car Foam Wash & Tyre Polish (धुलाई)", rate: 350, type: "service", icon: "✨", description: "High-pressure foam body wash and tyre shine dressing", active: true },
+];
+
 const SAMPLE_ADMIN_SHOPS = [];
 
 const SAMPLE_GLOBAL_BOOKINGS = [];
 const SAMPLE_ADMIN_INVOICES = [];
 const SAMPLE_ADMIN_TICKETS = [];
+
+const DEFAULT_STAFF_MEMBERS = [];
+
+// Helper to normalize all tickets to sequential TS-TCK-01, TS-TCK-02...
+export function normalizeTicketList(list) {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+    const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+    return timeA - timeB;
+  });
+
+  return sorted.map((item, idx) => {
+    const seq = idx + 1;
+    const formatted = seq < 10 ? `0${seq}` : String(seq);
+    const newTicketNo = `TS-TCK-${formatted}`;
+    return {
+      ...item,
+      id: item.id?.startsWith("tck_") ? item.id : newTicketNo,
+      ticketNo: newTicketNo
+    };
+  }).reverse();
+}
 
 export function formatSafeDate(rawDate, fallback = "Recent") {
   if (!rawDate) return fallback;
@@ -187,7 +222,25 @@ const POPULAR_CITIES = [
 
 export default function AdminPanel() {
   const { user, profile, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState("overview"); // overview, shops, bookings, tickets, ads, excel
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const tabParam = searchParams.get("tab") || "overview";
+  const [activeTab, setActiveTabState] = useState(tabParam);
+
+  const setActiveTab = (tabName, replaceHistory = false) => {
+    setActiveTabState(tabName);
+    setSearchParams({ tab: tabName }, { replace: replaceHistory });
+  };
+
+  // Keep state in sync with URL search params (e.g. Back/Forward button clicks)
+  useEffect(() => {
+    const currentTab = searchParams.get("tab") || "overview";
+    if (currentTab !== activeTab) {
+      setActiveTabState(currentTab);
+    }
+  }, [searchParams]);
+
   const navTabsRef = useRef(null);
 
   const scrollNavTabs = (direction) => {
@@ -211,7 +264,20 @@ export default function AdminPanel() {
   const [users, setUsers] = useState(SAMPLE_ADMIN_SHOPS);
   const [bookings, setBookings] = useState(SAMPLE_GLOBAL_BOOKINGS);
   const [invoices, setInvoices] = useState(SAMPLE_ADMIN_INVOICES);
-  const [tickets, setTickets] = useState(SAMPLE_ADMIN_TICKETS);
+  const [tickets, setTickets] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_user_tickets");
+      if (local) {
+        const parsed = JSON.parse(local);
+        const normalized = normalizeTicketList(parsed);
+        localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(normalized));
+        return normalized;
+      }
+      return SAMPLE_ADMIN_TICKETS;
+    } catch {
+      return SAMPLE_ADMIN_TICKETS;
+    }
+  });
   const [analyticsEvents, setAnalyticsEvents] = useState([]);
   const [trafficTimeframe, setTrafficTimeframe] = useState("7d"); // '7d' or '30d'
   const [trafficSearchTerm, setTrafficSearchTerm] = useState("");
@@ -309,10 +375,288 @@ export default function AdminPanel() {
     }));
   };
 
+  // 🛠️ Service Categories & Rates Manager State
+  const [serviceRates, setServiceRates] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_custom_rates");
+      return local ? JSON.parse(local) : DEFAULT_SERVICE_CATEGORIES;
+    } catch {
+      return DEFAULT_SERVICE_CATEGORIES;
+    }
+  });
+  const [serviceModalOpen, setServiceModalOpen] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState("all");
+  const [serviceSearchTerm, setServiceSearchTerm] = useState("");
+  const [serviceSuccessMsg, setServiceSuccessMsg] = useState("");
+  const [serviceForm, setServiceForm] = useState({
+    category: "Puncture & Tube",
+    customCategory: "",
+    name: "",
+    rate: 200,
+    type: "service",
+    icon: "🛠️",
+    description: "",
+    active: true,
+  });
+
+  const availableCategories = Array.from(
+    new Set([
+      "Puncture & Tube",
+      "Tyre Repair",
+      "Fitting & Alignment",
+      "Emergency Roadside",
+      "Care & Cleaning",
+      ...serviceRates.map((s) => s.category).filter(Boolean),
+    ])
+  );
+
+  const handleOpenAddService = () => {
+    setEditingServiceId(null);
+    setServiceForm({
+      category: "Puncture & Tube",
+      customCategory: "",
+      name: "",
+      rate: 200,
+      type: "service",
+      icon: "🛠️",
+      description: "",
+      active: true,
+    });
+    setServiceModalOpen(true);
+  };
+
+  const handleOpenEditService = (srv) => {
+    setEditingServiceId(srv.id);
+    const isStandardCat = availableCategories.includes(srv.category);
+    setServiceForm({
+      category: isStandardCat ? srv.category : "custom",
+      customCategory: !isStandardCat ? srv.category : "",
+      name: srv.name || "",
+      rate: srv.rate !== undefined ? srv.rate : 200,
+      type: srv.type || "service",
+      icon: srv.icon || "🛠️",
+      description: srv.description || "",
+      active: srv.active !== false,
+    });
+    setServiceModalOpen(true);
+  };
+
+  const handleSaveService = async (e) => {
+    if (e) e.preventDefault();
+    if (!serviceForm.name.trim()) {
+      alert("कृपया सर्विस या कैटेगरी का नाम दर्ज करें!");
+      return;
+    }
+
+    const finalCategory =
+      serviceForm.category === "custom"
+        ? (serviceForm.customCategory.trim() || "General Services")
+        : serviceForm.category;
+
+    const newServiceObj = {
+      id: editingServiceId || `srv_${Date.now()}`,
+      category: finalCategory,
+      name: serviceForm.name.trim(),
+      rate: Number(serviceForm.rate) || 0,
+      type: serviceForm.type || "service",
+      icon: serviceForm.icon || "🛠️",
+      description: serviceForm.description || "",
+      active: serviceForm.active !== false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    let updatedList;
+    if (editingServiceId) {
+      updatedList = serviceRates.map((s) => (s.id === editingServiceId ? newServiceObj : s));
+    } else {
+      updatedList = [newServiceObj, ...serviceRates];
+    }
+
+    setServiceRates(updatedList);
+    localStorage.setItem("tyresaathi_custom_rates", JSON.stringify(updatedList));
+    window.dispatchEvent(new CustomEvent("tyresaathi_rates_updated", { detail: updatedList }));
+
+    try {
+      await setDoc(doc(db, "service_categories", newServiceObj.id), newServiceObj, { merge: true });
+    } catch (err) {
+      console.warn("Firestore service sync error:", err);
+    }
+
+    setServiceModalOpen(false);
+    setEditingServiceId(null);
+    setServiceSuccessMsg(`✅ Service "${newServiceObj.name}" (₹${newServiceObj.rate}) safaltapoorvak save ho gaya hai!`);
+    setTimeout(() => setServiceSuccessMsg(""), 4000);
+  };
+
+  const handleToggleServiceStatus = async (id) => {
+    let target = null;
+    const updated = serviceRates.map((s) => {
+      if (s.id === id) {
+        const next = { ...s, active: s.active === false ? true : false };
+        target = next;
+        return next;
+      }
+      return s;
+    });
+
+    setServiceRates(updated);
+    localStorage.setItem("tyresaathi_custom_rates", JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent("tyresaathi_rates_updated", { detail: updated }));
+
+    if (target) {
+      try {
+        await setDoc(doc(db, "service_categories", id), target, { merge: true });
+      } catch (err) {
+        console.warn("Firestore sync error:", err);
+      }
+    }
+  };
+
+  const handleDeleteService = async (id) => {
+    if (window.confirm("Kya aap sach me is service category ko delete karna chahte hain?")) {
+      const updated = serviceRates.filter((s) => s.id !== id);
+      setServiceRates(updated);
+      localStorage.setItem("tyresaathi_custom_rates", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("tyresaathi_rates_updated", { detail: updated }));
+
+      try {
+        await deleteDoc(doc(db, "service_categories", id));
+      } catch (err) {
+        console.warn("Firestore delete error:", err);
+      }
+    }
+  };
+
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
+
+  // 🎫 Support Ticket Resolver State
   const [replyTicketModal, setReplyTicketModal] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [replyStatus, setReplyStatus] = useState("resolved");
+  const [solvingTicketLoading, setSolvingTicketLoading] = useState(false);
+  const [ticketFilter, setTicketFilter] = useState("all");
+  const [ticketSearch, setTicketSearch] = useState("");
+  const [ticketSuccessMsg, setTicketSuccessMsg] = useState("");
+  const [sectionDropdownOpen, setSectionDropdownOpen] = useState(false);
+
+  const handleOpenReplyTicket = (t) => {
+    setReplyTicketModal(t);
+    setReplyText(t.adminReply || "");
+    setReplyStatus(t.status || "resolved");
+  };
+
+  const handleSaveTicketResolution = async (e) => {
+    if (e) e.preventDefault();
+    if (!replyTicketModal) return;
+
+    if (!replyText.trim()) {
+      alert("Kripya customer ke liye reply ya samadhan sandesh zaroor darj karein!");
+      return;
+    }
+
+    setSolvingTicketLoading(true);
+    const updatedTicket = {
+      ...replyTicketModal,
+      status: replyStatus,
+      adminReply: replyText.trim(),
+      resolvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedList = tickets.map((t) => (t.id === replyTicketModal.id ? updatedTicket : t));
+    setTickets(updatedList);
+
+    try {
+      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updatedList));
+      localStorage.setItem("tyresaathi_admin_tickets", JSON.stringify(updatedList));
+      await setDoc(doc(db, "support_tickets", replyTicketModal.id), updatedTicket, { merge: true });
+    } catch (err) {
+      console.warn("Firestore support_tickets update sync note:", err);
+    }
+
+    if (replyTicketModal.userId) {
+      try {
+        sendInAppNotification({
+          userId: replyTicketModal.userId,
+          title: `🎫 Ticket #${replyTicketModal.ticketNo || replyTicketModal.id.slice(0, 6)} Resolved!`,
+          message: `Admin Reply: ${replyText.trim().slice(0, 100)}...`,
+          type: "ticket",
+          ticketId: replyTicketModal.id,
+        });
+      } catch (e) {}
+    }
+
+    setSolvingTicketLoading(false);
+    setReplyTicketModal(null);
+    setTicketSuccessMsg(`✅ Ticket #${replyTicketModal.ticketNo || replyTicketModal.id} successfully update ho gaya hai!`);
+    setTimeout(() => setTicketSuccessMsg(""), 5000);
+  };
+
+  const handleDeleteTicket = async (id) => {
+    if (window.confirm("Kya aap sach me is support ticket ko delete karna chahte hain?")) {
+      const updated = tickets.filter((t) => t.id !== id);
+      setTickets(updated);
+      try {
+        localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updated));
+        await deleteDoc(doc(db, "support_tickets", id));
+      } catch (err) {
+        console.warn("Firestore ticket delete error:", err);
+      }
+    }
+  };
+
+  const handleAddSampleTicket = async () => {
+    // Determine next sequential ticket number starting from TS-TCK-01
+    const next = tickets.length + 1;
+    const formatted = next < 10 ? `0${next}` : String(next);
+    const ticketNo = `TS-TCK-${formatted}`;
+
+    const sample = {
+      id: ticketNo,
+      ticketNo: ticketNo,
+      userName: "Your Name",
+      userPhone: "10 digit mobile number",
+      userEmail: "your@gmail.com",
+      category: "Puncture / Fitting Service",
+      priority: "high",
+      subject: "Doorstep emergency puncture assistance issue",
+      description: "Maine emergency puncture service request kiya tha. Please confirmation update bhejein.",
+      status: "open",
+      createdAt: new Date().toISOString().split("T")[0],
+    };
+    const updated = [sample, ...tickets];
+    setTickets(updated);
+    try {
+      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updated));
+      localStorage.setItem("tyresaathi_admin_tickets", JSON.stringify(updated));
+      await setDoc(doc(db, "support_tickets", sample.id), sample, { merge: true });
+    } catch (e) {}
+    setTicketSuccessMsg(`✅ Naya test ticket (#${ticketNo}) add kar diya gaya hai!`);
+    setTimeout(() => setTicketSuccessMsg(""), 4000);
+  };
+
+  const handleResetTicketSequence = () => {
+    if (window.confirm("Kya aap sabhi support tickets ko #TS-TCK-01 se re-index karke sequential karna chahte hain?")) {
+      const normalized = normalizeTicketList(tickets);
+      setTickets(normalized);
+      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(normalized));
+      localStorage.setItem("tyresaathi_admin_tickets", JSON.stringify(normalized));
+      setTicketSuccessMsg("✅ Sabhi tickets numbering #TS-TCK-01 series me re-index ho gayi hai!");
+      setTimeout(() => setTicketSuccessMsg(""), 4000);
+    }
+  };
+
+  const handleClearAllTickets = async () => {
+    if (window.confirm("Kya aap sabhi tickets ko clear/delete karna chahte hain taaki agla ticket bilkul fresh #TS-TCK-01 se start ho?")) {
+      setTickets([]);
+      localStorage.removeItem("tyresaathi_user_tickets");
+      localStorage.removeItem("tyresaathi_admin_tickets");
+      setTicketSuccessMsg("🗑️ Sabhi tickets clear ho gaye hain. Ab naya ticket #TS-TCK-01 se shuru hoga!");
+      setTimeout(() => setTicketSuccessMsg(""), 4000);
+    }
+  };
 
   // Subscription & Pricing Manager State
   const [subConfig, setSubConfig] = useState(getActiveSubscriptionConfig);
@@ -426,6 +770,214 @@ export default function AdminPanel() {
     }
   };
 
+  // 👥 Employee & Staff Access Manager State
+  const [staffList, setStaffList] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_staff_members");
+      return local ? JSON.parse(local) : DEFAULT_STAFF_MEMBERS;
+    } catch {
+      return DEFAULT_STAFF_MEMBERS;
+    }
+  });
+  const [staffModalOpen, setStaffModalOpen] = useState(false);
+  const [editingStaffId, setEditingStaffId] = useState(null);
+  const [staffSuccessMsg, setStaffSuccessMsg] = useState("");
+  const [staffSearch, setStaffSearch] = useState("");
+  const [quickEmail, setQuickEmail] = useState("");
+  const [quickRole, setQuickRole] = useState("support");
+  const [visiblePinMap, setVisiblePinMap] = useState({ staff_1: true, staff_2: true });
+  const [copiedStaffId, setCopiedStaffId] = useState("");
+  const [staffForm, setStaffForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "Support & Ticket Executive",
+    roleKey: "support",
+    passcode: "582914",
+    status: "active",
+    permissions: ["tickets", "bookings"],
+    notes: ""
+  });
+
+  const togglePinVisibility = (staffId) => {
+    setVisiblePinMap((prev) => ({ ...prev, [staffId]: !prev[staffId] }));
+  };
+
+  const handleOpenAddStaff = () => {
+    setEditingStaffId(null);
+    const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+    setStaffForm({
+      name: "",
+      email: "",
+      phone: "",
+      role: "Support & Ticket Executive",
+      roleKey: "support",
+      passcode: generatedPin,
+      status: "active",
+      permissions: ["tickets", "bookings"],
+      notes: ""
+    });
+    setStaffModalOpen(true);
+  };
+
+  const handleOpenEditStaff = (staff) => {
+    setEditingStaffId(staff.id);
+    setStaffForm({
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      role: staff.role,
+      roleKey: staff.roleKey || "custom",
+      passcode: staff.passcode || "582914",
+      status: staff.status || "active",
+      permissions: staff.permissions || ["tickets"],
+      notes: staff.notes || ""
+    });
+    setStaffModalOpen(true);
+  };
+
+  const handleQuickGrantAccess = async (e) => {
+    if (e) e.preventDefault();
+    if (!quickEmail.trim() || !quickEmail.includes("@")) {
+      alert("Kripya valid employee email ID darj karein!");
+      return;
+    }
+    const cleanEmail = quickEmail.trim().toLowerCase();
+    const existing = staffList.find((s) => s.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      alert(`Ye email (${cleanEmail}) pehle se staff list me shamil hai! PIN: ${existing.passcode || "582914"}`);
+      return;
+    }
+
+    const generatedPin = Math.floor(100000 + Math.random() * 900000).toString();
+    const roleTitleMap = {
+      support: "Support & Ticket Executive",
+      operations: "Store & Operations Manager",
+      billing: "Billing & Accounts Staff",
+      custom: "Sub-Admin Manager"
+    };
+    const rolePermMap = {
+      support: ["tickets", "bookings"],
+      operations: ["shops", "services", "ads", "bookings"],
+      billing: ["bookings", "excel", "traffic"],
+      custom: ["tickets", "shops", "bookings"]
+    };
+
+    const nameFromEmail = cleanEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const newStaff = {
+      id: `staff_${Date.now()}`,
+      name: nameFromEmail || "Staff Member",
+      email: cleanEmail,
+      phone: "10 digit mobile number",
+      role: roleTitleMap[quickRole] || "Support & Ticket Executive",
+      roleKey: quickRole,
+      passcode: generatedPin,
+      status: "active",
+      permissions: rolePermMap[quickRole] || ["tickets", "bookings"],
+      joinedDate: new Date().toISOString().split("T")[0],
+      notes: `Quick access granted via Email ID on ${new Date().toISOString().split("T")[0]}`
+    };
+
+    const updatedList = [newStaff, ...staffList];
+    setStaffList(updatedList);
+    localStorage.setItem("tyresaathi_staff_members", JSON.stringify(updatedList));
+    try {
+      await setDoc(doc(db, "app_settings", "staff_accounts"), { list: updatedList }, { merge: true });
+    } catch (err) {}
+
+    setVisiblePinMap((prev) => ({ ...prev, [newStaff.id]: true }));
+    setQuickEmail("");
+    setStaffSuccessMsg(`🎉 Success! Email "${cleanEmail}" ko Admin Access mil gaya hai! PIN: ${generatedPin}`);
+    setTimeout(() => setStaffSuccessMsg(""), 6000);
+  };
+
+  const handleCopyStaffCredentials = (staff) => {
+    const text = `🔐 TyreSaathi Admin Access Credentials:
+👤 Name: ${staff.name}
+✉️ Email: ${staff.email}
+🔑 PIN / Passcode: ${staff.passcode || "582914"}
+🎯 Role: ${staff.role}
+🌐 Admin Portal: ${window.location.origin}/admin`;
+    navigator.clipboard.writeText(text);
+    setCopiedStaffId(staff.id);
+    setTimeout(() => setCopiedStaffId(""), 3000);
+  };
+
+  const handleShareStaffWhatsApp = (staff) => {
+    const text = encodeURIComponent(`🔐 *TyreSaathi Admin Access Granted!*
+Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya gaya hai.
+
+✉️ *Login Email:* ${staff.email}
+🔑 *Access PIN:* ${staff.passcode || "582914"}
+🎯 *Assigned Role:* ${staff.role}
+🌐 *Admin Link:* ${window.location.origin}/admin
+
+*(Note: Sensitive data such as Bank/UPI is locked to Super Admin)*`);
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
+
+  const handleSaveStaff = async (e) => {
+    if (e) e.preventDefault();
+    if (!staffForm.name.trim() || !staffForm.email.trim()) {
+      alert("Kripya Employee ka Naam aur Email zaroor bharein!");
+      return;
+    }
+
+    let updatedList;
+    if (editingStaffId) {
+      updatedList = staffList.map((s) => s.id === editingStaffId ? { ...s, ...staffForm } : s);
+      setStaffSuccessMsg(`✅ Staff member "${staffForm.name}" updated successfully!`);
+    } else {
+      const newStaff = {
+        id: `staff_${Date.now()}`,
+        ...staffForm,
+        joinedDate: new Date().toISOString().split("T")[0]
+      };
+      updatedList = [newStaff, ...staffList];
+      setVisiblePinMap((prev) => ({ ...prev, [newStaff.id]: true }));
+      setStaffSuccessMsg(`🎉 Naya Employee / Staff "${staffForm.name}" add ho gaya hai!`);
+    }
+
+    setStaffList(updatedList);
+    localStorage.setItem("tyresaathi_staff_members", JSON.stringify(updatedList));
+    try {
+      await setDoc(doc(db, "app_settings", "staff_accounts"), { list: updatedList }, { merge: true });
+    } catch (err) {}
+
+    setStaffModalOpen(false);
+    setTimeout(() => setStaffSuccessMsg(""), 5000);
+  };
+
+  const handleToggleStaffStatus = async (id) => {
+    const updated = staffList.map((s) => {
+      if (s.id === id) {
+        return { ...s, status: s.status === "active" ? "blocked" : "active" };
+      }
+      return s;
+    });
+    setStaffList(updated);
+    localStorage.setItem("tyresaathi_staff_members", JSON.stringify(updated));
+    try {
+      await setDoc(doc(db, "app_settings", "staff_accounts"), { list: updated }, { merge: true });
+    } catch (err) {}
+    setStaffSuccessMsg("🔄 Staff account status update ho gaya hai!");
+    setTimeout(() => setStaffSuccessMsg(""), 4000);
+  };
+
+  const handleDeleteStaff = async (id) => {
+    if (window.confirm("Kya aap sach me is employee ka admin access permanently delete karna chahte hain?")) {
+      const updated = staffList.filter((s) => s.id !== id);
+      setStaffList(updated);
+      localStorage.setItem("tyresaathi_staff_members", JSON.stringify(updated));
+      try {
+        await setDoc(doc(db, "app_settings", "staff_accounts"), { list: updated }, { merge: true });
+      } catch (err) {}
+      setStaffSuccessMsg("🗑️ Staff access permanently delete kar diya gaya hai.");
+      setTimeout(() => setStaffSuccessMsg(""), 4000);
+    }
+  };
+
   // 🚀 App Version Control & Broadcast Notifications State
   const [versionControl, setVersionControl] = useState({
     latestVersion: "1.2.0",
@@ -534,10 +1086,25 @@ export default function AdminPanel() {
       try {
         const tckSnap = await getDocs(collection(db, "support_tickets"));
         if (!tckSnap.empty) {
-          setTickets(tckSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+          const list = tckSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const normalized = normalizeTicketList(list);
+          setTickets(normalized);
+          localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(normalized));
+        } else {
+          const local = localStorage.getItem("tyresaathi_user_tickets");
+          if (local) {
+            const normalized = normalizeTicketList(JSON.parse(local));
+            setTickets(normalized);
+            localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(normalized));
+          }
         }
       } catch (err) {
-        console.warn("Firestore tickets load:", err);
+        console.warn("Firestore tickets load fallback to local:", err);
+        const local = localStorage.getItem("tyresaathi_user_tickets");
+        if (local) {
+          const normalized = normalizeTicketList(JSON.parse(local));
+          setTickets(normalized);
+        }
       }
 
       try {
@@ -560,6 +1127,17 @@ export default function AdminPanel() {
       } catch (err) {
         const local = localStorage.getItem("tyresaathi_analytics_events");
         if (local) setAnalyticsEvents(JSON.parse(local));
+      }
+
+      try {
+        const srvSnap = await getDocs(collection(db, "service_categories"));
+        if (!srvSnap.empty) {
+          const list = srvSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          setServiceRates(list);
+          localStorage.setItem("tyresaathi_custom_rates", JSON.stringify(list));
+        }
+      } catch (err) {
+        console.warn("Firestore service_categories load notice:", err);
       }
 
       try {
@@ -1059,7 +1637,7 @@ export default function AdminPanel() {
   // If real database is empty and preview mode is on, provide helpful preview sample customers
   if (rawCustomerList.length === 0 && !isRealMode) {
     rawCustomerList = [
-      { id: "c_1", name: "Rahul Sharma", phone: "9826112345", email: "rahul.sharma@gmail.com", city: "Raipur", vehicleType: "Car / SUV", vehicleNumber: "CG 04 MB 1234", vehicleModel: "Hyundai Creta", totalBookings: 3, totalSpent: 4500, lastActive: "2026-09-22", source: "Registered Customer" },
+      { id: "c_1", name: "Your Name", phone: "9826112345", email: "your@gmail.com", city: "Raipur", vehicleType: "Car / SUV", vehicleNumber: "CG 04 MB 1234", vehicleModel: "Hyundai Creta", totalBookings: 3, totalSpent: 4500, lastActive: "2026-09-22", source: "Registered Customer" },
       { id: "c_2", name: "Vikram Verma", phone: "9425298765", email: "vikram.verma@yahoo.com", city: "Bhilai", vehicleType: "Commercial / Truck", vehicleNumber: "CG 07 CA 9081", vehicleModel: "Tata 407", totalBookings: 5, totalSpent: 18200, lastActive: "2026-09-23", source: "Service Booking" },
       { id: "c_3", name: "Amit Patel", phone: "9755567890", email: "amit.patel@gmail.com", city: "Bilaspur", vehicleType: "Bike / Scooter", vehicleNumber: "CG 10 AB 4567", vehicleModel: "Honda Activa 6G", totalBookings: 2, totalSpent: 1200, lastActive: "2026-09-20", source: "In-Store Billing" },
       { id: "c_4", name: "Suresh Sahu", phone: "9131012456", email: "suresh.sahu@gmail.com", city: "Raipur", vehicleType: "Tractor / Agri", vehicleNumber: "CG 04 TR 5521", vehicleModel: "Mahindra 575 DI", totalBookings: 1, totalSpent: 14500, lastActive: "2026-09-18", source: "Service Booking" },
@@ -1182,6 +1760,14 @@ export default function AdminPanel() {
           </button>
 
           <button
+            className={`admin-tab ${activeTab === "services" ? "tab-active tab-services-active" : ""}`}
+            onClick={() => setActiveTab("services")}
+          >
+            <Sparkles size={16} /> 🛠️ Categories & Rates ({serviceRates.length})
+            <span className="tab-bubble" style={{ background: "#2563eb" }}>Live Master</span>
+          </button>
+
+          <button
             className={`admin-tab ${activeTab === "traffic" ? "tab-active tab-traffic-active" : ""}`}
             onClick={() => setActiveTab("traffic")}
           >
@@ -1225,6 +1811,14 @@ export default function AdminPanel() {
           </button>
 
           <button
+            className={`admin-tab ${activeTab === "staff" ? "tab-active tab-staff-active" : ""}`}
+            onClick={() => setActiveTab("staff")}
+          >
+            <Users size={16} /> 👥 Staff & Sub-Admins ({staffList.length})
+            <span className="tab-bubble" style={{ background: "#4f46e5" }}>Access Control</span>
+          </button>
+
+          <button
             className={`admin-tab ${activeTab === "bookings" ? "tab-active" : ""}`}
             onClick={() => setActiveTab("bookings")}
           >
@@ -1265,87 +1859,638 @@ export default function AdminPanel() {
         </button>
       </div>
 
+      {/* 🧭 Sub-Tab Back to Overview Floating Bar */}
+      {activeTab !== "overview" && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: "14px",
+          padding: "10px 16px",
+          marginBottom: "16px",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
+          flexWrap: "wrap",
+          gap: "10px"
+        }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab("overview")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "#f1f5f9",
+              color: "#0f172a",
+              border: "1px solid #cbd5e1",
+              borderRadius: "10px",
+              padding: "7px 16px",
+              fontSize: "0.85rem",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#e2e8f0";
+              e.currentTarget.style.transform = "translateX(-2px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#f1f5f9";
+              e.currentTarget.style.transform = "none";
+            }}
+          >
+            <ArrowLeft size={16} /> ← Wapas Overview (Dashboard Par Jayein)
+          </button>
+
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.82rem", color: "#64748b" }}>
+            <span>Current Section:</span>
+            <button
+              type="button"
+              onClick={() => setSectionDropdownOpen((prev) => !prev)}
+              style={{
+                background: "#fee2e2",
+                color: "#c0392b",
+                fontWeight: "700",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                border: "1px solid #fca5a5",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+              title="Click karein dusre section par jane ke liye"
+            >
+              {activeTab === "services" ? "🛠️ Categories & Rates" :
+               activeTab === "traffic" ? "📊 Traffic & Graphs" :
+               activeTab === "ads" ? "📢 Shop Ads Manager" :
+               activeTab === "shops" ? "🏪 Shops & Users" :
+               activeTab === "pricing" ? "👑 Plans & Pricing" :
+               activeTab === "bank" ? "🏦 Bank & UPI QR" :
+               activeTab === "staff" ? "👥 Staff & Sub-Admins" :
+               activeTab === "bookings" ? "🚗 Live Bookings" :
+               activeTab === "tickets" ? "🎫 Support Tickets" :
+               activeTab === "excel" ? "📑 Excel Exports" :
+               activeTab === "updates" ? "🔔 App Updates" : activeTab}
+              <ChevronRight size={13} style={{ transform: sectionDropdownOpen ? "rotate(90deg)" : "none", transition: "transform 0.2s ease" }} />
+            </button>
+
+            {/* Quick Section Switcher Dropdown */}
+            {sectionDropdownOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "12px",
+                  padding: "8px",
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.15)",
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: "3px",
+                  minWidth: "220px",
+                  zIndex: 999
+                }}
+              >
+                {[
+                  { id: "overview", label: "🏠 Overview Dashboard" },
+                  { id: "services", label: "🛠️ Categories & Rates" },
+                  { id: "traffic", label: "📊 Traffic & Graphs" },
+                  { id: "ads", label: "📢 Shop Ads Manager" },
+                  { id: "shops", label: "🏪 Shops & Users" },
+                  { id: "pricing", label: "👑 Plans & Pricing" },
+                  { id: "bank", label: "🏦 Bank & UPI QR" },
+                  { id: "staff", label: "👥 Staff & Sub-Admins" },
+                  { id: "bookings", label: "🚗 Live Bookings" },
+                  { id: "tickets", label: "🎫 Support Tickets" },
+                  { id: "excel", label: "📑 Excel Exports" },
+                  { id: "updates", label: "🔔 App Updates" },
+                ].map((sec) => (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(sec.id);
+                      setSectionDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "none",
+                      background: activeTab === sec.id ? "#fee2e2" : "transparent",
+                      color: activeTab === sec.id ? "#c0392b" : "#1e293b",
+                      fontWeight: activeTab === sec.id ? "700" : "600",
+                      fontSize: "12.5px",
+                      cursor: "pointer",
+                      textAlign: "left"
+                    }}
+                  >
+                    {sec.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════════════════
           TAB 1: OVERVIEW DASHBOARD & METRICS
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "overview" && (
         <div className="admin-overview-section">
-          {/* Stat Cards */}
+          {/* Top Stat Cards (All Clickable) */}
           <div className="admin-stats-grid">
-            <div className="admin-metric-card">
+            <div
+              className="admin-metric-card"
+              onClick={() => setActiveTab("traffic")}
+              title="Click to view Real-time Network Analytics & Traffic"
+            >
               <span className="metric-icon-wrap" style={{ background: "#eafaf1", color: "#27ae60" }}>
-                <DollarSign size={24} />
+                <DollarSign size={22} />
               </span>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <span className="metric-lbl">Total Network Revenue</span>
-                <h3 className="metric-val">₹{totalRevenue.toLocaleString()}</h3>
-                <small className="metric-note">Across all partner hubs</small>
+                <h3 className="metric-val">₹{totalRevenue.toLocaleString("en-IN")}</h3>
+                <small className="metric-note" style={{ color: "#27ae60", fontWeight: 600 }}>
+                  ⚡ View Traffic & Graphs →
+                </small>
               </div>
             </div>
 
-            <div className="admin-metric-card">
+            <div
+              className="admin-metric-card"
+              onClick={() => setActiveTab("bookings")}
+              title="Click to view Live Network Bookings"
+            >
               <span className="metric-icon-wrap" style={{ background: "#ebf5fb", color: "#2980b9" }}>
-                <Calendar size={24} />
+                <Calendar size={22} />
               </span>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <span className="metric-lbl">Total Service Bookings</span>
                 <h3 className="metric-val">{bookings.length} Bookings</h3>
-                <small className="metric-note">{bookings.filter((b) => b.status === "completed").length} Completed</small>
+                <small className="metric-note" style={{ color: "#2980b9", fontWeight: 600 }}>
+                  🚗 {bookings.filter((b) => b.status === "completed").length} Completed →
+                </small>
               </div>
             </div>
 
-            <div className="admin-metric-card">
+            <div
+              className="admin-metric-card"
+              onClick={() => setActiveTab("shops")}
+              title="Click to view Registered Shops & Partners"
+            >
               <span className="metric-icon-wrap" style={{ background: "#fef9e7", color: "#f39c12" }}>
-                <Store size={24} />
+                <Store size={22} />
               </span>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <span className="metric-lbl">Registered Shops</span>
                 <h3 className="metric-val">{totalShops} Partner Hubs</h3>
-                <small className="metric-note" style={{ color: "#d35400" }}>{pendingApprovals} Awaiting Approval</small>
+                <small className="metric-note" style={{ color: pendingApprovals > 0 ? "#d35400" : "#718096", fontWeight: 600 }}>
+                  🏪 {pendingApprovals > 0 ? `${pendingApprovals} Awaiting Approval →` : "All Verified →"}
+                </small>
               </div>
             </div>
 
-            <div className="admin-metric-card">
+            <div
+              className="admin-metric-card"
+              onClick={() => setActiveTab("tickets")}
+              title="Click to view Support Desk Tickets"
+            >
               <span className="metric-icon-wrap" style={{ background: "#fdedec", color: "#c0392b" }}>
-                <LifeBuoy size={24} />
+                <LifeBuoy size={22} />
               </span>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <span className="metric-lbl">Support Tickets</span>
                 <h3 className="metric-val">{tickets.length} Tickets</h3>
-                <small className="metric-note" style={{ color: "#c0392b" }}>{openTickets} Need Response</small>
+                <small className="metric-note" style={{ color: "#c0392b", fontWeight: 600 }}>
+                  🎫 {openTickets > 0 ? `${openTickets} Need Response →` : "Open Support Desk →"}
+                </small>
               </div>
             </div>
           </div>
 
-          {/* Quick Shortcuts Grid */}
+          {/* Quick Shortcuts Grid - Symmetrical & Balanced */}
           <div className="admin-quick-links-grid">
-            <div className="shortcut-box" onClick={() => setActiveTab("traffic")} style={{ borderLeft: "4px solid #e67e22" }}>
+            <div className="shortcut-box" onClick={() => setActiveTab("traffic")} style={{ borderLeft: "4px solid #3b82f6" }}>
               <div className="sc-icon">📊</div>
               <h4>Shop Traffic & Customer Graphs</h4>
               <p>Check karein kis dukan par sabse zyada customer traffic, views aur bookings hain (Live Visual Graphs).</p>
-              <span className="sc-arrow" style={{ color: "#e67e22", fontWeight: 700 }}>Open Traffic Graphs →</span>
+              <span className="sc-arrow" style={{ color: "#3b82f6", fontWeight: 700 }}>Open Traffic Graphs →</span>
             </div>
 
-            <div className="shortcut-box" onClick={() => setActiveTab("shops")}>
+            <div className="shortcut-box" onClick={() => setActiveTab("services")} style={{ borderLeft: "4px solid #10b981" }}>
+              <div className="sc-icon">🛠️</div>
+              <h4>Service Categories & Rates Master</h4>
+              <p>Puncher, Cut repair, New Tyre Fitting aur Wheel Alignment ke dynamic rates aur categories manage karein.</p>
+              <span className="sc-arrow" style={{ color: "#10b981", fontWeight: 700 }}>Manage Rates & Master →</span>
+            </div>
+
+            <div className="shortcut-box" onClick={() => setActiveTab("ads")} style={{ borderLeft: "4px solid #ec4899" }}>
+              <div className="sc-icon">📢</div>
+              <h4>Shop Ads & Hero Banners ({activeAdsCount} Active)</h4>
+              <p>Partner shops ke promotional banner ads create karein, live run karein aur schedule control karein.</p>
+              <span className="sc-arrow" style={{ color: "#ec4899", fontWeight: 700 }}>Manage Shop Ads →</span>
+            </div>
+
+            <div className="shortcut-box" onClick={() => setActiveTab("shops")} style={{ borderLeft: "4px solid #f59e0b" }}>
               <div className="sc-icon">🏪</div>
-              <h4>Shop Partner Approvals</h4>
-              <p>Nayi judne wali dukaano ko review karein aur Verified badge pradaan karein.</p>
-              <span className="sc-arrow">Manage Shops →</span>
+              <h4>Shop Partner Approvals & Users</h4>
+              <p>Nayi judne wali dukaano ko review karein, documents check karein aur Verified Partner badge pradaan karein.</p>
+              <span className="sc-arrow" style={{ color: "#f59e0b", fontWeight: 700 }}>Manage Shops & Users →</span>
             </div>
 
-            <div className="shortcut-box" onClick={() => setActiveTab("bookings")}>
+            <div className="shortcut-box" onClick={() => setActiveTab("bookings")} style={{ borderLeft: "4px solid #8b5cf6" }}>
               <div className="sc-icon">🚗</div>
-              <h4>Live Network Bookings</h4>
-              <p>Desh bhar ki roadside repair aur tyre fitment bookings ko live monitor karein.</p>
-              <span className="sc-arrow">View Bookings →</span>
+              <h4>Live Network Service Bookings</h4>
+              <p>Desh bhar ki roadside assistance, tyre replacement aur emergency fitting bookings live monitor karein.</p>
+              <span className="sc-arrow" style={{ color: "#8b5cf6", fontWeight: 700 }}>View All Bookings →</span>
             </div>
 
-            <div className="shortcut-box" onClick={() => setActiveTab("excel")}>
-              <div className="sc-icon">📊</div>
-              <h4>Excel / CSV Data Download</h4>
-              <p>Bookings, in-store billing aur customer records ko 1-click me Excel me export karein.</p>
-              <span className="sc-arrow">Open Excel Center →</span>
+            <div className="shortcut-box" onClick={() => setActiveTab("excel")} style={{ borderLeft: "4px solid #059669" }}>
+              <div className="sc-icon">📑</div>
+              <h4>Excel / CSV Data Download Center</h4>
+              <p>All bookings, shop directory, in-store billing aur customer data ko 1-click me Excel sheets me export karein.</p>
+              <span className="sc-arrow" style={{ color: "#059669", fontWeight: 700 }}>Open Excel Center →</span>
             </div>
+
+            <div className="shortcut-box" onClick={() => setActiveTab("pricing")} style={{ borderLeft: "4px solid #6366f1" }}>
+              <div className="sc-icon">👑</div>
+              <h4>Plans & Pricing Control Center</h4>
+              <p>Monthly, Yearly vendor subscription plans, Free launch trial pricing aur features configure karein.</p>
+              <span className="sc-arrow" style={{ color: "#6366f1", fontWeight: 700 }}>Manage Pricing & Plans →</span>
+            </div>
+
+            <div className="shortcut-box" onClick={() => setActiveTab("bank")} style={{ borderLeft: "4px solid #0284c7" }}>
+              <div className="sc-icon">🏦</div>
+              <h4>Bank Account & Admin UPI QR Setup</h4>
+              <p>TyreSaathi official receiving UPI ID, Merchant Bank details aur instant payment QR codes setup karein.</p>
+              <span className="sc-arrow" style={{ color: "#0284c7", fontWeight: 700 }}>Configure Admin Bank & QR →</span>
+            </div>
+
+            <div className="shortcut-box" onClick={() => setActiveTab("tickets")} style={{ borderLeft: "4px solid #ef4444" }}>
+              <div className="sc-icon">🎫</div>
+              <h4>Customer Support & Helpdesk ({openTickets} Open)</h4>
+              <p>Customers aur vendors ke helpdesk tickets, complaints aur queries ko instantly solve karein.</p>
+              <span className="sc-arrow" style={{ color: "#ef4444", fontWeight: 700 }}>Open Support Tickets →</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB: 🛠️ SERVICE CATEGORIES & RATES MASTER
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "services" && (
+        <div className="admin-section-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Header Banner */}
+          <div style={{
+            background: "linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)",
+            color: "#ffffff",
+            borderRadius: "16px",
+            padding: "24px 28px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "16px",
+            boxShadow: "0 10px 28px rgba(30, 58, 138, 0.2)"
+          }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255, 255, 255, 0.15)", color: "#93c5fd", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", marginBottom: "8px" }}>
+                <Sparkles size={14} /> DYNAMIC SERVICES & CATEGORIES MASTER
+              </div>
+              <h2 style={{ fontSize: "22px", fontWeight: "800", margin: "0 0 6px" }}>
+                🛠️ Service Categories & Rates Master (कैटेगरी व रेट मास्टर)
+              </h2>
+              <p style={{ margin: 0, fontSize: "13px", color: "#cbd5e1", maxWidth: "680px", lineHeight: "1.5" }}>
+                Apne TyreSaathi network ke liye naye service categories (जैसे Puncher, Cut Repair, Fitting, Wheel Alignment, Car Wash) aur unke default rates define karein. Ye rates turant sabhi bills aur bookings par live reflect honge.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={handleOpenAddService}
+                style={{
+                  background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "10px",
+                  fontWeight: "800",
+                  fontSize: "13.5px",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)"
+                }}
+              >
+                <Plus size={17} /> ➕ Nayi Category / Service Jodein
+              </button>
+            </div>
+          </div>
+
+          {/* Success Alerts */}
+          {serviceSuccessMsg && (
+            <div style={{ background: "#eafaf1", border: "1.5px solid #27ae60", color: "#1e824c", padding: "12px 18px", borderRadius: "10px", fontWeight: 700, fontSize: "13.5px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <CheckCircle2 size={18} color="#27ae60" />
+              <span>{serviceSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* Stats Metric Strip */}
+          <div className="admin-stats-grid">
+            <div className="admin-metric-card">
+              <span className="metric-icon-wrap" style={{ background: "#eff6ff", color: "#2563eb" }}>
+                <Sparkles size={22} />
+              </span>
+              <div>
+                <span className="metric-lbl">Total Service Items</span>
+                <h3 className="metric-val">{serviceRates.length} Items</h3>
+                <small className="metric-note">Configured in Master</small>
+              </div>
+            </div>
+
+            <div className="admin-metric-card">
+              <span className="metric-icon-wrap" style={{ background: "#fdf4ff", color: "#a855f7" }}>
+                <Tag size={22} />
+              </span>
+              <div>
+                <span className="metric-lbl">Service Categories</span>
+                <h3 className="metric-val">{availableCategories.length} Categories</h3>
+                <small className="metric-note">Dynamic Groups</small>
+              </div>
+            </div>
+
+            <div className="admin-metric-card">
+              <span className="metric-icon-wrap" style={{ background: "#ecfdf5", color: "#10b981" }}>
+                <CheckCircle2 size={22} />
+              </span>
+              <div>
+                <span className="metric-lbl">Active & Live</span>
+                <h3 className="metric-val">{serviceRates.filter((s) => s.active !== false).length} Active</h3>
+                <small className="metric-note" style={{ color: "#10b981" }}>Available on Billing</small>
+              </div>
+            </div>
+
+            <div className="admin-metric-card">
+              <span className="metric-icon-wrap" style={{ background: "#fef3c7", color: "#d97706" }}>
+                <DollarSign size={22} />
+              </span>
+              <div>
+                <span className="metric-lbl">Highest Rate Service</span>
+                <h3 className="metric-val">
+                  ₹{Math.max(0, ...serviceRates.map((s) => Number(s.rate) || 0)).toLocaleString()}
+                </h3>
+                <small className="metric-note">Premium Tyre Job</small>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter & Search Toolbar */}
+          <div className="section-toolbar" style={{ flexWrap: "wrap", gap: "12px", background: "var(--surface)", padding: "14px", borderRadius: "12px", border: "1px solid var(--border)" }}>
+            <div className="search-bar-wrap" style={{ maxWidth: "360px" }}>
+              <Search size={16} />
+              <input
+                type="text"
+                placeholder="Search by service name, category or rate..."
+                value={serviceSearchTerm}
+                onChange={(e) => setServiceSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Category Filter Pills */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setServiceCategoryFilter("all")}
+                style={{
+                  background: serviceCategoryFilter === "all" ? "#2563eb" : "var(--surface-2, #f1f5f9)",
+                  color: serviceCategoryFilter === "all" ? "#ffffff" : "var(--text, #1e293b)",
+                  border: "1px solid var(--border)",
+                  padding: "6px 12px",
+                  borderRadius: "20px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                All Categories ({serviceRates.length})
+              </button>
+
+              {availableCategories.map((cat) => {
+                const count = serviceRates.filter((s) => s.category === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setServiceCategoryFilter(cat)}
+                    style={{
+                      background: serviceCategoryFilter === cat ? "#2563eb" : "var(--surface-2, #f1f5f9)",
+                      color: serviceCategoryFilter === cat ? "#ffffff" : "var(--text, #1e293b)",
+                      border: "1px solid var(--border)",
+                      padding: "6px 12px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {cat} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Category Grouped Services Grid */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {availableCategories
+              .filter((cat) => serviceCategoryFilter === "all" || serviceCategoryFilter === cat)
+              .map((cat) => {
+                const catItems = serviceRates.filter((s) => {
+                  const matchesCat = s.category === cat;
+                  const q = serviceSearchTerm.toLowerCase().trim();
+                  const matchesSearch =
+                    !q ||
+                    (s.name || "").toLowerCase().includes(q) ||
+                    (s.category || "").toLowerCase().includes(q) ||
+                    String(s.rate).includes(q) ||
+                    (s.description || "").toLowerCase().includes(q);
+                  return matchesCat && matchesSearch;
+                });
+
+                if (catItems.length === 0) return null;
+
+                return (
+                  <div
+                    key={cat}
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "14px",
+                      padding: "18px 20px",
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.03)"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", borderBottom: "1px solid var(--border)", paddingBottom: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "20px" }}>📁</span>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--heading)" }}>
+                            {cat}
+                          </h3>
+                          <small style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                            {catItems.length} Services in this Category
+                          </small>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingServiceId(null);
+                          setServiceForm({
+                            category: cat,
+                            customCategory: "",
+                            name: "",
+                            rate: 200,
+                            type: "service",
+                            icon: "🛠️",
+                            description: "",
+                            active: true
+                          });
+                          setServiceModalOpen(true);
+                        }}
+                        style={{
+                          background: "var(--surface-2)",
+                          border: "1px solid var(--border)",
+                          color: "#2563eb",
+                          padding: "5px 12px",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          cursor: "pointer"
+                        }}
+                      >
+                        + Add in {cat}
+                      </button>
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+                      {catItems.map((srv) => (
+                        <div
+                          key={srv.id}
+                          style={{
+                            background: "var(--bg, #f8fafc)",
+                            border: "1.5px solid var(--border, #e2e8f0)",
+                            borderRadius: "10px",
+                            padding: "14px",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            opacity: srv.active === false ? 0.6 : 1,
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "20px" }}>{srv.icon || "🛠️"}</span>
+                                <span style={{ fontSize: "11px", fontWeight: "700", background: "#e0e7ff", color: "#3730a3", padding: "2px 6px", borderRadius: "4px", textTransform: "uppercase" }}>
+                                  {srv.type || "service"}
+                                </span>
+                              </div>
+
+                              <strong style={{ fontSize: "16px", color: "#16a34a", fontWeight: "800" }}>
+                                ₹{srv.rate}
+                              </strong>
+                            </div>
+
+                            <h4 style={{ margin: "4px 0 4px", fontSize: "14px", fontWeight: "800", color: "var(--heading)" }}>
+                              {srv.name}
+                            </h4>
+                            {srv.description && (
+                              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                                {srv.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--border)", paddingTop: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleServiceStatus(srv.id)}
+                              style={{
+                                background: srv.active !== false ? "#eafaf1" : "#f1f5f9",
+                                color: srv.active !== false ? "#16a34a" : "#64748b",
+                                border: "1px solid " + (srv.active !== false ? "#86efac" : "#cbd5e1"),
+                                padding: "3px 8px",
+                                borderRadius: "6px",
+                                fontSize: "11px",
+                                fontWeight: "700",
+                                cursor: "pointer"
+                              }}
+                            >
+                              {srv.active !== false ? "🟢 Live Active" : "⚪ Inactive"}
+                            </button>
+
+                            <div style={{ display: "flex", gap: "6px" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditService(srv)}
+                                style={{
+                                  background: "#eff6ff",
+                                  color: "#2563eb",
+                                  border: "1px solid #bfdbfe",
+                                  padding: "4px 8px",
+                                  borderRadius: "6px",
+                                  fontSize: "11.5px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px"
+                                }}
+                              >
+                                <Edit3 size={13} /> Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteService(srv.id)}
+                                style={{
+                                  background: "#fef2f2",
+                                  color: "#dc2626",
+                                  border: "1px solid #fecaca",
+                                  padding: "4px 8px",
+                                  borderRadius: "6px",
+                                  fontSize: "11.5px",
+                                  fontWeight: "700",
+                                  cursor: "pointer"
+                                }}
+                                title="Delete Service"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -2655,7 +3800,7 @@ export default function AdminPanel() {
                         type="text"
                         value={bankConfig.upiId || ""}
                         onChange={(e) => setBankConfig({ ...bankConfig, upiId: e.target.value.trim() })}
-                        placeholder="Apna UPI ID dalein (उदा. 9876543210@paytm, name@oksbi)..."
+                        placeholder="Apna UPI ID dalein (उदा. 10 digit mobile number@paytm, name@oksbi)..."
                         style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "14px", fontWeight: 700, color: "#c0392b", boxSizing: "border-box" }}
                       />
                       <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "3px", display: "block" }}>
@@ -2685,7 +3830,7 @@ export default function AdminPanel() {
                           type="tel"
                           value={bankConfig.phone || ""}
                           onChange={(e) => setBankConfig({ ...bankConfig, phone: e.target.value })}
-                          placeholder="उदा. 9876543210"
+                          placeholder="उदा. 10 digit mobile number"
                           style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
                         />
                       </div>
@@ -2931,6 +4076,693 @@ export default function AdminPanel() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
+          TAB: EMPLOYEE & STAFF ROLE-BASED ACCESS CONTROL (STAFF MANAGER)
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeTab === "staff" && (
+        <div className="admin-section-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Header & Success Feedback */}
+          {staffSuccessMsg && (
+            <div style={{
+              background: "#dcfce7",
+              color: "#15803d",
+              padding: "14px 20px",
+              borderRadius: "12px",
+              border: "1px solid #86efac",
+              fontWeight: "700",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              boxShadow: "0 4px 12px rgba(21, 128, 61, 0.1)"
+            }}>
+              <Check size={20} /> {staffSuccessMsg}
+            </div>
+          )}
+
+          {/* Top Toolbar */}
+          <div className="section-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                <Users size={22} color="#4f46e5" />
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: "800" }}>
+                  Employee & Staff Role-Based Access Control (स्टाफ व सब-एडमिन मैनेजर)
+                </h3>
+              </div>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+                Apne employees ko safe admin access dein. Sensitive data (Bank Account, UPI, Master Pricing, Delete) 100% locked rahega.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-add-primary"
+                style={{ background: "#4f46e5", padding: "10px 18px", fontSize: "13.5px", fontWeight: "700", display: "inline-flex", alignItems: "center", gap: "8px", borderRadius: "8px", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)" }}
+                onClick={handleOpenAddStaff}
+              >
+                <PlusCircle size={16} /> ➕ Add New Employee / Staff
+              </button>
+            </div>
+          </div>
+
+          {/* ⚡ Quick Grant Access by Email Bar */}
+          <div style={{
+            background: "linear-gradient(135deg, #f8fafc 0%, #ede9fe 100%)",
+            border: "1.5px solid #c7d2fe",
+            borderRadius: "14px",
+            padding: "18px 20px",
+            boxShadow: "0 4px 16px rgba(79, 70, 229, 0.08)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              <Sparkles size={18} color="#4f46e5" />
+              <strong style={{ fontSize: "15px", color: "#1e1b4b" }}>
+                ⚡ Quick Access by Email ID (ईमेल आईडी डालकर तुरंत एडमिन एक्सेस दें)
+              </strong>
+            </div>
+            <form onSubmit={handleQuickGrantAccess} style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <div style={{ flex: "1 1 260px" }}>
+                <input
+                  type="email"
+                  placeholder="Employee Email ID (उदा. rohit.support@gmail.com)"
+                  value={quickEmail}
+                  onChange={(e) => setQuickEmail(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #a5b4fc",
+                    fontSize: "13px",
+                    background: "#ffffff",
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ width: "220px" }}>
+                <select
+                  value={quickRole}
+                  onChange={(e) => setQuickRole(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #a5b4fc",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    background: "#ffffff",
+                    boxSizing: "border-box"
+                  }}
+                >
+                  <option value="support">🎫 Customer Support (Tickets/Bookings)</option>
+                  <option value="operations">🏪 Operations Manager (Shops/Rates/Ads)</option>
+                  <option value="billing">📑 Billing Staff (Invoices/Bookings)</option>
+                  <option value="custom">⚙️ Sub-Admin (Custom Access)</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  background: "#4f46e5",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  fontSize: "13.5px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)"
+                }}
+              >
+                <Rocket size={16} /> 🚀 Grant Instant Admin Access
+              </button>
+            </form>
+            <small style={{ display: "block", marginTop: "8px", color: "#475569", fontSize: "11.5px" }}>
+              💡 <strong>How it works:</strong> Email darj karte hi employee ke liye 6-digit secure PIN create ho jayega jise aap WhatsApp ya copy karke unhe share kar sakte hain.
+            </small>
+          </div>
+
+          {/* 🛡️ Data Security & Safety Explainer Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
+            <div style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)", color: "#fff", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 14px rgba(79, 70, 229, 0.15)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <div style={{ background: "rgba(255,255,255,0.2)", padding: "6px", borderRadius: "8px" }}>
+                  <Lock size={18} color="#facc15" />
+                </div>
+                <strong style={{ fontSize: "14.5px" }}>🔒 100% Data Safety & Bank Protection</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: "12.5px", color: "#c7d2fe", lineHeight: "1.5" }}>
+                Aapka official <strong>Bank Account</strong>, <strong>UPI QR</strong>, <strong>Super Admin Password</strong> aur <strong>Master Pricing</strong> options strictly Owner ke liye locked hain. Staff inko kabhi access nahi kar sakta.
+              </p>
+            </div>
+
+            <div style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 100%)", color: "#fff", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 14px rgba(5, 150, 105, 0.15)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <div style={{ background: "rgba(255,255,255,0.2)", padding: "6px", borderRadius: "8px" }}>
+                  <ShieldCheck size={18} color="#4ade80" />
+                </div>
+                <strong style={{ fontSize: "14.5px" }}>🎯 Role-Based Delegation (सीमित अधिकार)</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: "12.5px", color: "#a7f3d0", lineHeight: "1.5" }}>
+                Support Executive sirf tickets aur chat resolve karega, Operations Manager sirf shops aur services dekhega. Employee ko wahi tab dikhega jiski aapne anumati di hai.
+              </p>
+            </div>
+
+            <div style={{ background: "linear-gradient(135deg, #701a75 0%, #86198f 100%)", color: "#fff", padding: "18px", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.15)", boxShadow: "0 4px 14px rgba(162, 28, 175, 0.15)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <div style={{ background: "rgba(255,255,255,0.2)", padding: "6px", borderRadius: "8px" }}>
+                  <Power size={18} color="#f472b6" />
+                </div>
+                <strong style={{ fontSize: "14.5px" }}>⚡ 1-Click Instant Revoke / Killswitch</strong>
+              </div>
+              <p style={{ margin: 0, fontSize: "12.5px", color: "#f5d0fe", lineHeight: "1.5" }}>
+                Agar koi employee chhutti par hai ya kaam chhod deta hai, toh aap <strong>1-Click</strong> me uska access 'Block' ya 'Delete' karke turant band kar sakte hain.
+              </p>
+            </div>
+          </div>
+
+          {/* 🔑 Staff Login Guide Card (स्टाफ लॉगिन कैसे करेगा?) */}
+          <div style={{ background: "#ffffff", border: "1.5px solid #e2e8f0", borderRadius: "14px", padding: "18px 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              <UserCheck size={18} color="#2563eb" />
+              <strong style={{ fontSize: "15px", color: "#0f172a" }}>
+                📖 Staff Login Process (कर्मचारी लॉगिन कैसे करेगा?)
+              </strong>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px" }}>
+              <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <span style={{ background: "#2563eb", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", marginBottom: "6px" }}>1</span>
+                <strong style={{ display: "block", fontSize: "13px", color: "#1e293b" }}>Open Login / Portal</strong>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+                  Staff tyreSaathi app ya website par ja kar Login page open karega.
+                </p>
+              </div>
+
+              <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <span style={{ background: "#2563eb", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", marginBottom: "6px" }}>2</span>
+                <strong style={{ display: "block", fontSize: "13px", color: "#1e293b" }}>Enter Email & PIN</strong>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+                  Staff apna registered Email aur niche table me dikh raha <strong>6-digit PIN</strong> dale ga.
+                </p>
+              </div>
+
+              <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <span style={{ background: "#2563eb", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "800", marginBottom: "6px" }}>3</span>
+                <strong style={{ display: "block", fontSize: "13px", color: "#1e293b" }}>Role-Filtered Dashboard</strong>
+                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#64748b" }}>
+                  Staff ko sirf unke permitted modules (Tickets, Bookings) dikhenge, financial data safe rahega.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+            <div style={{ fontSize: "13.5px", fontWeight: "700", color: "#334155" }}>
+              👥 Active Staff Members ({staffList.length})
+            </div>
+
+            <div style={{ position: "relative", minWidth: "260px" }}>
+              <Search size={15} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+              <input
+                type="text"
+                placeholder="Search staff name, email, role, PIN..."
+                value={staffSearch}
+                onChange={(e) => setStaffSearch(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px 8px 32px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "12.5px",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Staff Members Table */}
+          <div className="admin-table-card">
+            {staffList.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b" }}>
+                <Users size={48} color="#cbd5e1" style={{ margin: "0 auto 12px" }} />
+                <h4 style={{ margin: "0 0 6px", fontSize: "16px", color: "#1e293b" }}>Abhi tak koi employee add nahi hai</h4>
+                <p style={{ margin: "0 0 16px", fontSize: "13px" }}>Upar diye gaye Quick Email box ya 'Add New Employee' button se staff account create karein.</p>
+                <button
+                  type="button"
+                  className="btn-add-primary"
+                  onClick={handleOpenAddStaff}
+                  style={{ background: "#4f46e5", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <PlusCircle size={15} /> ➕ Add Employee
+                </button>
+              </div>
+            ) : (
+              <table className="admin-data-table">
+                <thead>
+                  <tr>
+                    <th>Employee Name & Email</th>
+                    <th>Role & Access Scope</th>
+                    <th>Permissions Granted</th>
+                    <th>Status</th>
+                    <th>Login Passcode / PIN</th>
+                    <th>Actions & Sharing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffList
+                    .filter((s) => {
+                      const q = staffSearch.toLowerCase();
+                      return (
+                        !staffSearch ||
+                        s.name.toLowerCase().includes(q) ||
+                        s.email.toLowerCase().includes(q) ||
+                        s.role.toLowerCase().includes(q) ||
+                        (s.passcode && s.passcode.includes(q)) ||
+                        s.phone.includes(q)
+                      );
+                    })
+                    .map((s) => {
+                      const isPinVisible = visiblePinMap[s.id] !== false;
+                      const pinDisplay = s.passcode || "582914";
+                      const isCopied = copiedStaffId === s.id;
+
+                      return (
+                        <tr key={s.id} style={{ cursor: "pointer" }} onClick={() => handleOpenEditStaff(s)}>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              <div style={{ width: "38px", height: "38px", borderRadius: "50%", background: "#ede9fe", color: "#6d28d9", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "15px" }}>
+                                {s.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <strong style={{ fontSize: "13.5px", color: "#0f172a" }}>{s.name}</strong>
+                                <div style={{ fontSize: "12px", color: "#475569", marginTop: "2px" }}>
+                                  ✉️ <strong>{s.email}</strong>
+                                </div>
+                                {s.phone && s.phone !== "10 digit mobile number" && (
+                                  <div style={{ fontSize: "11px", color: "#64748b" }}>📞 {s.phone}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <span style={{
+                              background: s.roleKey === "support" ? "#dbeafe" : s.roleKey === "operations" ? "#fef3c7" : "#f1f5f9",
+                              color: s.roleKey === "support" ? "#1e40af" : s.roleKey === "operations" ? "#92400e" : "#334155",
+                              padding: "4px 10px",
+                              borderRadius: "12px",
+                              fontSize: "12px",
+                              fontWeight: "700"
+                            }}>
+                              {s.role}
+                            </span>
+                            {s.notes && (
+                              <small style={{ display: "block", color: "#64748b", fontSize: "11px", marginTop: "4px", maxWidth: "200px" }}>
+                                {s.notes}
+                              </small>
+                            )}
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", maxWidth: "260px" }}>
+                              {(s.permissions || []).map((perm, idx) => (
+                                <span key={idx} style={{ background: "#f8fafc", border: "1px solid #cbd5e1", padding: "2px 7px", borderRadius: "6px", fontSize: "11px", color: "#334155", fontWeight: "600" }}>
+                                  {perm === "tickets" && "🎫 Support Tickets"}
+                                  {perm === "shops" && "🏪 Shops & Users"}
+                                  {perm === "services" && "🛠️ Rates Master"}
+                                  {perm === "ads" && "📢 Shop Ads"}
+                                  {perm === "bookings" && "🚗 Bookings"}
+                                  {perm === "traffic" && "📊 Traffic"}
+                                  {perm === "excel" && "📥 Excel Export"}
+                                  {perm === "updates" && "🔔 Push Updates"}
+                                  {!["tickets", "shops", "services", "ads", "bookings", "traffic", "excel", "updates"].includes(perm) && perm}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <span style={{
+                              background: s.status === "active" ? "#dcfce7" : "#fee2e2",
+                              color: s.status === "active" ? "#15803d" : "#991b1b",
+                              padding: "4px 10px",
+                              borderRadius: "12px",
+                              fontSize: "11.5px",
+                              fontWeight: "700",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}>
+                              {s.status === "active" ? "🟢 Active" : "🔴 Blocked"}
+                            </span>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <code style={{
+                                background: "#f1f5f9",
+                                border: "1px solid #cbd5e1",
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                color: "#0f172a",
+                                fontWeight: "800",
+                                letterSpacing: "1px"
+                              }}>
+                                {isPinVisible ? pinDisplay : "••••••"}
+                              </code>
+                              <button
+                                type="button"
+                                onClick={() => togglePinVisibility(s.id)}
+                                title={isPinVisible ? "Hide PIN" : "Show PIN"}
+                                style={{
+                                  background: "#f8fafc",
+                                  border: "1px solid #cbd5e1",
+                                  borderRadius: "6px",
+                                  padding: "4px 6px",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center"
+                                }}
+                              >
+                                <Eye size={13} color="#475569" />
+                              </button>
+                            </div>
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyStaffCredentials(s)}
+                                style={{
+                                  background: isCopied ? "#dcfce7" : "#f1f5f9",
+                                  color: isCopied ? "#15803d" : "#0f172a",
+                                  border: "1px solid #cbd5e1",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                                title="Copy Login Email & PIN to Clipboard"
+                              >
+                                {isCopied ? <Check size={12} /> : <Copy size={12} />}
+                                {isCopied ? "Copied!" : "📋 Copy PIN"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleShareStaffWhatsApp(s)}
+                                style={{
+                                  background: "#25D366",
+                                  color: "#ffffff",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                                title="Share Login details on WhatsApp"
+                              >
+                                <MessageSquare size={12} /> WhatsApp
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStaffStatus(s.id)}
+                                style={{
+                                  background: s.status === "active" ? "#fef2f2" : "#f0fdf4",
+                                  color: s.status === "active" ? "#b91c1c" : "#15803d",
+                                  border: s.status === "active" ? "1px solid #fca5a5" : "1px solid #86efac",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer"
+                                }}
+                                title={s.status === "active" ? "Block Employee Access" : "Activate Access"}
+                              >
+                                {s.status === "active" ? "🔒 Block" : "🔓 Activate"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditStaff(s)}
+                                style={{
+                                  background: "#f1f5f9",
+                                  color: "#0f172a",
+                                  border: "1px solid #cbd5e1",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "11px",
+                                  fontWeight: "700",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStaff(s.id)}
+                                style={{
+                                  background: "#fee2e2",
+                                  color: "#c0392b",
+                                  border: "none",
+                                  borderRadius: "6px",
+                                  padding: "4px 8px",
+                                  fontSize: "11px",
+                                  cursor: "pointer"
+                                }}
+                                title="Delete staff account permanently"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* 👥 Add/Edit Staff Modal */}
+          {staffModalOpen && (
+            <div className="admin-modal-backdrop" onClick={() => setStaffModalOpen(false)}>
+              <div className="admin-modal-card" style={{ maxWidth: "560px", width: "94%" }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1.5px solid #f1f5f9", paddingBottom: "12px", marginBottom: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Users size={20} color="#4f46e5" />
+                    <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800" }}>
+                      {editingStaffId ? "Edit Employee Permissions" : "Add New Employee / Sub-Admin"}
+                    </h3>
+                  </div>
+                  <button type="button" onClick={() => setStaffModalOpen(false)} style={{ background: "transparent", border: "none", cursor: "pointer" }}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveStaff} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Employee Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Your Name"
+                        value={staffForm.name}
+                        onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                        required
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Employee Login Email *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="employee@email.com"
+                        value={staffForm.email}
+                        onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                        required
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Contact Mobile Number
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="10 digit mobile number"
+                        value={staffForm.phone}
+                        onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                        Access PIN / Passcode *
+                      </label>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. 849201"
+                          value={staffForm.passcode}
+                          onChange={(e) => setStaffForm({ ...staffForm, passcode: e.target.value })}
+                          required
+                          style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", fontWeight: "800", letterSpacing: "1px", boxSizing: "border-box" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newPin = Math.floor(100000 + Math.random() * 900000).toString();
+                            setStaffForm({ ...staffForm, passcode: newPin });
+                          }}
+                          style={{ background: "#ede9fe", color: "#6d28d9", border: "1px solid #c7d2fe", borderRadius: "8px", padding: "0 10px", fontSize: "11px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" }}
+                          title="Generate New Random 6-Digit PIN"
+                        >
+                          🎲 PIN
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Role Preset Selector */}
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
+                      Choose Role Preset (पद चुनें) *
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                      {[
+                        { key: "support", title: "🎫 Customer Support Executive", desc: "Support Tickets, Chats, Bookings", perms: ["tickets", "bookings"] },
+                        { key: "operations", title: "🏪 Operations & Store Manager", desc: "Shops, Rates, Ads, Bookings", perms: ["shops", "services", "ads", "bookings"] },
+                        { key: "billing", title: "📑 Billing & Accounts Staff", desc: "Invoices, Bookings, Exports", perms: ["bookings", "excel", "traffic"] },
+                        { key: "custom", title: "⚙️ Custom Permissions", desc: "Manually select allowed sections", perms: staffForm.permissions }
+                      ].map((preset) => (
+                        <div
+                          key={preset.key}
+                          onClick={() => {
+                            setStaffForm({
+                              ...staffForm,
+                              roleKey: preset.key,
+                              role: preset.title.replace(/^[^\s]+\s/, ""),
+                              permissions: preset.perms
+                            });
+                          }}
+                          style={{
+                            padding: "10px",
+                            borderRadius: "10px",
+                            border: staffForm.roleKey === preset.key ? "2px solid #4f46e5" : "1px solid #cbd5e1",
+                            background: staffForm.roleKey === preset.key ? "#ede9fe" : "#ffffff",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <strong style={{ fontSize: "12.5px", display: "block", color: "#0f172a" }}>{preset.title}</strong>
+                          <small style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "2px" }}>{preset.desc}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Granular Permission Checkboxes */}
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "6px" }}>
+                      Allowed Admin Sections (अनुमतित अनुभाग):
+                    </label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", background: "#f8fafc", padding: "10px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                      {[
+                        { id: "tickets", label: "🎫 Support Tickets & WhatsApp Desk" },
+                        { id: "shops", label: "🏪 Shop Partners & Approvals" },
+                        { id: "services", label: "🛠️ Service Categories & Rates Master" },
+                        { id: "ads", label: "📢 Shop Banner Ads Manager" },
+                        { id: "bookings", label: "🚗 Global Bookings Schedule" },
+                        { id: "traffic", label: "📊 Traffic & Analytics Graphs" },
+                        { id: "excel", label: "📥 Excel Sheet Data Exports" },
+                        { id: "updates", label: "🔔 App Updates & Notifications" },
+                      ].map((p) => {
+                        const checked = staffForm.permissions.includes(p.id);
+                        return (
+                          <label key={p.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...staffForm.permissions, p.id]
+                                  : staffForm.permissions.filter((x) => x !== p.id);
+                                setStaffForm({ ...staffForm, permissions: next, roleKey: "custom" });
+                              }}
+                            />
+                            <span>{p.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Protected Features Note */}
+                  <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "8px 12px", fontSize: "11.5px", color: "#991b1b", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Lock size={14} />
+                    <span><strong>Note:</strong> Bank Account & UPI Setup, Plans Pricing, aur Super Admin access staff ke liye strictly locked rahenge.</span>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label style={{ fontSize: "12px", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                      Staff Responsibilities / Notes (वैकल्पिक)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Handles morning shift support tickets and customer calls"
+                      value={staffForm.notes}
+                      onChange={(e) => setStaffForm({ ...staffForm, notes: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "10px", borderTop: "1.5px solid #f1f5f9" }}>
+                    <button
+                      type="button"
+                      className="btn-cancel-rating"
+                      onClick={() => setStaffModalOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-submit-rating"
+                      style={{ background: "#4f46e5" }}
+                    >
+                      <Save size={15} /> 💾 Save Staff Account
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
           TAB 3: GLOBAL BOOKINGS & INVOICES MONITOR
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "bookings" && (
@@ -3010,80 +4842,260 @@ export default function AdminPanel() {
           TAB 4: SUPPORT TICKET RESOLVER
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "tickets" && (
-        <div className="admin-section-container">
-          <div className="section-toolbar">
+        <div className="admin-section-container" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Header & Success Feedback */}
+          {ticketSuccessMsg && (
+            <div style={{
+              background: "#dcfce7",
+              color: "#15803d",
+              padding: "12px 18px",
+              borderRadius: "10px",
+              border: "1px solid #86efac",
+              fontWeight: "700",
+              fontSize: "13.5px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              <Check size={18} /> {ticketSuccessMsg}
+            </div>
+          )}
+
+          <div className="section-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <div>
-              <h3 style={{ margin: "0 0 4px", fontSize: "16px" }}>Customer & Shop Support Tickets</h3>
-              <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)" }}>
-                Aap yahan se complaints ka solution likh sakte hain aur status update kar sakte hain.
+              <h3 style={{ margin: "0 0 4px", fontSize: "18px", fontWeight: "800" }}>
+                🎫 Customer & Shop Support Tickets Helpdesk
+              </h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>
+                Customers aur shop partners ki complaints aur queries ka admin panel se instant solution likhein aur status update karein.
               </p>
             </div>
 
-            <button
-              className="btn-export-excel-action"
-              onClick={() => exportTicketsToExcel(tickets)}
-            >
-              <FileSpreadsheet size={15} /> Export Tickets (Excel)
-            </button>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-add-primary"
+                style={{ background: "#2563eb", padding: "8px 14px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                onClick={handleAddSampleTicket}
+              >
+                <PlusCircle size={15} /> ➕ Add Ticket
+              </button>
+              <button
+                type="button"
+                className="btn-add-primary"
+                style={{ background: "#0891b2", padding: "8px 14px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                onClick={handleResetTicketSequence}
+                title="Renumber all tickets from #TS-TCK-01 sequentially"
+              >
+                ↺ Re-index (#TS-TCK-01)
+              </button>
+              <button
+                type="button"
+                className="btn-add-primary"
+                style={{ background: "#dc2626", padding: "8px 14px", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                onClick={handleClearAllTickets}
+                title="Clear all tickets to start fresh from #TS-TCK-01"
+              >
+                🗑️ Clear All
+              </button>
+              <button
+                className="btn-export-excel-action"
+                onClick={() => exportTicketsToExcel(tickets)}
+              >
+                <FileSpreadsheet size={15} /> 📥 Export Excel
+              </button>
+            </div>
           </div>
 
+          {/* Filter & Search Bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {[
+                { id: "all", label: `All Tickets (${tickets.length})` },
+                { id: "open", label: `🟡 Open (${tickets.filter((t) => t.status === "open").length})` },
+                { id: "in_progress", label: `🔵 In Progress (${tickets.filter((t) => t.status === "in_progress").length})` },
+                { id: "resolved", label: `🟢 Resolved (${tickets.filter((t) => t.status === "resolved").length})` },
+              ].map((pill) => (
+                <button
+                  key={pill.id}
+                  type="button"
+                  onClick={() => setTicketFilter(pill.id)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    border: ticketFilter === pill.id ? "1.5px solid #c0392b" : "1px solid #cbd5e1",
+                    background: ticketFilter === pill.id ? "#fee2e2" : "#ffffff",
+                    color: ticketFilter === pill.id ? "#c0392b" : "#475569",
+                    fontWeight: ticketFilter === pill.id ? "700" : "600",
+                    fontSize: "12.5px",
+                    cursor: "pointer"
+                  }}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ position: "relative", minWidth: "240px" }}>
+              <Search size={15} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+              <input
+                type="text"
+                placeholder="Search ticket #, name, phone..."
+                value={ticketSearch}
+                onChange={(e) => setTicketSearch(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "7px 10px 7px 32px",
+                  borderRadius: "8px",
+                  border: "1px solid #cbd5e1",
+                  fontSize: "12.5px",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Tickets Table */}
           <div className="admin-table-card">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Ticket # & Date</th>
-                  <th>User Details</th>
-                  <th>Category & Priority</th>
-                  <th>Problem Summary</th>
-                  <th>Status</th>
-                  <th>Admin Reply / Resolve</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tickets.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      <strong>#{formatSafeText(t.ticketNo, t.id)}</strong>
-                      <small className="user-subtext">{formatSafeDate(t.createdAt)}</small>
-                    </td>
-                    <td>
-                      <strong>{formatSafeText(t.userName, "User")}</strong>
-                      <small className="user-subtext">📞 {formatSafeText(t.userPhone, "—")}</small>
-                    </td>
-                    <td>
-                      <span>{formatSafeText(t.category, "General")}</span>
-                      <small className={`priority-tag priority-${formatSafeText(t.priority, "medium")}`}>{formatSafeText(t.priority, "MEDIUM").toUpperCase()}</small>
-                    </td>
-                    <td>
-                      <strong style={{ display: "block" }}>{formatSafeText(t.subject, "Support Request")}</strong>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>{formatSafeText(t.description, "")}</p>
-                      {t.adminReply && (
-                        <div className="admin-reply-snippet">
-                          <strong>Reply:</strong> {formatSafeText(t.adminReply)}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-badge-ticket status-${formatSafeText(t.status, "open")}`}>
-                        {formatSafeText(t.status, "OPEN").toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      {t.status !== "resolved" ? (
-                        <button
-                          className="btn-resolve-ticket"
-                          onClick={() => setReplyTicketModal(t)}
-                        >
-                          💬 Reply & Resolve
-                        </button>
-                      ) : (
-                        <span className="resolved-check">✓ Resolved</span>
-                      )}
-                    </td>
+            {tickets.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#64748b" }}>
+                <LifeBuoy size={48} color="#cbd5e1" style={{ margin: "0 auto 12px" }} />
+                <h4 style={{ margin: "0 0 6px", fontSize: "16px", color: "#1e293b" }}>Abhi tak koi support ticket nahi hai!</h4>
+                <p style={{ margin: "0 0 16px", fontSize: "13px" }}>Jab bhi customer ya shop owner app se ticket create karega, yahan dikhega.</p>
+                <button
+                  type="button"
+                  className="btn-add-primary"
+                  onClick={handleAddSampleTicket}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <PlusCircle size={15} /> ➕ Click to Create Test Ticket
+                </button>
+              </div>
+            ) : (
+              <table className="admin-data-table">
+                <thead>
+                  <tr>
+                    <th>Ticket # & Date</th>
+                    <th>User Details & Contact</th>
+                    <th>Category & Priority</th>
+                    <th>Problem Summary</th>
+                    <th>Status</th>
+                    <th>Admin Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tickets
+                    .filter((t) => {
+                      const matchesStatus = ticketFilter === "all" || t.status === ticketFilter;
+                      const q = ticketSearch.toLowerCase();
+                      const matchesSearch =
+                        !ticketSearch ||
+                        (t.ticketNo && t.ticketNo.toLowerCase().includes(q)) ||
+                        (t.userName && t.userName.toLowerCase().includes(q)) ||
+                        (t.userPhone && t.userPhone.includes(q)) ||
+                        (t.subject && t.subject.toLowerCase().includes(q));
+                      return matchesStatus && matchesSearch;
+                    })
+                    .map((t) => {
+                      const phoneDigits = (t.userPhone || "").replace(/[^0-9]/g, "");
+                      const waUrl = phoneDigits ? `https://wa.me/91${phoneDigits.slice(-10)}?text=${encodeURIComponent(`Namaste ${t.userName || "Customer"}, TyreSaathi Support se aapke Ticket #${t.ticketNo || t.id.slice(0,6)} ke sambandh me:`)}` : "";
+                      return (
+                        <tr key={t.id}>
+                          <td>
+                            <strong>#{formatSafeText(t.ticketNo, t.id)}</strong>
+                            <small className="user-subtext">{formatSafeDate(t.createdAt)}</small>
+                          </td>
+                          <td>
+                            <strong>{formatSafeText(t.userName, "User")}</strong>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+                              <small className="user-subtext">📞 {formatSafeText(t.userPhone, "—")}</small>
+                              {waUrl && (
+                                <a
+                                  href={waUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "3px",
+                                    background: "#dcfce7",
+                                    color: "#16a34a",
+                                    padding: "2px 6px",
+                                    borderRadius: "12px",
+                                    fontSize: "11px",
+                                    fontWeight: "700",
+                                    textDecoration: "none"
+                                  }}
+                                  title="WhatsApp par chat karein"
+                                >
+                                  💬 WA
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <span>{formatSafeText(t.category, "General")}</span>
+                            <small className={`priority-tag priority-${formatSafeText(t.priority, "medium")}`}>
+                              {formatSafeText(t.priority, "MEDIUM").toUpperCase()}
+                            </small>
+                          </td>
+                          <td>
+                            <strong style={{ display: "block" }}>{formatSafeText(t.subject, "Support Request")}</strong>
+                            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>{formatSafeText(t.description, "")}</p>
+                            {t.adminReply && (
+                              <div className="admin-reply-snippet" style={{ marginTop: "6px", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 8px", borderRadius: "6px" }}>
+                                <strong style={{ color: "#16a34a" }}>Admin Reply:</strong> {formatSafeText(t.adminReply)}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`status-badge-ticket status-${formatSafeText(t.status, "open")}`}>
+                              {formatSafeText(t.status, "OPEN").toUpperCase()}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <button
+                                className="btn-resolve-ticket"
+                                onClick={() => handleOpenReplyTicket(t)}
+                                style={{
+                                  background: t.status === "resolved" ? "#f1f5f9" : "#c0392b",
+                                  color: t.status === "resolved" ? "#334155" : "#ffffff",
+                                  border: t.status === "resolved" ? "1px solid #cbd5e1" : "none",
+                                  padding: "6px 12px",
+                                  borderRadius: "6px",
+                                  fontSize: "12px",
+                                  fontWeight: "700",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px"
+                                }}
+                              >
+                                {t.status === "resolved" ? "✏️ Edit Solution" : "💬 Reply & Resolve"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTicket(t.id)}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#94a3b8",
+                                  cursor: "pointer",
+                                  padding: "4px"
+                                }}
+                                title="Delete Ticket"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -3816,41 +5828,409 @@ export default function AdminPanel() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
+          ADD / EDIT SERVICE CATEGORY & RATES MODAL
+      ══════════════════════════════════════════════════════════════════ */}
+      {serviceModalOpen && (
+        <div className="modal-backdrop" onClick={() => setServiceModalOpen(false)}>
+          <div className="modal-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800" }}>
+                    {editingServiceId ? "✏️ Edit Service Category & Rate" : "➕ Nayi Service / Category Jodein"}
+                  </h3>
+                  <small style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                    Master rates for instant billing and network services
+                  </small>
+                </div>
+              </div>
+              <button className="modal-close" onClick={() => setServiceModalOpen(false)}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveService}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "10px" }}>
+                
+                {/* Category Selector */}
+                <div className="modal-field">
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Category (सर्विस कैटेगरी) *
+                  </label>
+                  <select
+                    value={serviceForm.category}
+                    onChange={(e) => setServiceForm({ ...serviceForm, category: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", fontWeight: "600", boxSizing: "border-box" }}
+                  >
+                    <option value="Puncture & Tube">🛠️ Puncture & Tube (पंचर व ट्यूब)</option>
+                    <option value="Tyre Repair">✂️ Tyre Repair (टायर कट रिपेयर)</option>
+                    <option value="Fitting & Alignment">🔧 Fitting & Alignment (फिटिंग व अलाइनमेंट)</option>
+                    <option value="Emergency Roadside">🚗 Emergency Roadside (इमरजेंसी मदद)</option>
+                    <option value="Care & Cleaning">✨ Care & Cleaning (धुलाई व पॉलिश)</option>
+                    {availableCategories
+                      .filter((c) => !["Puncture & Tube", "Tyre Repair", "Fitting & Alignment", "Emergency Roadside", "Care & Cleaning"].includes(c))
+                      .map((c) => (
+                        <option key={c} value={c}>📁 {c}</option>
+                      ))}
+                    <option value="custom">➕ + Nayi Custom Category Banayein...</option>
+                  </select>
+                </div>
+
+                {/* Custom Category Input if selected */}
+                {serviceForm.category === "custom" && (
+                  <div className="modal-field" style={{ background: "#f0fdf4", border: "1.5px dashed #22c55e", padding: "10px 12px", borderRadius: "8px" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "700", color: "#15803d", display: "block", marginBottom: "4px" }}>
+                      ✨ Nayi Category Ka Naam Type Karein *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="उदा: Rim Straightening / Alloy Wheels / Custom Tyre Jobs"
+                      value={serviceForm.customCategory}
+                      onChange={(e) => setServiceForm({ ...serviceForm, customCategory: e.target.value })}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #86efac", fontSize: "13px", boxSizing: "border-box" }}
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* Service Name */}
+                <div className="modal-field">
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Service / Item Name (सर्विस का पूरा नाम) *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="उदा: Tubeless Puncture Repair (पंचर रिपेयर) / Cut Repair"
+                    value={serviceForm.name}
+                    onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13.5px", fontWeight: "600", boxSizing: "border-box" }}
+                    required
+                  />
+                </div>
+
+                {/* 2-Col: Rate & Type */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                      Default Rate / Price (₹ दर) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="e.g. 200"
+                      value={serviceForm.rate}
+                      onChange={(e) => setServiceForm({ ...serviceForm, rate: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "14px", fontWeight: "800", color: "#16a34a", boxSizing: "border-box" }}
+                      required
+                    />
+                  </div>
+
+                  <div className="modal-field">
+                    <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                      Service Type (प्रकार)
+                    </label>
+                    <select
+                      value={serviceForm.type}
+                      onChange={(e) => setServiceForm({ ...serviceForm, type: e.target.value })}
+                      style={{ width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                    >
+                      <option value="service">🛠️ Service (सर्विस)</option>
+                      <option value="tyre">🛞 Tyre (टायर)</option>
+                      <option value="tube">⭕ Tube (ट्यूब)</option>
+                      <option value="alloy">✨ Alloy (अलॉय)</option>
+                      <option value="other">📦 Other / Accessory</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Icon Selection */}
+                <div className="modal-field">
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "6px" }}>
+                    Select Service Icon (प्रतीक चिन्ह)
+                  </label>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {["🛠️", "✂️", "🔧", "🚗", "⭕", "🔄", "⚖️", "✨", "🛞", "⚡", "🧰", "🧼", "🛵", "🚚", "🚜"].map((ico) => (
+                      <button
+                        key={ico}
+                        type="button"
+                        onClick={() => setServiceForm({ ...serviceForm, icon: ico })}
+                        style={{
+                          width: "36px",
+                          height: "36px",
+                          borderRadius: "8px",
+                          border: serviceForm.icon === ico ? "2px solid #2563eb" : "1px solid var(--border)",
+                          background: serviceForm.icon === ico ? "#eff6ff" : "var(--surface)",
+                          fontSize: "18px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
+                      >
+                        {ico}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="modal-field">
+                  <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                    Description / Customer Note (विवरण)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="उदा: Fast tubeless repair with heavy-duty cold patch"
+                    value={serviceForm.description}
+                    onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                    style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)", fontSize: "13px", boxSizing: "border-box" }}
+                  />
+                </div>
+
+                {/* Active Status */}
+                <div className="modal-checkbox-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={serviceForm.active}
+                      onChange={(e) => setServiceForm({ ...serviceForm, active: e.target.checked })}
+                    />
+                    <span>Is service ko Billing & Booking me Active (Live) rakhein</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="modal-actions" style={{ marginTop: "18px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+                <button type="button" className="btn-cancel" onClick={() => setServiceModalOpen(false)}>
+                  Cancel (रद्द करें)
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "9px 20px",
+                    borderRadius: "8px",
+                    fontWeight: "800",
+                    fontSize: "13.5px",
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)"
+                  }}
+                >
+                  <Save size={16} /> 💾 Save & Sync Across Network
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
           REPLY & RESOLVE TICKET MODAL
       ══════════════════════════════════════════════════════════════════ */}
       {replyTicketModal && (
         <div className="modal-backdrop" onClick={() => setReplyTicketModal(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-card" style={{ maxWidth: "600px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>💬 Resolve Support Ticket #{replyTicketModal.ticketNo}</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2", color: "#c0392b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <LifeBuoy size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800" }}>
+                    💬 Resolve Support Ticket #{formatSafeText(replyTicketModal.ticketNo, replyTicketModal.id)}
+                  </h3>
+                  <small style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                    Customer Query & Direct Solution Desk
+                  </small>
+                </div>
+              </div>
               <button className="modal-close" onClick={() => setReplyTicketModal(null)}>✕</button>
             </div>
 
-            <div style={{ marginBottom: "14px", fontSize: "13px" }}>
-              <p><strong>Customer:</strong> {replyTicketModal.userName} (📞 {replyTicketModal.userPhone})</p>
-              <p><strong>Subject:</strong> {replyTicketModal.subject}</p>
-              <p><strong>Issue:</strong> {replyTicketModal.description}</p>
-            </div>
+            <form onSubmit={handleSaveTicketResolution}>
+              {/* Customer & Ticket Info Box */}
+              <div style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "14px",
+                marginTop: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                fontSize: "13px"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                  <div>
+                    <span style={{ color: "#64748b", fontSize: "11px", fontWeight: "700", textTransform: "uppercase" }}>User Details</span>
+                    <h4 style={{ margin: "2px 0 0", color: "#0f172a", fontSize: "14px", fontWeight: "700" }}>
+                      {formatSafeText(replyTicketModal.userName, "Customer")}
+                    </h4>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ color: "#334155", fontWeight: "600" }}>📞 {formatSafeText(replyTicketModal.userPhone, "—")}</span>
+                    {replyTicketModal.userPhone && (
+                      <a
+                        href={`https://wa.me/91${replyTicketModal.userPhone.replace(/[^0-9]/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${replyTicketModal.userName || "Customer"}, TyreSaathi Support se aapke Ticket #${replyTicketModal.ticketNo || replyTicketModal.id.slice(0,6)} ke sambandh me:`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: "#22c55e",
+                          color: "#ffffff",
+                          padding: "4px 10px",
+                          borderRadius: "20px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        💬 Chat on WA
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-            <div className="modal-field">
-              <label>Admin Resolution Note (ग्राहक को समाधान संदेश)</label>
-              <textarea
-                rows={4}
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Aapki samasya solve kar di gayi hai..."
-              />
-            </div>
+                <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <span style={{ color: "#64748b", fontSize: "11px" }}>Category:</span>
+                    <strong style={{ display: "block", color: "#1e293b" }}>{formatSafeText(replyTicketModal.category, "General")}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: "#64748b", fontSize: "11px" }}>Priority:</span>
+                    <span className={`priority-tag priority-${formatSafeText(replyTicketModal.priority, "medium")}`} style={{ display: "inline-block", marginTop: "2px" }}>
+                      {formatSafeText(replyTicketModal.priority, "MEDIUM").toUpperCase()}
+                    </span>
+                  </div>
+                </div>
 
-            <div className="modal-actions" style={{ marginTop: "16px" }}>
-              <button className="btn-cancel" onClick={() => setReplyTicketModal(null)}>Cancel</button>
-              <button
-                className="btn-submit-ticket"
-                onClick={() => handleResolveTicket(replyTicketModal.id)}
-              >
-                ✅ Mark as Resolved
-              </button>
-            </div>
+                <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                  <span style={{ color: "#64748b", fontSize: "11px" }}>Subject & Issue:</span>
+                  <strong style={{ display: "block", color: "#0f172a", marginTop: "2px" }}>{formatSafeText(replyTicketModal.subject, "Support Request")}</strong>
+                  <p style={{ margin: "4px 0 0", color: "#475569", lineHeight: "1.4", fontSize: "12.5px" }}>
+                    {formatSafeText(replyTicketModal.description, "No description provided.")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Selector */}
+              <div className="modal-field" style={{ marginTop: "14px" }}>
+                <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                  Update Ticket Status (स्थिति अपडेट करें) *
+                </label>
+                <select
+                  value={replyStatus}
+                  onChange={(e) => setReplyStatus(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid var(--border)",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    boxSizing: "border-box"
+                  }}
+                >
+                  <option value="resolved">🟢 Resolved (समस्या हल हो गई)</option>
+                  <option value="in_progress">🔵 In Progress (काम चल रहा है / अंडर रिव्यू)</option>
+                  <option value="open">🟡 Open / Pending (लंबित)</option>
+                  <option value="closed">⚪ Closed (बंद)</option>
+                </select>
+              </div>
+
+              {/* Quick Template Pills */}
+              <div style={{ marginTop: "10px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: "#64748b", display: "block", marginBottom: "6px" }}>
+                  ⚡ Quick Response Templates (1-Click Paste):
+                </span>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  {[
+                    "Aapki samasya ka safaltapurvak samadhan kar diya gaya hai. TyreSaathi se judne ke liye dhanyawad!",
+                    "Hamaari support team ne aapse baat ki hai aur requested assistance schedule kar di hai.",
+                    "Aapki complaint review kar li gayi hai aur repair partner ko immediate instructions bhej diye gaye hain.",
+                  ].map((tpl, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setReplyText(tpl)}
+                      style={{
+                        background: "#f1f5f9",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "8px",
+                        padding: "4px 10px",
+                        fontSize: "11px",
+                        color: "#334155",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        lineHeight: "1.3"
+                      }}
+                    >
+                      {tpl.slice(0, 38)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resolution Textarea */}
+              <div className="modal-field" style={{ marginTop: "10px" }}>
+                <label style={{ fontSize: "12px", fontWeight: "700", display: "block", marginBottom: "4px" }}>
+                  Admin Resolution Note / Reply (ग्राहक को भेजा जाने वाला संदेश) *
+                </label>
+                <textarea
+                  rows={4}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Kripya yahan customer ko samadhan ka vivran likhein..."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid var(--border)",
+                    fontSize: "13px",
+                    boxSizing: "border-box",
+                    lineHeight: "1.4"
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="modal-actions" style={{ marginTop: "16px", borderTop: "1px solid var(--border)", paddingTop: "14px" }}>
+                <button type="button" className="btn-cancel" onClick={() => setReplyTicketModal(null)}>
+                  Cancel (रद्द करें)
+                </button>
+                <button
+                  type="submit"
+                  disabled={solvingTicketLoading}
+                  style={{
+                    background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "10px 22px",
+                    borderRadius: "8px",
+                    fontWeight: "800",
+                    fontSize: "13.5px",
+                    cursor: solvingTicketLoading ? "not-allowed" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 4px 14px rgba(22, 163, 74, 0.4)"
+                  }}
+                >
+                  {solvingTicketLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  {solvingTicketLoading ? "Saving..." : "✅ Save Solution & Update Status"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -4438,69 +6818,98 @@ export default function AdminPanel() {
           }
         }
         .admin-metric-card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 12px 10px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 16px 14px;
           display: flex;
           align-items: center;
-          gap: 10px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+          gap: 14px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          user-select: none;
+          position: relative;
+          overflow: hidden;
+        }
+        .admin-metric-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 12px 24px -4px rgba(0,0,0,0.08), 0 4px 8px -2px rgba(0,0,0,0.04);
+          border-color: #cbd5e1;
+        }
+        .admin-metric-card:active {
+          transform: translateY(-1px);
         }
         .metric-icon-wrap {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
         }
         .metric-lbl {
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #64748b;
           display: block;
+          margin-bottom: 3px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
         }
         .metric-val {
-          font-size: 1.15rem;
+          font-size: 1.35rem;
           font-weight: 800;
-          margin: 1px 0;
-          color: var(--text);
+          margin: 0 0 4px;
+          color: #0f172a;
+          line-height: 1.2;
         }
         .metric-note {
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          font-size: 0.72rem;
+          color: #64748b;
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         /* Quick Links Grid */
         .admin-quick-links-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 10px;
+          gap: 12px;
         }
         @media (min-width: 640px) {
           .admin-quick-links-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (min-width: 900px) {
-          .admin-quick-links-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+          .admin-quick-links-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
         }
         .shortcut-box {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 14px 12px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 18px 16px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
         }
         .shortcut-box:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-          border-color: #c0392b;
+          transform: translateY(-3px);
+          box-shadow: 0 14px 28px -4px rgba(0,0,0,0.09);
         }
-        .sc-icon { font-size: 22px; margin-bottom: 6px; }
-        .shortcut-box h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--text); }
-        .shortcut-box p { margin: 0 0 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.35; }
-        .sc-arrow { font-size: 0.75rem; font-weight: 700; color: #c0392b; }
+        .shortcut-box:active {
+          transform: translateY(-1px);
+        }
+        .sc-icon { font-size: 26px; margin-bottom: 10px; line-height: 1; }
+        .shortcut-box h4 { margin: 0 0 6px; font-size: 1rem; font-weight: 700; color: #0f172a; }
+        .shortcut-box p { margin: 0 0 12px; font-size: 0.8rem; color: #64748b; line-height: 1.45; flex-grow: 1; }
+        .sc-arrow { font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
         /* Section Toolbar */
         .section-toolbar {

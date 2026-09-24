@@ -100,7 +100,7 @@ export default function Register() {
         <form onSubmit={handleSubmit}>
           <div className="auth-field">
             <label>Aapka Naam (Full Name) *</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Ramesh Kumar" />
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Your Name" />
           </div>
 
           <div className="auth-field">
@@ -110,7 +110,7 @@ export default function Register() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               required
-              placeholder="98765 43210"
+              placeholder="10 digit mobile number"
             />
           </div>
 

@@ -23,6 +23,7 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "../firebase";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
+import { compressImage } from "../utils/imageOptimizer";
 
 const ROLE_LABEL = {
   [ROLES.CUSTOMER]: "👤 Customer (ग्राहक)",
@@ -32,7 +33,7 @@ const ROLE_LABEL = {
 
 export default function Profile() {
   const { theme, toggleTheme } = useTheme();
-  const { user, profile, updateUserProfile, logout } = useAuth();
+  const { user, profile, updateUserProfile, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -70,25 +71,37 @@ export default function Profile() {
     }
   }, [profile, user]);
 
-  // Handle Photo Upload
+  // Handle Photo Upload with compression
   const handlePhotoUpload = async (file) => {
     if (!file || !user) return;
     setUploadingPhoto(true);
     try {
-      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      setFormData((prev) => ({ ...prev, photoURL: downloadURL }));
-      await updateUserProfile({ photoURL: downloadURL });
+      const { blob, dataUrl } = await compressImage(file, 600, 600, 0.85);
+      
+      // Set immediate local preview and profile update
+      setFormData((prev) => ({ ...prev, photoURL: dataUrl }));
+      await updateUserProfile({ photoURL: dataUrl });
+
+      // Background remote storage upload
+      try {
+        const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}.jpg`);
+        const uploadTask = (async () => {
+          await uploadBytes(storageRef, blob, { contentType: "image/jpeg" });
+          return await getDownloadURL(storageRef);
+        })();
+        const timeoutTask = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Storage timeout")), 5000)
+        );
+        const downloadURL = await Promise.race([uploadTask, timeoutTask]);
+        if (downloadURL) {
+          setFormData((prev) => ({ ...prev, photoURL: downloadURL }));
+          await updateUserProfile({ photoURL: downloadURL });
+        }
+      } catch (uploadErr) {
+        console.warn("Avatar remote storage timed out, kept optimized dataUrl:", uploadErr);
+      }
     } catch (err) {
-      console.warn("Storage upload fallback to local reader:", err);
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const localData = e.target.result;
-        setFormData((prev) => ({ ...prev, photoURL: localData }));
-        await updateUserProfile({ photoURL: localData });
-      };
-      reader.readAsDataURL(file);
+      console.error("Avatar process error:", err);
     } finally {
       setUploadingPhoto(false);
     }
@@ -253,6 +266,46 @@ export default function Profile() {
                 </Link>
               </div>
             )}
+
+            {/* Quick Access for Admin & Authorized Staff Members */}
+            {isAdmin && (
+              <div style={{
+                marginTop: "16px",
+                background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+                padding: "14px 18px",
+                borderRadius: "12px",
+                color: "#ffffff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "10px",
+                boxShadow: "0 4px 14px rgba(79, 70, 229, 0.25)"
+              }}>
+                <div>
+                  <strong style={{ fontSize: "14px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <ShieldCheck size={18} color="#facc15" /> 🛡️ Staff & Operations Dashboard
+                  </strong>
+                  <small style={{ color: "#c7d2fe", fontSize: "12px", display: "block", marginTop: "2px" }}>
+                    Customer tickets, bookings aur operations manage karein.
+                  </small>
+                </div>
+                <Link to="/admin" style={{
+                  background: "#4f46e5",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                  fontWeight: "700",
+                  fontSize: "13px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  Open Dashboard ➔
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           /* ✏️ EDIT PROFILE FORM */
@@ -286,7 +339,7 @@ export default function Profile() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Heena Kausar / Rajesh Kumar"
+                  placeholder="e.g. Your Name"
                 />
               </div>
 
@@ -297,7 +350,7 @@ export default function Profile() {
                   required
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="e.g. 9910281345"
+                  placeholder="10 digit mobile number"
                 />
               </div>
             </div>

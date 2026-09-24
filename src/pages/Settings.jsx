@@ -319,7 +319,7 @@ export default function Settings() {
                       type="tel"
                       value={settings.phone}
                       onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                      placeholder="e.g. 98765 43210"
+                      placeholder="10 digit mobile number"
                     />
                   </div>
 

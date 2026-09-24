@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  Plus, 
-  Trash2, 
-  Printer, 
-  Share2, 
-  Search, 
-  Calendar, 
-  User, 
-  Phone, 
-  Car, 
-  FileText, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  DollarSign, 
-  CreditCard, 
-  QrCode, 
-  Send, 
-  ArrowLeft, 
-  ChevronRight, 
-  Filter, 
-  Download, 
+import {
+  Plus,
+  Trash2,
+  Printer,
+  Share2,
+  Search,
+  Calendar,
+  User,
+  Phone,
+  Car,
+  FileText,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  DollarSign,
+  CreditCard,
+  QrCode,
+  Send,
+  ArrowLeft,
+  ChevronRight,
+  Filter,
+  Download,
   Receipt,
   Sparkles,
   Percent,
@@ -37,14 +37,43 @@ import { triggerHaptic, showNativeToast, shareNativeContent } from "../utils/nat
 const INITIAL_DEMO_INVOICES = [];
 
 const PRESET_SERVICES = [
-  { name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 350, type: "service" },
-  { name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 100, type: "service" },
-  { name: "New Tyre Fitting & Nitrogen Fill (फिटिंग)", rate: 150, type: "service" },
+  { name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 200, type: "service" },
+  { name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 3000, type: "service" },
+  { name: "New Tyre Fitting (टायर फिटिंग)", rate: 150, type: "service" },
   { name: "Doorstep Emergency Assistance (घर/रास्ते पर)", rate: 499, type: "service" },
-  { name: "Nitrogen Air Fill - All 4 Tyres", rate: 100, type: "service" },
-  { name: "Tube Replacement / Valve Pin Change (ट्यूब/वॉल्व)", rate: 90, type: "service" },
-  { name: "Tyre Rotation & Inspection", rate: 200, type: "service" },
+  { name: "Tube Replacement / Valve Pin (ट्यूब/वॉल्व)", rate: 90, type: "service" },
+  { name: "Tyre Rotation & Inspection (रोटेशन)", rate: 200, type: "service" },
 ];
+
+// Helper to generate sequential invoice numbers starting from 01 (e.g. TS-INV-01, TS-INV-02) per shop
+export const generateNextInvoiceNo = (existingList = [], prefix = "TS-INV-") => {
+  let highest = 0;
+  if (Array.isArray(existingList)) {
+    existingList.forEach((inv) => {
+      if (inv && inv.invoiceNo) {
+        const match = String(inv.invoiceNo).match(/(\d+)$/);
+        if (match) {
+          const val = parseInt(match[1], 10);
+          if (!isNaN(val) && val > highest) {
+            highest = val;
+          }
+        }
+      }
+    });
+  }
+  const next = highest + 1;
+  const formatted = next < 10 ? `0${next}` : String(next);
+  return `${prefix}${formatted}`;
+};
+
+// Helper to determine the dedicated storage key per shop/vendor
+export const getShopInvoiceStorageKey = (user, profile) => {
+  if (user?.uid) return `tyresaathi_invoices_vendor_${user.uid}`;
+  if (profile?.shopName && profile.shopName.trim() && profile.shopName !== "TyreSaathi Partner Hub") {
+    return `tyresaathi_invoices_shop_${profile.shopName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  }
+  return "tyresaathi_invoices_default";
+};
 
 export default function Billing() {
   const { user, profile, isVendor } = useAuth();
@@ -52,9 +81,12 @@ export default function Billing() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("create"); // 'create' or 'history'
+
+  // Load shop-specific invoices from dedicated shop storage
   const [invoices, setInvoices] = useState(() => {
     try {
-      const local = localStorage.getItem("tyresaathi_invoices");
+      const key = getShopInvoiceStorageKey(user, profile);
+      const local = localStorage.getItem(key);
       return local ? JSON.parse(local) : [];
     } catch {
       return [];
@@ -65,28 +97,170 @@ export default function Billing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPayment, setFilterPayment] = useState("all");
 
-  // Active Invoice Form State
-  const [invoice, setInvoice] = useState({
-    invoiceNo: `TS-INV-${Math.floor(1000 + Math.random() * 9000)}`,
-    date: new Date().toISOString().split("T")[0],
-    customerName: searchParams.get("customer") || "",
-    customerPhone: searchParams.get("phone") || "",
-    vehicleName: searchParams.get("vehicle") || "",
-    vehicleNumber: searchParams.get("vehicleNo") || "",
-    shopName: profile?.shopName || "TyreSaathi Partner Hub",
-    shopPhone: profile?.phone || "",
-    shopAddress: profile?.address || "Verified TyreSaathi Network",
-    items: [
-      { id: "1", name: searchParams.get("service") || "MRF / Apollo Tyre Replacement", type: "tyre", qty: 1, rate: 2500, amount: 2500 }
-    ],
-    subtotal: 2500,
-    discount: 0,
-    taxType: "none", // 'none', 'gst18', 'gst28'
-    taxAmount: 0,
-    grandTotal: 2500,
-    paymentMode: "upi",
-    paymentStatus: "paid",
-    notes: "Warranty as per company terms. Free checkup on next visit.",
+  const [presetServices, setPresetServices] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_custom_rates");
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter((s) => s.active !== false && s.status !== "inactive");
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return PRESET_SERVICES;
+  });
+
+  // Load and synchronize shop-specific invoices when shop/user profile changes
+  useEffect(() => {
+    const key = getShopInvoiceStorageKey(user, profile);
+    let currentShopList = [];
+    try {
+      const local = localStorage.getItem(key);
+      if (local) {
+        currentShopList = JSON.parse(local);
+        setInvoices(currentShopList);
+      } else {
+        setInvoices([]);
+      }
+    } catch (e) {
+      console.warn("Could not read shop local invoices:", e);
+    }
+
+    // Auto-update active form invoice number and shop details for the current shop
+    setInvoice((prev) => ({
+      ...prev,
+      invoiceNo: generateNextInvoiceNo(currentShopList),
+      shopName: profile?.shopName || prev.shopName || "TyreSaathi Partner Hub",
+      shopPhone: profile?.phone || prev.shopPhone || "",
+      shopAddress: profile?.address || prev.shopAddress || "Verified TyreSaathi Network",
+    }));
+
+    // Also fetch cloud invoices for this specific shop/vendor from Firestore
+    const fetchShopCloudInvoices = async () => {
+      if (!user?.uid) return;
+      try {
+        const q = query(
+          collection(db, "invoices"),
+          where("vendorId", "==", user.uid)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const cloudList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          cloudList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          setInvoices(cloudList);
+          try {
+            localStorage.setItem(key, JSON.stringify(cloudList));
+          } catch {}
+          setInvoice((prev) => ({
+            ...prev,
+            invoiceNo: generateNextInvoiceNo(cloudList),
+          }));
+        }
+      } catch (err) {
+        console.warn("Firestore shop invoices query fallback:", err);
+      }
+    };
+
+    fetchShopCloudInvoices();
+  }, [user?.uid, profile?.shopName, profile?.phone, profile?.address]);
+
+  // Keep preset services synced with Admin Panel updates in real time
+  useEffect(() => {
+    const syncServices = () => {
+      try {
+        const local = localStorage.getItem("tyresaathi_custom_rates");
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPresetServices(parsed.filter((s) => s.active !== false && s.status !== "inactive"));
+          }
+        }
+      } catch (e) {
+        console.warn("Could not parse updated rates:", e);
+      }
+    };
+
+    window.addEventListener("tyresaathi_rates_updated", syncServices);
+    window.addEventListener("storage", syncServices);
+
+    // Also fetch live service categories from Firestore
+    const fetchCloudCategories = async () => {
+      try {
+        const snap = await getDocs(collection(db, "service_categories"));
+        if (!snap.empty) {
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const activeList = list.filter((s) => s.active !== false && s.status !== "inactive");
+          if (activeList.length > 0) {
+            setPresetServices(activeList);
+            localStorage.setItem("tyresaathi_custom_rates", JSON.stringify(list));
+          }
+        }
+      } catch (err) {
+        console.warn("Firestore service sync note (using local state):", err);
+      }
+    };
+    fetchCloudCategories();
+
+    return () => {
+      window.removeEventListener("tyresaathi_rates_updated", syncServices);
+      window.removeEventListener("storage", syncServices);
+    };
+  }, []);
+
+  // Keep dedicated localStorage in sync with this shop's invoices list
+  useEffect(() => {
+    try {
+      const key = getShopInvoiceStorageKey(user, profile);
+      localStorage.setItem(key, JSON.stringify(invoices));
+    } catch (e) {
+      console.warn("Could not save to shop localStorage", e);
+    }
+  }, [invoices, user?.uid, profile?.shopName]);
+
+  // Active Invoice Form State - starts cleanly with TS-INV-01 for this specific shop
+  const [invoice, setInvoice] = useState(() => {
+    let savedList = [];
+    try {
+      const key = getShopInvoiceStorageKey(user, profile);
+      const local = localStorage.getItem(key);
+      if (local) savedList = JSON.parse(local);
+    } catch {
+      savedList = [];
+    }
+
+    return {
+      invoiceNo: generateNextInvoiceNo(savedList),
+      date: new Date().toISOString().split("T")[0],
+      customerName: searchParams.get("customer") || "",
+      customerPhone: searchParams.get("phone") || "",
+      vehicleName: searchParams.get("vehicle") || "",
+      vehicleNumber: searchParams.get("vehicleNo") || "",
+      shopName: profile?.shopName || "TyreSaathi Partner Hub",
+      shopPhone: profile?.phone || "",
+      shopAddress: profile?.address || "Verified TyreSaathi Network",
+      items: [
+        {
+          id: "1",
+          name: searchParams.get("service") || "",
+          tyreSize: "",
+          serialNo: "",
+          type: "tyre",
+          qty: 1,
+          rate: 0,
+          amount: 0
+        }
+      ],
+      subtotal: 0,
+      discount: 0,
+      taxType: "none", // 'none', 'gst18', 'gst28'
+      taxAmount: 0,
+      grandTotal: 0,
+      paymentMode: "cash",
+      paymentStatus: "paid",
+      notes: "Warranty as per company terms. Free checkup on next visit.",
+    };
   });
 
   // Modal State for Full Page Printable Receipt
@@ -137,11 +311,13 @@ export default function Billing() {
     triggerHaptic("light");
     const newItem = {
       id: Date.now().toString(),
-      name: type === "service" ? "Puncture Repair / Tyre Fitting" : "New Tyre / Tube",
+      name: type === "service" ? "Puncture Repair / Tyre Fitting" : "",
+      tyreSize: "",
+      serialNo: "",
       type,
       qty: 1,
-      rate: type === "service" ? 150 : 2200,
-      amount: type === "service" ? 150 : 2200,
+      rate: type === "service" ? 150 : 0,
+      amount: type === "service" ? 150 : 0,
     };
     setInvoice((prev) => ({
       ...prev,
@@ -155,6 +331,8 @@ export default function Billing() {
     const newItem = {
       id: Date.now().toString(),
       name: svc.name,
+      tyreSize: "",
+      serialNo: "",
       type: svc.type,
       qty: 1,
       rate: svc.rate,
@@ -189,10 +367,15 @@ export default function Billing() {
     }
 
     setLoading(true);
+    const key = getShopInvoiceStorageKey(user, profile);
     const invoiceRecord = {
       ...invoice,
       id: invoice.invoiceNo,
+      vendorId: user?.uid || null,
+      shopKey: key,
       shopName: profile?.shopName || invoice.shopName || "TyreSaathi Partner Hub",
+      shopPhone: profile?.phone || invoice.shopPhone || "",
+      shopAddress: profile?.address || invoice.shopAddress || "Verified TyreSaathi Network",
       createdAt: new Date().toISOString(),
     };
 
@@ -206,7 +389,12 @@ export default function Billing() {
       console.warn("Firestore invoice save note (using local state):", err);
     }
 
-    setInvoices((prev) => [invoiceRecord, ...prev]);
+    const updatedList = [invoiceRecord, ...invoices];
+    setInvoices(updatedList);
+    try {
+      localStorage.setItem(key, JSON.stringify(updatedList));
+    } catch (err) {}
+
     setLoading(false);
     setSavedSuccess(true);
     triggerHaptic("success");
@@ -220,7 +408,7 @@ export default function Billing() {
   // Reset Form for Next Bill
   const handleResetForm = () => {
     setInvoice({
-      invoiceNo: `TS-INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceNo: generateNextInvoiceNo(invoices),
       date: new Date().toISOString().split("T")[0],
       customerName: "",
       customerPhone: "",
@@ -230,14 +418,14 @@ export default function Billing() {
       shopPhone: profile?.phone || "",
       shopAddress: profile?.address || "Verified TyreSaathi Network",
       items: [
-        { id: Date.now().toString(), name: "", type: "tyre", qty: 1, rate: 0, amount: 0 }
+        { id: Date.now().toString(), name: "", tyreSize: "", serialNo: "", type: "tyre", qty: 1, rate: 0, amount: 0 }
       ],
       subtotal: 0,
       discount: 0,
       taxType: "none",
       taxAmount: 0,
       grandTotal: 0,
-      paymentMode: "upi",
+      paymentMode: "cash",
       paymentStatus: "paid",
       notes: "Warranty as per company terms. Free checkup on next visit.",
     });
@@ -246,7 +434,16 @@ export default function Billing() {
   // Generate WhatsApp Message Link
   const getWhatsAppShareUrl = (inv) => {
     const itemsList = (inv.items || [])
-      .map((it, idx) => `${idx + 1}. ${it.name} (x${it.qty}) - ₹${it.amount}`)
+      .map((it, idx) => {
+        let line = `${idx + 1}. *${it.name}* (x${it.qty}) - ₹${it.amount}`;
+        const tags = [];
+        if (it.tyreSize) tags.push(`🛞 Size: ${it.tyreSize}`);
+        if (it.serialNo) tags.push(`🔢 DOT/Serial: ${it.serialNo}`);
+        if (tags.length > 0) {
+          line += `\n   ↳ ${tags.join(" | ")}`;
+        }
+        return line;
+      })
       .join("\n");
 
     const message = `🧾 *TyreSaathi Retail Invoice*\n\n` +
@@ -269,7 +466,7 @@ export default function Billing() {
   // Filtered History
   const filteredInvoices = invoices.filter((inv) => {
     const q = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       inv.customerName.toLowerCase().includes(q) ||
       inv.customerPhone.includes(q) ||
       inv.invoiceNo.toLowerCase().includes(q) ||
@@ -287,9 +484,25 @@ export default function Billing() {
       {/* 🌟 Header Bar */}
       <div className="billing-header-row">
         <div>
-          <h1 className="billing-title">
-            <Receipt size={26} color="#c0392b" /> Tyre & Service Billing (दुकान बिलिंग)
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+            <h1 className="billing-title" style={{ margin: 0 }}>
+              <Receipt size={26} color="#c0392b" /> Tyre & Service Billing (दुकान बिलिंग)
+            </h1>
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "3px 10px",
+              borderRadius: "20px",
+              fontSize: "0.78rem",
+              fontWeight: 700,
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              border: "1px solid #bfdbfe"
+            }}>
+              🏪 {profile?.shopName || "Individual Shop"} • 🆔 Series: #TS-INV-01 se shuru
+            </span>
+          </div>
           <p className="billing-sub">
             Grahak ke liye instant cash memo, GST/Non-GST retail invoice banayein, print karein aur WhatsApp par bhejein.
           </p>
@@ -328,13 +541,27 @@ export default function Billing() {
           <div className="billing-form-card">
             <form onSubmit={handleSaveInvoice}>
               {/* Section 1: Customer & Vehicle Info */}
-              {/* Section 1: Customer, Shop & Vehicle Info */}
               <div className="form-sub-card">
                 <div className="card-section-title">
                   <span>1</span> Dukan, Grahak Aur Gaadi Ki Details (Shop & Customer Info)
                 </div>
 
-                <div className="form-grid-2" style={{ marginBottom: "14px" }}>
+                <div className="form-grid-3" style={{ marginBottom: "14px" }}>
+                  <div className="form-input-group">
+                    <label>Bill / Invoice No. (बिल नंबर) *</label>
+                    <div className="input-with-icon">
+                      <Receipt size={15} />
+                      <input
+                        type="text"
+                        placeholder="TS-INV-01"
+                        value={invoice.invoiceNo}
+                        onChange={(e) => setInvoice({ ...invoice, invoiceNo: e.target.value.toUpperCase() })}
+                        style={{ fontFamily: "monospace", fontWeight: 700 }}
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="form-input-group">
                     <label>Shop / Business Name (दुकान का नाम) *</label>
                     <input
@@ -363,7 +590,7 @@ export default function Billing() {
                       <User size={15} />
                       <input
                         type="text"
-                        placeholder="e.g. Ahamad Raza"
+                        placeholder="e.g. Your Name"
                         value={invoice.customerName}
                         onChange={(e) => setInvoice({ ...invoice, customerName: e.target.value })}
                         required
@@ -377,7 +604,7 @@ export default function Billing() {
                       <Phone size={15} />
                       <input
                         type="tel"
-                        placeholder="10-digit Mobile No."
+                        placeholder="10 digit mobile number"
                         value={invoice.customerPhone}
                         onChange={(e) => setInvoice({ ...invoice, customerPhone: e.target.value })}
                         required
@@ -432,29 +659,57 @@ export default function Billing() {
                 {/* Quick Presets Bar */}
                 <div className="presets-bar">
                   <span className="preset-label">⚡ Quick Services:</span>
-                  {PRESET_SERVICES.slice(0, 4).map((svc, i) => (
+                  {presetServices.map((svc, i) => (
                     <button
-                      key={i}
+                      key={svc.id || i}
                       type="button"
                       className="preset-chip"
                       onClick={() => addPresetService(svc)}
+                      title={svc.category ? `Category: ${svc.category}` : undefined}
                     >
-                      + {svc.name.split("(")[0]} (₹{svc.rate})
+                      {svc.icon ? `${svc.icon} ` : "+ "}
+                      {svc.name.includes("(") ? svc.name.split("(")[0].trim() : svc.name} (₹{Number(svc.rate || 0).toLocaleString("en-IN")})
                     </button>
                   ))}
                 </div>
 
                 {/* Items Table */}
-                <div className="items-table-wrapper">
-                  <table className="items-entry-table">
+                <datalist id="tyre-sizes-list">
+                  <option value="145/80 R12" label="Alto / WagonR" />
+                  <option value="155/80 R13" label="Santro / Eon" />
+                  <option value="165/80 R14" label="Swift / Dzire" />
+                  <option value="175/65 R14" label="Tiago / i10 / Amaze" />
+                  <option value="185/65 R15" label="Baleno / Swift / Ertiga" />
+                  <option value="195/65 R15" label="City / Corolla / Civic" />
+                  <option value="195/55 R16" label="i20 / Baleno Top" />
+                  <option value="205/60 R16" label="Brezza / EcoSport" />
+                  <option value="215/60 R16" label="Creta / Seltos" />
+                  <option value="215/65 R16" label="Duster / Harrier" />
+                  <option value="235/65 R17" label="Scorpio / XUV500" />
+                  <option value="265/65 R17" label="Fortuner / Endeavour" />
+                  <option value="90/90-12" label="Activa / Jupiter Front" />
+                  <option value="90/100-10" label="Pleasure / Scooty" />
+                  <option value="2.75-17" label="Splendor / HF Deluxe" />
+                  <option value="3.00-17" label="Shine / Passion" />
+                  <option value="100/90-17" label="Pulsar / Apache Rear" />
+                  <option value="140/60 R17" label="FZ / Duke Rear" />
+                  <option value="10.00-20" label="Commercial Truck / Bus" />
+                  <option value="295/90 R20" label="Heavy Truck Radial" />
+                  <option value="13.6-28" label="Tractor Rear Tyre" />
+                </datalist>
+
+                <div className="items-table-wrapper" style={{ overflowX: "auto" }}>
+                  <table className="items-entry-table" style={{ minWidth: "720px" }}>
                     <thead>
                       <tr>
-                        <th style={{ width: "45%" }}>Item Description / Service Name</th>
-                        <th style={{ width: "15%" }}>Type</th>
-                        <th style={{ width: "12%" }}>Qty</th>
-                        <th style={{ width: "15%" }}>Rate (₹)</th>
-                        <th style={{ width: "13%" }}>Amount (₹)</th>
-                        <th style={{ width: "5%" }}></th>
+                        <th style={{ width: "26%" }}>Item / Brand (आइटम नाम)</th>
+                        <th style={{ width: "20%" }}>🛞 Tyre Size / No. (टायर नंबर)</th>
+                        <th style={{ width: "20%" }}>🔢 Serial No. (सीरियल नंबर)</th>
+                        <th style={{ width: "10%" }}>Type</th>
+                        <th style={{ width: "7%" }}>Qty</th>
+                        <th style={{ width: "10%" }}>Rate (₹)</th>
+                        <th style={{ width: "10%" }}>Amount (₹)</th>
+                        <th style={{ width: "4%" }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -464,10 +719,33 @@ export default function Billing() {
                             <input
                               type="text"
                               value={it.name}
-                              placeholder="उदा: Apollo Amazer 185/65 R15 / Cut Repair"
+                              placeholder="उदा: Apollo Amazer / MRF ZVTV"
                               onChange={(e) => handleItemChange(it.id, "name", e.target.value)}
                               className="item-name-input"
                               required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              list="tyre-sizes-list"
+                              value={it.tyreSize || ""}
+                              placeholder=""
+                              onChange={(e) => handleItemChange(it.id, "tyreSize", e.target.value)}
+                              className="item-size-input"
+                              autoComplete="off"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              maxLength={15}
+                              value={it.serialNo || ""}
+                              placeholder=""
+                              onChange={(e) => handleItemChange(it.id, "serialNo", e.target.value.toUpperCase().slice(0, 15))}
+                              className="item-serial-input"
+                              title="Tyre Serial / DOT No. (Max 15 digits)"
+                              autoComplete="off"
                             />
                           </td>
                           <td>
@@ -565,8 +843,8 @@ export default function Billing() {
                       value={invoice.paymentMode}
                       onChange={(e) => setInvoice({ ...invoice, paymentMode: e.target.value })}
                     >
-                      <option value="upi">📱 UPI (GPay / PhonePe / Paytm)</option>
                       <option value="cash">💵 Cash (नकद)</option>
+                      <option value="upi">📱 UPI (GPay / PhonePe / Paytm)</option>
                       <option value="card">💳 Debit / Credit Card</option>
                       <option value="khata">📒 Khata / Udhar (बाकी)</option>
                     </select>
@@ -631,8 +909,8 @@ export default function Billing() {
                 <h3 style={{ color: "#c0392b", fontWeight: 800, fontSize: "16px", margin: "0 0 2px" }}>
                   {invoice.shopName || profile?.shopName || "ABC Tyre & Service Center"}
                 </h3>
-                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>
-                  Verified TyreSaathi Partner Network
+                <p style={{ fontSize: "12px", fontWeight: 700, color: "#c0392b", margin: 0 }}>
+                  Authorized TyreSaathi Partner Network
                 </p>
                 <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>Date: {invoice.date}</small>
               </div>
@@ -665,6 +943,20 @@ export default function Billing() {
                   <div key={idx} className="receipt-item-row">
                     <div className="it-left">
                       <span className="it-name">{it.name || "Item Name"}</span>
+                      {(it.tyreSize || it.serialNo) && (
+                        <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", margin: "3px 0" }}>
+                          {it.tyreSize && (
+                            <span style={{ fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
+                              🛞 {it.tyreSize}
+                            </span>
+                          )}
+                          {it.serialNo && (
+                            <span style={{ fontSize: "11px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "4px", fontWeight: 700, fontFamily: "monospace" }}>
+                              🔢 #{it.serialNo}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <small className="it-qty">{it.qty} x ₹{it.rate}</small>
                     </div>
                     <span className="it-amt">₹{it.amount}</span>
@@ -1034,11 +1326,13 @@ export default function Billing() {
               <table className="paper-items-table">
                 <thead>
                   <tr>
-                    <th style={{ width: "8%" }}>#</th>
-                    <th style={{ width: "52%" }}>Item Description / Service</th>
-                    <th style={{ width: "12%" }}>Qty</th>
-                    <th style={{ width: "14%" }}>Rate (₹)</th>
-                    <th style={{ width: "14%", textAlign: "right" }}>Amount (₹)</th>
+                    <th style={{ width: "5%" }}>#</th>
+                    <th style={{ width: "30%" }}>Item Description / Brand</th>
+                    <th style={{ width: "18%" }}>Tyre Number / Size (साइज)</th>
+                    <th style={{ width: "18%" }}>Serial / DOT No. (सीरियल)</th>
+                    <th style={{ width: "7%" }}>Qty</th>
+                    <th style={{ width: "10%" }}>Rate (₹)</th>
+                    <th style={{ width: "12%", textAlign: "right" }}>Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1049,9 +1343,15 @@ export default function Billing() {
                         <strong>{it.name}</strong>
                         <span className="paper-type-sub">({it.type.toUpperCase()})</span>
                       </td>
+                      <td>
+                        {it.tyreSize ? <strong style={{ color: "#0f172a" }}>{it.tyreSize}</strong> : <span style={{ color: "#94a3b8" }}>—</span>}
+                      </td>
+                      <td>
+                        {it.serialNo ? <code style={{ fontSize: "11px", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", fontWeight: "700" }}>{it.serialNo}</code> : <span style={{ color: "#94a3b8" }}>—</span>}
+                      </td>
                       <td>{it.qty}</td>
                       <td>₹{it.rate}</td>
-                      <td style={{ textAlign: "right" }}>₹{it.amount}</td>
+                      <td style={{ textAlign: "right", fontWeight: "700" }}>₹{it.amount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1411,14 +1711,31 @@ export default function Billing() {
           padding: 6px 4px;
           border-bottom: 1px solid var(--border);
         }
-        .item-name-input {
+        .item-name-input,
+        .item-size-input,
+        .item-serial-input {
           width: 100%;
           padding: 6px 8px;
           border-radius: 6px;
           border: 1px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.75rem;
+          font-size: 0.78rem;
+          font-weight: 600;
+          outline: none;
+        }
+        .item-serial-input {
+          font-family: monospace;
+          text-transform: uppercase;
+        }
+        .item-name-input:focus,
+        .item-size-input:focus,
+        .item-serial-input:focus,
+        .item-type-select:focus,
+        .item-qty-input:focus,
+        .item-rate-input:focus {
+          border-color: #c0392b;
+          box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.1);
         }
         .item-type-select {
           width: 100%;

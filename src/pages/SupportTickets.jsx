@@ -33,6 +33,42 @@ const TICKET_CATEGORIES = [
   "Other General Inquiry (अन्य प्रश्न)"
 ];
 
+// Helper to normalize tickets to sequential TS-TCK-01, TS-TCK-02...
+export const normalizeTicketList = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const sorted = [...list].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.timestamp || 0).getTime();
+    const timeB = new Date(b.createdAt || b.timestamp || 0).getTime();
+    return timeA - timeB;
+  });
+
+  return sorted.map((item, idx) => {
+    const seq = idx + 1;
+    const formatted = seq < 10 ? `0${seq}` : String(seq);
+    const newTicketNo = `TS-TCK-${formatted}`;
+    return {
+      ...item,
+      id: item.id?.startsWith("tck_") ? item.id : newTicketNo,
+      ticketNo: newTicketNo
+    };
+  }).reverse();
+};
+
+// Helper to generate sequential ticket numbers starting from 01 (e.g. TS-TCK-01, TS-TCK-02)
+export const generateNextTicketNo = (existingList = [], prefix = "TS-TCK-") => {
+  const next = (Array.isArray(existingList) ? existingList.length : 0) + 1;
+  const formatted = next < 10 ? `0${next}` : String(next);
+  return `${prefix}${formatted}`;
+};
+
+export const getShopTicketStorageKey = (user, profile) => {
+  if (user?.uid) return `tyresaathi_tickets_user_${user.uid}`;
+  if (profile?.shopName && profile.shopName.trim() && profile.shopName !== "TyreSaathi Partner Hub") {
+    return `tyresaathi_tickets_shop_${profile.shopName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  }
+  return "tyresaathi_user_tickets";
+};
+
 export default function SupportTickets() {
   const { user, profile, isVendor } = useAuth();
   const [tickets, setTickets] = useState([]);
@@ -47,26 +83,42 @@ export default function SupportTickets() {
   useEffect(() => {
     async function loadTickets() {
       setLoading(true);
+      const storageKey = getShopTicketStorageKey(user, profile);
       try {
         const q = collection(db, "support_tickets");
         const snap = await getDocs(q);
         if (!snap.empty) {
-          const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setTickets(list);
+          let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          if (user?.email) {
+            const userSpecific = list.filter(t => 
+              (t.userId && t.userId === user.uid) ||
+              (t.userEmail && t.userEmail.toLowerCase() === user.email.toLowerCase()) ||
+              (profile?.phone && t.userPhone === profile.phone)
+            );
+            if (userSpecific.length > 0) {
+              list = userSpecific;
+            }
+          }
+          const normalized = normalizeTicketList(list);
+          setTickets(normalized);
+          localStorage.setItem(storageKey, JSON.stringify(normalized));
         } else {
           // Check localStorage
-          const local = localStorage.getItem("tyresaathi_user_tickets");
+          const local = localStorage.getItem(storageKey) || localStorage.getItem("tyresaathi_user_tickets");
           if (local) {
-            setTickets(JSON.parse(local));
+            const normalized = normalizeTicketList(JSON.parse(local));
+            setTickets(normalized);
+            localStorage.setItem(storageKey, JSON.stringify(normalized));
           } else {
             setTickets([]);
           }
         }
       } catch (err) {
         console.warn("Firestore tickets load fallback:", err);
-        const local = localStorage.getItem("tyresaathi_user_tickets");
+        const local = localStorage.getItem(storageKey) || localStorage.getItem("tyresaathi_user_tickets");
         if (local) {
-          setTickets(JSON.parse(local));
+          const normalized = normalizeTicketList(JSON.parse(local));
+          setTickets(normalized);
         } else {
           setTickets([]);
         }
@@ -75,7 +127,7 @@ export default function SupportTickets() {
       }
     }
     loadTickets();
-  }, [user]);
+  }, [user, profile]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -95,9 +147,13 @@ export default function SupportTickets() {
     }
 
     setSubmitting(true);
+    const storageKey = getShopTicketStorageKey(user, profile);
+    const nextTicketNo = generateNextTicketNo(tickets);
+
     const newTicket = {
-      id: `TS-TCK-${Math.floor(700 + Math.random() * 900)}`,
-      ticketNo: `TS-TCK-${Math.floor(700 + Math.random() * 900)}`,
+      id: nextTicketNo,
+      ticketNo: nextTicketNo,
+      userId: user?.uid || "user_self",
       category: formData.category,
       priority: formData.priority,
       subject: formData.subject,
@@ -122,7 +178,11 @@ export default function SupportTickets() {
 
     setTickets((prev) => {
       const updated = [newTicket, ...prev];
-      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updated));
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+      try {
+        const globalLocal = JSON.parse(localStorage.getItem("tyresaathi_user_tickets") || "[]");
+        localStorage.setItem("tyresaathi_user_tickets", JSON.stringify([newTicket, ...globalLocal.filter(t => t.id !== newTicket.id)]));
+      } catch (e) {}
       return updated;
     });
     setSubmitting(false);

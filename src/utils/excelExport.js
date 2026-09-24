@@ -71,7 +71,15 @@ export function exportInvoicesToExcel(invoices) {
     customerPhone: inv.customerPhone,
     vehicleName: inv.vehicleName || "",
     vehicleNumber: inv.vehicleNumber || "",
-    itemsSummary: inv.items ? inv.items.map((x) => `${x.name} (x${x.qty}) - ₹${x.amount}`).join(" | ") : "",
+    tyreSizes: (inv.items || []).map((x) => x.tyreSize).filter(Boolean).join(", ") || "—",
+    tyreSerials: (inv.items || []).map((x) => x.serialNo).filter(Boolean).join(", ") || "—",
+    itemsSummary: (inv.items || []).map((x) => {
+      let desc = `${x.name} (x${x.qty})`;
+      if (x.tyreSize) desc += ` [Size: ${x.tyreSize}]`;
+      if (x.serialNo) desc += ` [Serial: ${x.serialNo}]`;
+      desc += ` - ₹${x.amount}`;
+      return desc;
+    }).join(" | "),
     subtotal: `₹${inv.subtotal}`,
     discount: `₹${inv.discount || 0}`,
     taxAmount: `₹${inv.taxAmount || 0}`,
@@ -89,6 +97,8 @@ export function exportInvoicesToExcel(invoices) {
     customerPhone: "Customer Phone",
     vehicleName: "Vehicle Name",
     vehicleNumber: "Vehicle Number",
+    tyreSizes: "Tyre Size / Number (टायर नंबर)",
+    tyreSerials: "Tyre Serial / DOT No. (सीरियल नंबर)",
     itemsSummary: "Items & Services Breakdown",
     subtotal: "Subtotal",
     discount: "Discount",
