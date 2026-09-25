@@ -77,10 +77,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.2
-          name: "TyreSaathi Android App v1.2.2 (Official Release)"
+          tag_name: v1.2.3
+          name: "TyreSaathi Android App v1.2.3 (Official Release)"
           body: |
-            ⚡ TyreSaathi Official Android APK Release v1.2.2
+            ⚡ TyreSaathi Official Android APK Release v1.2.3
+            - 🎨 Official Red & Black TyreSaathi App Icon & Brand Assets
             - 👥 Staff & Sub-Admin Role-Based Delegation & PIN Login
             - 🔒 Bank Account & Master Pricing Security Lock
             - 🔔 Mobile Responsive Centered Notification Dropdown
