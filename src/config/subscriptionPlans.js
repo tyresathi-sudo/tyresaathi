@@ -4,8 +4,8 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
   {
     id: "free_lifetime",
     name: "Lifetime Free Plan",
-    hindiName: "छोटा दुकानदार (लाइफटाइम फ्री)",
-    tagline: "Shuruat karne wale chhote dukandaron ke liye hamesha 100% Free",
+    hindiName: "Starter Dealer (Free Forever)",
+    tagline: "Essential toolkit for small garage & local tyre shop owners",
     badge: "🌱 100% FREE FOREVER",
     badgeColor: "#2F9E44",
     priceMonthly: 0,
@@ -15,23 +15,23 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     features: [
       "🏪 Basic Shop Profile & Google Maps Location",
       "📅 Up to 50 Service Bookings / Month",
-      "📞 Direct Customer Phone Call & WhatsApp Button",
-      "📄 Basic In-Store Bill Generator",
-      "📱 Customer Ratings & Feedback Support",
+      "📞 Direct Customer Call & WhatsApp Contact",
+      "📄 Basic In-Store Billing Generator",
+      "📱 Customer Ratings & Review Support",
       "⚡ Verified on TyreSaathi Network"
     ],
     limitations: [
-      "No Priority Search Ranking",
-      "No Home Page Slider Ad",
-      "Standard Search Listing"
+      "Standard Search Listing",
+      "No Priority Search Boost",
+      "Home Banner Ad Not Included"
     ]
   },
   {
     id: "pro_partner",
     name: "Pro Partner Plan",
-    hindiName: "दुकानदार प्रो (ग्रोथ प्लान)",
-    tagline: "Dukan ki bikri aur grahak tezi se badhane ke liye",
-    badge: "🔥 MOST POPULAR (बेस्ट वैल्यू)",
+    hindiName: "Growth Partner (Most Popular)",
+    tagline: "Accelerate your local customer footfall & monthly sales volume",
+    badge: "🔥 MOST POPULAR (BEST VALUE)",
     badgeColor: "#FF6B35",
     priceMonthly: 299,
     priceYearly: 2499, // Save ~30%
@@ -39,12 +39,12 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     color: "#C0392B",
     gradient: "linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%)",
     features: [
-      "🚀 Unlimited Service Bookings & Customer Leads",
-      "🌟 Verified Gold Partner Hub Badge (गोल्ड बैज)",
-      "🔝 Priority Ranking in Local Area Search (ऊपर दिखेगा)",
-      "🧾 Unlimited GST / Non-GST Bills with WhatsApp PDF",
+      "🚀 Unlimited Bookings & Customer Leads",
+      "🌟 Verified Gold Partner Hub Badge",
+      "🔝 Priority Placement in Local Area Search",
+      "🧾 Unlimited Invoices with WhatsApp PDF",
       "📦 Tyre Inventory & Low Stock Alert System",
-      "📊 Shop Analytics, Views & Customer Call Insights",
+      "📊 Shop Footfall, Views & Call Analytics",
       "💬 Priority WhatsApp Customer Support"
     ],
     limitations: [
@@ -54,10 +54,10 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
   {
     id: "elite_vip",
     name: "Elite VIP Dealer",
-    hindiName: "प्रीमियम डीलर (सुपर फ्लीट)",
-    tagline: "Poore shahar mein #1 banna aur bulk tyre inquiries pana",
-    badge: "💎 VIP ELITE (फुल एक्सेस)",
-    badgeColor: "#B388FF",
+    hindiName: "Premium Fleet (Full Access)",
+    tagline: "Become the #1 preferred tyre center in your city for bulk inquiries",
+    badge: "💎 VIP ELITE (FULL ACCESS)",
+    badgeColor: "#8B5CF6",
     priceMonthly: 699,
     priceYearly: 5999, // Save ~30%
     popular: false,
@@ -65,12 +65,12 @@ export const DEFAULT_SUBSCRIPTION_PLANS = [
     gradient: "linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)",
     features: [
       "Everything in Pro Partner Plan +",
-      "📢 Featured Home Page Sliding Banner Ad (फ्री ऐड शामिल)",
-      "👑 Top #1 Guaranteed Position in City/Pincode Search",
-      "🚚 Commercial Fleet, Truck & Bulk Tyre Inquiries",
-      "🎨 Custom Shop Logo & Watermark on all Bills",
-      "👨‍💼 Dedicated 24/7 Priority Account Manager",
-      "⚡ Instant VIP Customer Booking Alerts"
+      "📢 Featured Home Page Sliding Banner Ad",
+      "👑 Top #1 Guaranteed City Search Ranking",
+      "🚚 Bulk Fleet & Commercial Tyre Inquiries",
+      "🎨 Custom Shop Watermark on Invoices",
+      "👨‍💼 Dedicated 24/7 Account Support Manager",
+      "⚡ Instant VIP Customer Booking Notifications"
     ],
     limitations: []
   }
@@ -80,7 +80,7 @@ export const SUBSCRIPTION_PLANS = DEFAULT_SUBSCRIPTION_PLANS;
 
 export const DEFAULT_PLAN_SETTINGS = {
   launchFreeMode: true, // Initially 100% Free during launch
-  launchBannerNote: "🎉 LAUNCH OFFER: Sabhi Plans & Features Filhaal 100% FREE Hain! Kisi bhi plan ko ₹0 me activate karein.",
+  launchBannerNote: "🎉 LAUNCH OFFER: All Partner Plans & Features are 100% FREE during launch! Activate any plan for ₹0.",
   currencySymbol: "₹",
   plans: DEFAULT_SUBSCRIPTION_PLANS
 };
@@ -91,14 +91,6 @@ export function getActiveSubscriptionConfig() {
     const saved = localStorage.getItem("tyresaathi_subscription_settings");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (parsed.plans) {
-        parsed.plans = parsed.plans.map((p) => {
-          if (p.id === "free_lifetime" && Array.isArray(p.features)) {
-            p.features = p.features.map((f) => f.replace("20 Service Bookings", "50 Service Bookings"));
-          }
-          return p;
-        });
-      }
       return { ...DEFAULT_PLAN_SETTINGS, ...parsed };
     }
   } catch (e) {
@@ -121,19 +113,19 @@ export function saveActiveSubscriptionConfig(config) {
 
 export const SUBSCRIPTION_FAQS = [
   {
-    q: "Kya chhote dukandar ke liye TyreSaathi hamesha free rahega?",
-    a: "Haan, bilkul! Chhote dukandar aur garage owners ke liye hamara 'Lifetime Free Plan' hamesha 100% free rahega. Usme koi chhipa hua charge nahi hai."
+    q: "Is TyreSaathi always free for small garages & tyre shops?",
+    a: "Yes, absolutely! The 'Lifetime Free Plan' is 100% free forever for small shop owners and puncture repair centers with no hidden charges."
   },
   {
-    q: "Pro ya Elite plan lene se kya faayda hoga?",
-    a: "Pro aur Elite plans se aapki dukan TyreSaathi app aur search results mein sabse upar dikhegi, Verified Gold/VIP badge milega, aur Home Page Slider par aapka advertisement aayega jisse aapko zyada customers aur tyre sales milengi."
+    q: "What are the benefits of upgrading to Pro or Elite plans?",
+    a: "Pro and Elite plans give your shop top ranking in search results, a verified gold badge, featured homepage banner ads, and priority commercial fleet leads."
   },
   {
-    q: "Payment kaise kar sakte hain?",
-    a: "Aap UPI (Google Pay, PhonePe, Paytm), Net Banking, ya Debit/Credit card se direct payment kar sakte hain. Payment hote hi plan turant active ho jata hai."
+    q: "What payment methods are supported?",
+    a: "You can pay securely using UPI (Google Pay, PhonePe, Paytm), Net Banking, or Debit/Credit Cards. Your plan activates immediately upon confirmation."
   },
   {
-    q: "Kya main kabhi bhi plan cancel ya downgrade kar sakta hoon?",
-    a: "Haan, aap jab chahein bina kisi penalty ke plan cancel karke wapas Lifetime Free Plan par switch kar sakte hain."
+    q: "Can I cancel or switch my plan at any time?",
+    a: "Yes, you can easily switch or cancel your plan at any time with no lock-in contracts or cancellation penalties."
   }
 ];

@@ -80,8 +80,8 @@ export default function Bookings() {
               id: v.id || v.uid,
               name: v.shopName || v.name,
               phone: v.phone || "8877277757",
-              city: v.city || "Raipur",
-              address: v.address || "TyreSaathi Partner Hub",
+              city: v.city || (v.address ? v.address.split(",").slice(-2)[0]?.trim() : "") || "Authorized Location",
+              address: v.address || (v.city ? `${v.city}, India` : "TyreSaathi Partner Hub"),
               services: v.services || ["Tyre Replacement & Fitting", "Tubeless Puncture Repair", "Tyre Cut Repair", "Nitrogen Air Fill"],
               rating: 4.9,
               reviewsCount: 24

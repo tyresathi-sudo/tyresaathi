@@ -217,16 +217,19 @@ export default function StoreLocation() {
                 "Doorstep Assistance"
               ];
 
+              const shopCity = v.city || (v.address ? v.address.split(",").slice(-2)[0]?.trim() : "") || "Authorized Location";
+              const shopAddress = v.address || (v.city ? `${v.city}, India` : "Authorized Partner Service Point");
+
               // Base coordinates with offset for realistic mapping if not explicitly provided
-              const shopLat = Number(v.lat || (21.2514 + (idx % 3) * 0.012));
-              const shopLng = Number(v.lng || (81.6296 + (idx % 3) * 0.015));
+              const shopLat = v.lat ? Number(v.lat) : (userLocation?.lat ? userLocation.lat + ((idx % 5) - 2) * 0.012 : (21.2514 + (idx % 3) * 0.012));
+              const shopLng = v.lng ? Number(v.lng) : (userLocation?.lng ? userLocation.lng + ((idx % 5) - 2) * 0.015 : (81.6296 + (idx % 3) * 0.015));
 
               return {
                 id: v.id || v.uid,
                 name: v.shopName || v.name || "TyreSaathi Partner Hub",
                 ownerName: v.name || "Authorized Partner",
-                city: v.city || "Raipur",
-                address: v.address || "Transport Nagar, Rawabhatha, Raipur, Chhattisgarh",
+                city: shopCity,
+                address: shopAddress,
                 phone: v.phone || "8877277757",
                 rating: v.rating || 4.9,
                 reviewsCount: v.reviewsCount || (24 + idx * 4),
@@ -566,8 +569,8 @@ export default function StoreLocation() {
           </div>
           <p className="loc-desc-text">
             {userLocation 
-              ? `Aapki live GPS location detect ho chuki hai — sabse najdeek TyreSaathi shops sabse upar dikh rahi hain.`
-              : `Apne paas ki sabse najdeek dukan dekhne ke liye Live Location update karein.`}
+              ? `Live GPS location detected — nearest TyreSaathi partner stores are sorted at the top.`
+              : `Click "Update Live Location" to find the closest verified tyre shops near you.`}
           </p>
         </div>
 
@@ -601,7 +604,7 @@ export default function StoreLocation() {
           <div>
             <h1 className="directory-main-title">🏬 TyreSaathi Verified Partner Stores</h1>
             <p className="directory-subtitle-text">
-              Aapki location ke paas verified tyre shops, puncture repair hubs aur authorized fitting centers.
+              Explore verified tyre shops, puncture repair hubs, and authorized fitting centers near you.
             </p>
           </div>
 
@@ -685,8 +688,8 @@ export default function StoreLocation() {
             <div className="no-stores-icon-box">
               <MapPin size={40} color="#c0392b" />
             </div>
-            <h3>Koi Shop Nahi Mili</h3>
-            <p>"{searchTerm}" ke liye koi store nahi mila. Kripya doosra city ya search term try karein.</p>
+            <h3>No Stores Found</h3>
+            <p>{searchTerm ? `No verified stores matched "${searchTerm}". Please try a different city or search keyword.` : "No partner stores found in this filter. Try resetting filters."}</p>
             <button
               className="btn-reset-filters"
               onClick={() => { setSearchTerm(""); setFilterCity("all"); }}

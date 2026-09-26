@@ -5,33 +5,52 @@ import { WifiOff, Wifi } from "lucide-react";
 export default function NetworkStatusBanner() {
   const [isOnline, setIsOnline] = useState(true);
   const [showRestored, setShowRestored] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const wasOfflineRef = React.useRef(false);
+  const offlineTimeoutRef = React.useRef(null);
 
   useEffect(() => {
     // Initial check
     getNetworkStatus().then((status) => {
       setIsOnline(status.connected);
-      setInitialized(true);
+      wasOfflineRef.current = !status.connected;
     });
 
-    // Subscribe to status changes
+    // Subscribe to status changes with debouncing
     const unsubscribe = subscribeNetworkStatus((status) => {
       if (!status.connected) {
-        setIsOnline(false);
-        setShowRestored(false);
-        triggerHaptic("warning");
-      } else {
-        if (!isOnline && initialized) {
-          setShowRestored(true);
-          triggerHaptic("success");
-          setTimeout(() => setShowRestored(false), 3500);
+        // Wait 2.5 seconds before showing offline banner to ignore micro-drops / tab-switching
+        if (!offlineTimeoutRef.current) {
+          offlineTimeoutRef.current = setTimeout(() => {
+            setIsOnline(false);
+            setShowRestored(false);
+            wasOfflineRef.current = true;
+            triggerHaptic("warning");
+          }, 2500);
         }
-        setIsOnline(true);
+      } else {
+        // Clear any pending offline banner
+        if (offlineTimeoutRef.current) {
+          clearTimeout(offlineTimeoutRef.current);
+          offlineTimeoutRef.current = null;
+        }
+
+        if (wasOfflineRef.current) {
+          setIsOnline(true);
+          setShowRestored(true);
+          wasOfflineRef.current = false;
+          triggerHaptic("success");
+          setTimeout(() => setShowRestored(false), 3000);
+        } else {
+          setIsOnline(true);
+        }
       }
     });
 
-    return () => unsubscribe();
-  }, [isOnline, initialized]);
+    return () => {
+      if (offlineTimeoutRef.current) clearTimeout(offlineTimeoutRef.current);
+      unsubscribe();
+    };
+  }, []);
 
   if (isOnline && !showRestored) return null;
 

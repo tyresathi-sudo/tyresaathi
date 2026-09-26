@@ -1035,15 +1035,21 @@ export default function ManageProducts() {
           height: 84px;
           border-radius: 12px;
           overflow: hidden;
-          background: #f8fafc;
+          background: #ffffff;
           border: 1px solid var(--border, #e2e8f0);
           flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px;
         }
 
         .product-thumb-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
         }
 
         .card-discount-tag {

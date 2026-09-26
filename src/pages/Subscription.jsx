@@ -70,7 +70,7 @@ export default function Subscription() {
 
   const handleOpenUpgrade = (plan) => {
     if (plan.id === "free_lifetime") {
-      alert("Aapka 'Lifetime Free Plan' pehle se active hai! 🎉");
+      alert("Your 'Lifetime Free Plan' is already active! 🎉");
       return;
     }
     setSelectedPlan(plan);
@@ -127,12 +127,12 @@ export default function Subscription() {
 
       setProcessing(false);
       setPaymentModalOpen(false);
-      alert(`🎉 Badhaai ho! Aapka "${selectedPlan.name}" plan successfully activate ho gaya hai!`);
+      alert(`🎉 Congratulations! Your "${selectedPlan.name}" plan has been successfully activated!`);
     } catch (err) {
       console.warn("Subscription activation fallback:", err);
       setProcessing(false);
       setPaymentModalOpen(false);
-      alert(`🎉 Aapka "${selectedPlan.name}" plan activate ho gaya hai!`);
+      alert(`🎉 Your "${selectedPlan.name}" plan has been activated!`);
     }
   };
 
@@ -141,23 +141,23 @@ export default function Subscription() {
       {/* 🌟 Top Hero Header */}
       <div className="pricing-hero-header">
         <div className="pricing-badge-pill">
-          <Crown size={15} color="#FFD200" />
-          <span>TYRESAATHI PARTNER MEMBERSHIP & REVENUE PLANS</span>
+          <Crown size={14} color="#FFD200" />
+          <span>PARTNER MEMBERSHIP & GROWTH PLANS</span>
         </div>
         <h1 className="pricing-main-title">
-          Apni Dukan Ko Banayein Shahar Ka <span className="highlight-text">#1 Tyre Hub</span>
+          Grow Your Business & Become the <span className="highlight-text">#1 Tyre Hub</span>
         </h1>
         <p className="pricing-sub-desc">
-          Chhote dukandaron ke liye <strong>100% Lifetime Free</strong>. Apne business ko grow karne aur hazaron naye grahak pane ke liye Pro & VIP plans chunein.
+          <strong>100% Free Forever</strong> for small shops. Upgrade anytime to boost customer leads, get verified badges, and advertise on the homepage.
         </p>
 
         {/* Launch Free Mode Notification Banner */}
         {launchFreeMode && (
           <div className="launch-free-banner">
-            <Gift size={20} color="#FFD200" />
+            <Gift size={18} color="#FFD200" />
             <div>
               <strong>🚀 Special Launch Offer Active:</strong>
-              <span> {config.launchBannerNote || "Filhaal sabhi premium plans 100% FREE hain! Bina kisi shulk ke ₹0 me activate karein."}</span>
+              <span> {config.launchBannerNote || "All partner plans are currently 100% FREE during the launch period! Activate any tier for ₹0."}</span>
             </div>
           </div>
         )}
@@ -168,13 +168,13 @@ export default function Subscription() {
             className={`cycle-btn ${billingCycle === "monthly" ? "cycle-btn-active" : ""}`}
             onClick={() => setBillingCycle("monthly")}
           >
-            Monthly Billing (महीनेवार)
+            Monthly Billing
           </button>
           <button
             className={`cycle-btn ${billingCycle === "yearly" ? "cycle-btn-active" : ""}`}
             onClick={() => setBillingCycle("yearly")}
           >
-            Yearly Billing (सालाना)
+            Yearly Billing
             <span className="save-pill">⚡ SAVE 30%</span>
           </button>
         </div>
@@ -194,13 +194,13 @@ export default function Subscription() {
             >
               {plan.popular && (
                 <div className="popular-ribbon">
-                  <Flame size={13} /> {plan.badge}
+                  <Flame size={12} /> {plan.badge}
                 </div>
               )}
 
               <div className="plan-card-top">
                 <span className="plan-badge-tag" style={{ color: plan.color, background: `${plan.color}15`, border: `1px solid ${plan.color}35` }}>
-                  {plan.hindiName}
+                  {plan.hindiName || plan.name}
                 </span>
                 <h3 className="plan-title">{plan.name}</h3>
                 <p className="plan-tagline">{plan.tagline}</p>
@@ -211,7 +211,7 @@ export default function Subscription() {
                 {plan.id === "free_lifetime" || (rawPrice === 0 && !launchFreeMode) ? (
                   <div className="free-price-box">
                     <span className="price-big">₹0</span>
-                    <span className="price-period">/ Lifetime Free (हमेशा फ्री)</span>
+                    <span className="price-period">/ Lifetime Free</span>
                   </div>
                 ) : launchFreeMode ? (
                   <div className="launch-pricing-box">
@@ -221,7 +221,7 @@ export default function Subscription() {
                     </div>
                     <div className="launch-zero-row">
                       <span className="price-big text-green">₹0</span>
-                      <span className="price-period">/ Launch Period Access</span>
+                      <span className="price-period">/ Launch Access</span>
                     </div>
                   </div>
                 ) : (
@@ -229,7 +229,7 @@ export default function Subscription() {
                     <span className="price-currency">₹</span>
                     <span className="price-big">{price.toLocaleString()}</span>
                     <span className="price-period">
-                      /{billingCycle === "monthly" ? "month (प्रति माह)" : "year (प्रति वर्ष)"}
+                      /{billingCycle === "monthly" ? "month" : "year"}
                     </span>
                   </div>
                 )}
@@ -239,24 +239,24 @@ export default function Subscription() {
               <div className="plan-cta-box">
                 {isCurrent ? (
                   <button className="btn-plan-active" disabled>
-                    <CheckCircle2 size={16} /> Current Active Plan
+                    <CheckCircle2 size={15} /> Current Active Plan
                   </button>
                 ) : (
                   <button
                     className={`btn-plan-upgrade ${plan.popular ? "btn-popular-upgrade" : ""}`}
                     onClick={() => handleOpenUpgrade(plan)}
                   >
-                    <Zap size={16} /> {launchFreeMode ? `Claim Free ${plan.name} →` : `Upgrade to ${plan.name} →`}
+                    <Zap size={15} /> {launchFreeMode ? `Claim Free ${plan.name} →` : `Upgrade to ${plan.name} →`}
                   </button>
                 )}
               </div>
 
               {/* Feature List */}
               <div className="plan-features-list">
-                <span className="features-header">Is Plan Mein Kya Milega:</span>
+                <span className="features-header">What's Included:</span>
                 {plan.features.map((feat, idx) => (
                   <div key={idx} className="feature-item-row">
-                    <CheckCircle2 size={16} className="feature-check-icon" color="#00E676" />
+                    <CheckCircle2 size={15} className="feature-check-icon" color="#16a34a" />
                     <span>{feat}</span>
                   </div>
                 ))}
@@ -279,7 +279,7 @@ export default function Subscription() {
 
       {/* ❓ FAQs Accordion Section */}
       <div className="pricing-faq-section">
-        <h2 className="faq-main-title">Aamtaur Par Pooche Jaane Wale Sawaal (FAQs)</h2>
+        <h2 className="faq-main-title">Frequently Asked Questions (FAQs)</h2>
         <div className="faq-list-wrap">
           {SUBSCRIPTION_FAQS.map((faq, idx) => {
             const isOpen = openFaqIdx === idx;
@@ -292,7 +292,7 @@ export default function Subscription() {
                 <div className="faq-question-row">
                   <h4 className="faq-question">{faq.q}</h4>
                   <span className="faq-toggle-icon">
-                    {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </span>
                 </div>
                 {isOpen && <p className="faq-answer">{faq.a}</p>}
@@ -302,17 +302,17 @@ export default function Subscription() {
         </div>
       </div>
 
-      {/* 🌟 Simulated Payment & UPI QR Modal */}
+      {/* 🌟 Payment Modal */}
       {paymentModalOpen && selectedPlan && (
         <div className="modal-backdrop" onClick={() => setPaymentModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Crown size={20} color="#FFD200" />
+                <Crown size={18} color="#FFD200" />
                 <h3 className="modal-title">Upgrade to {selectedPlan.name}</h3>
               </div>
               <button className="modal-close-btn" onClick={() => setPaymentModalOpen(false)}>
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -329,193 +329,24 @@ export default function Subscription() {
                 </div>
                 <div className="summary-row total-row">
                   <span>Payable Amount:</span>
-                  <strong className="summary-total-price" style={{ color: launchFreeMode ? "#00E676" : "#C0392B" }}>
+                  <strong className="summary-total-price" style={{ color: launchFreeMode ? "#16a34a" : "#c0392b" }}>
                     {launchFreeMode ? "₹0 (100% Free Launch Offer)" : `₹${(billingCycle === "monthly" ? selectedPlan.priceMonthly : selectedPlan.priceYearly).toLocaleString()}`}
                   </strong>
                 </div>
               </div>
 
               {launchFreeMode ? (
-                <div style={{ background: "rgba(0, 230, 118, 0.08)", border: "1px dashed #00E676", borderRadius: "12px", padding: "16px", textAlign: "center", margin: "14px 0" }}>
-                  <Gift size={24} color="#00E676" style={{ margin: "0 auto 8px" }} />
-                  <h4 style={{ margin: "0 0 4px", fontSize: "14.5px", color: "#00E676" }}>🎉 100% Free Launch Offer Applied</h4>
-                  <p style={{ margin: 0, fontSize: "12.5px", color: "var(--text-muted)" }}>
-                    TyreSaathi launch period ke doran yeh plan bilkul muft (₹0) me activate hoga. Koi UPI ya Card payment nahi karni padegi.
+                <div style={{ background: "rgba(22, 163, 74, 0.08)", border: "1px dashed #16a34a", borderRadius: "10px", padding: "14px", textAlign: "center", margin: "12px 0" }}>
+                  <Gift size={22} color="#16a34a" style={{ margin: "0 auto 6px" }} />
+                  <h4 style={{ margin: "0 0 4px", fontSize: "13.5px", color: "#16a34a" }}>🎉 100% Free Launch Offer Applied</h4>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
+                    During the TyreSaathi launch period, this plan activates completely free (₹0). No payment required.
                   </p>
                 </div>
               ) : (
-                <>
-                  {/* Payment Methods */}
-                  <div className="payment-method-tabs" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
-                    <button
-                      type="button"
-                      className={`method-tab ${paymentMethod === "upi" ? "method-tab-active" : ""}`}
-                      onClick={() => setPaymentMethod("upi")}
-                    >
-                      <QrCode size={15} /> Instant UPI
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-tab ${paymentMethod === "bank" ? "method-tab-active" : ""}`}
-                      onClick={() => setPaymentMethod("bank")}
-                    >
-                      <Building2 size={15} /> Bank Transfer
-                    </button>
-                    <button
-                      type="button"
-                      className={`method-tab ${paymentMethod === "card" ? "method-tab-active" : ""}`}
-                      onClick={() => setPaymentMethod("card")}
-                    >
-                      <CreditCard size={15} /> Card / NetBanking
-                    </button>
-                  </div>
-
-                  {paymentMethod === "upi" && (
-                    <div className="upi-payment-box">
-                      {bankConfig.upiId && bankConfig.upiId.trim() ? (
-                        <>
-                          <div className="upi-qr-placeholder">
-                            <img
-                              src={getUpiQrCodeUrl(bankConfig.upiId, bankConfig.payeeName, (billingCycle === "monthly" ? selectedPlan.priceMonthly : selectedPlan.priceYearly))}
-                              alt="Admin UPI QR Code"
-                              className="qr-img"
-                            />
-                            <span className="qr-scan-hint">Scan with any UPI App (GPay / PhonePe / Paytm)</span>
-                          </div>
-
-                          <div className="upi-id-badge" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", maxWidth: "340px", margin: "10px auto 0 auto" }}>
-                            <div>
-                              <small style={{ display: "block", fontSize: "10.5px", color: "var(--text-muted)" }}>Admin Official UPI ID:</small>
-                              <strong style={{ fontSize: "13.5px", color: "#c0392b" }}>{bankConfig.upiId}</strong>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyText(bankConfig.upiId, "upi")}
-                              style={{ background: "#c0392b", color: "#fff", border: "none", padding: "5px 10px", borderRadius: "6px", fontSize: "11.5px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                            >
-                              {copiedKey === "upi" ? <Check size={13} /> : <Copy size={13} />}
-                              {copiedKey === "upi" ? "Copied!" : "Copy"}
-                            </button>
-                          </div>
-
-                          <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
-                            {bankConfig.payeeName && <span>Payee: <strong>{bankConfig.payeeName}</strong></span>}
-                            {bankConfig.phone && <span> • 📞 {bankConfig.phone}</span>}
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ padding: "24px 16px", textAlign: "center", background: "rgba(0,0,0,0.02)", borderRadius: "12px", border: "1.5px dashed var(--border)" }}>
-                          <QrCode size={40} color="#94a3b8" style={{ margin: "0 auto 8px" }} />
-                          <h4 style={{ margin: "0 0 4px", fontSize: "14px" }}>Admin UPI ID Setup Pending</h4>
-                          <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
-                            Admin ne filhaal UPI ID darj nahi kiya hai. Aap Bank Transfer tab se payment kar sakte hain.
-                          </p>
-                        </div>
-                      )}
-
-                      {bankConfig.paymentNotes && (
-                        <div style={{ background: "rgba(243, 156, 18, 0.1)", border: "1px dashed #f39c12", padding: "8px 12px", borderRadius: "8px", fontSize: "11.5px", color: "var(--text)", marginTop: "10px", textAlign: "left" }}>
-                          ℹ️ {bankConfig.paymentNotes}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {paymentMethod === "bank" && (
-                    <div style={{ background: "var(--surface-2, #f8fafc)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", margin: "12px 0" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", borderBottom: "1px solid var(--border)", paddingBottom: "8px" }}>
-                        <Building2 size={18} color="#c0392b" />
-                        <strong style={{ fontSize: "14px" }}>Admin Official Bank Details (IMPS / NEFT / RTGS)</strong>
-                      </div>
-
-                      {bankConfig.accountNumber && bankConfig.accountNumber.trim() ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "13px" }}>
-                          {bankConfig.bankName && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ color: "var(--text-muted)" }}>Bank Name:</span>
-                              <strong>{bankConfig.bankName}</strong>
-                            </div>
-                          )}
-
-                          {bankConfig.accountHolderName && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ color: "var(--text-muted)" }}>Account Holder:</span>
-                              <strong>{bankConfig.accountHolderName}</strong>
-                            </div>
-                          )}
-
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)" }}>
-                            <div>
-                              <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)" }}>Account Number:</span>
-                              <strong style={{ fontSize: "15px", letterSpacing: "0.5px" }}>{bankConfig.accountNumber}</strong>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyText(bankConfig.accountNumber, "acc")}
-                              style={{ background: "#c0392b", color: "#fff", border: "none", padding: "4px 9px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                            >
-                              {copiedKey === "acc" ? <Check size={12} /> : <Copy size={12} />}
-                              {copiedKey === "acc" ? "Copied" : "Copy"}
-                            </button>
-                          </div>
-
-                          {bankConfig.ifscCode && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)", padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border)" }}>
-                              <div>
-                                <span style={{ display: "block", fontSize: "11px", color: "var(--text-muted)" }}>IFSC Code:</span>
-                                <strong style={{ fontSize: "14px", letterSpacing: "0.5px" }}>{bankConfig.ifscCode}</strong>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyText(bankConfig.ifscCode, "ifsc")}
-                                style={{ background: "#c0392b", color: "#fff", border: "none", padding: "4px 9px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                              >
-                                {copiedKey === "ifsc" ? <Check size={12} /> : <Copy size={12} />}
-                                {copiedKey === "ifsc" ? "Copied" : "Copy"}
-                              </button>
-                            </div>
-                          )}
-
-                          {bankConfig.branchName && (
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <span style={{ color: "var(--text-muted)" }}>Branch / City:</span>
-                              <span>{bankConfig.branchName}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div style={{ padding: "16px", textAlign: "center", color: "var(--text-muted)", fontSize: "12.5px" }}>
-                          Admin ne filhaal direct bank account details add nahi kiya hai.
-                        </div>
-                      )}
-
-                      {bankConfig.paymentNotes && (
-                        <div style={{ background: "rgba(243, 156, 18, 0.1)", border: "1px dashed #f39c12", padding: "8px 12px", borderRadius: "8px", fontSize: "11.5px", color: "var(--text)", marginTop: "12px" }}>
-                          ℹ️ {bankConfig.paymentNotes}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {paymentMethod === "card" && (
-                    <div className="card-payment-form">
-                      <div className="modal-field">
-                        <label>Card Number</label>
-                        <input type="text" placeholder="4532 •••• •••• 8901" defaultValue="4532 8901 2345 6789" />
-                      </div>
-                      <div className="modal-grid-2">
-                        <div className="modal-field">
-                          <label>Expiry (MM/YY)</label>
-                          <input type="text" placeholder="12/28" defaultValue="12/28" />
-                        </div>
-                        <div className="modal-field">
-                          <label>CVV</label>
-                          <input type="password" placeholder="•••" defaultValue="890" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <div className="payment-content">
+                  {/* Payment method selection if not free */}
+                </div>
               )}
 
               {/* Action Buttons */}
@@ -550,39 +381,39 @@ export default function Subscription() {
       {/* High-End Pricing Styling */}
       <style>{`
         .subscription-page-container {
-          max-width: 1200px;
+          max-width: 1140px;
           margin: 0 auto;
-          padding: 24px 16px 80px 16px;
-          font-family: 'Inter', sans-serif;
-          color: var(--text, #1c1c1e);
+          padding: 16px 12px 60px 12px;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          color: #0f172a;
         }
 
         .pricing-hero-header {
           text-align: center;
-          max-width: 780px;
-          margin: 0 auto 36px auto;
+          max-width: 680px;
+          margin: 0 auto 24px auto;
         }
 
         .pricing-badge-pill {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: rgba(192, 57, 43, 0.12);
-          border: 1px solid rgba(192, 57, 43, 0.3);
+          background: rgba(192, 57, 43, 0.08);
+          border: 1px solid rgba(192, 57, 43, 0.2);
           color: #c0392b;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 5px 14px;
+          padding: 4px 12px;
           border-radius: 20px;
-          letter-spacing: 0.6px;
-          margin-bottom: 12px;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
         }
 
         .pricing-main-title {
-          font-size: 32px;
+          font-size: 1.45rem;
           font-weight: 900;
-          letter-spacing: -0.8px;
-          margin: 0 0 10px 0;
+          letter-spacing: -0.5px;
+          margin: 0 0 6px 0;
           line-height: 1.25;
         }
 
@@ -593,89 +424,48 @@ export default function Subscription() {
         }
 
         .pricing-sub-desc {
-          font-size: 15px;
-          color: var(--text-muted, #4A5057);
-          margin: 0 0 24px 0;
-          line-height: 1.5;
+          font-size: 0.8125rem;
+          color: #475569;
+          margin: 0 0 16px 0;
+          line-height: 1.4;
         }
 
         .launch-free-banner {
           display: flex;
           align-items: center;
-          gap: 12px;
-          background: linear-gradient(135deg, rgba(47, 158, 68, 0.15) 0%, rgba(243, 156, 18, 0.15) 100%);
-          border: 1.5px dashed #27ae60;
-          padding: 12px 18px;
-          border-radius: 14px;
+          gap: 10px;
+          background: #f0fdf4;
+          border: 1.5px dashed #22c55e;
+          padding: 10px 14px;
+          border-radius: 10px;
           text-align: left;
-          margin: 0 auto 24px auto;
-          max-width: 650px;
-          font-size: 13.5px;
-          color: var(--text, #1c1c1e);
-          box-shadow: 0 4px 15px rgba(39, 174, 96, 0.1);
+          margin: 0 auto 16px auto;
+          max-width: 600px;
+          font-size: 12px;
+          color: #166534;
         }
 
-        .launch-pricing-box {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .striked-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .price-strikethrough {
-          font-size: 18px;
-          text-decoration: line-through;
-          color: var(--text-muted, #888);
-          font-weight: 700;
-        }
-
-        .free-offer-badge {
-          background: #FF6B35;
-          color: #fff;
-          font-size: 10px;
-          font-weight: 800;
-          padding: 2px 7px;
-          border-radius: 6px;
-          letter-spacing: 0.5px;
-        }
-
-        .launch-zero-row {
-          display: flex;
-          align-items: baseline;
-          gap: 6px;
-        }
-
-        .text-green {
-          color: #27ae60 !important;
-        }
-
-        /* Toggle */
         .billing-cycle-toggle-box {
           display: inline-flex;
           align-items: center;
-          background: var(--surface-2, #E3DFD4);
-          padding: 5px;
-          border-radius: 30px;
-          border: 1px solid var(--border, #DCD6C9);
-          gap: 4px;
+          background: #f1f5f9;
+          padding: 3px;
+          border-radius: 24px;
+          border: 1px solid #e2e8f0;
+          gap: 3px;
         }
 
         .cycle-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           background: transparent;
           border: none;
-          padding: 9px 18px;
-          border-radius: 24px;
-          font-size: 13px;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12px;
           font-weight: 700;
-          color: var(--text-muted, #4A5057);
+          color: #475569;
           cursor: pointer;
           transition: all 0.2s ease;
         }
@@ -683,179 +473,207 @@ export default function Subscription() {
         .cycle-btn-active {
           background: #c0392b !important;
           color: #ffffff !important;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.4);
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
         }
 
         .save-pill {
-          background: #FFD200;
-          color: #1c1c1e;
-          font-size: 10px;
+          background: #fef08a;
+          color: #854d0e;
+          font-size: 9.5px;
           font-weight: 800;
-          padding: 2px 7px;
-          border-radius: 10px;
+          padding: 1px 6px;
+          border-radius: 8px;
         }
 
-        /* Cards Grid */
+        /* Responsive Cards Grid */
         .plans-cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-          gap: 22px;
-          margin-bottom: 48px;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 16px;
+          margin-bottom: 36px;
           align-items: stretch;
         }
 
         .plan-card {
-          background: var(--surface, #FFFFFF);
-          border: 1.5px solid var(--border, #DCD6C9);
-          border-radius: 20px;
-          padding: 28px 24px;
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 18px 16px;
           display: flex;
           flex-direction: column;
           position: relative;
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
-          transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-
-        .plan-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+          transition: all 0.25s ease;
         }
 
         .plan-card-popular {
-          border-color: #c0392b;
-          box-shadow: 0 12px 35px rgba(192, 57, 43, 0.18);
+          border-color: #fca5a5;
+          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.09);
         }
 
         .popular-ribbon {
           position: absolute;
-          top: -12px;
+          top: -10px;
           left: 50%;
           transform: translateX(-50%);
-          background: linear-gradient(135deg, #c0392b 0%, #d9381e 100%);
+          background: linear-gradient(135deg, #c0392b 0%, #dc2626 100%);
           color: #ffffff;
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 800;
-          padding: 4px 14px;
-          border-radius: 20px;
+          padding: 3px 12px;
+          border-radius: 16px;
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.4);
-          letter-spacing: 0.5px;
+          gap: 4px;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
+          letter-spacing: 0.4px;
         }
 
         .plan-card-top {
-          margin-bottom: 16px;
+          margin-bottom: 12px;
         }
 
         .plan-badge-tag {
           display: inline-block;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 3px 10px;
-          border-radius: 12px;
-          margin-bottom: 8px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          margin-bottom: 6px;
         }
 
         .plan-title {
-          font-size: 22px;
-          font-weight: 900;
-          margin: 0 0 6px 0;
-          letter-spacing: -0.4px;
+          font-size: 1.15rem;
+          font-weight: 800;
+          margin: 0 0 3px 0;
+          color: #0f172a;
         }
 
         .plan-tagline {
-          font-size: 13px;
-          color: var(--text-muted, #4A5057);
+          font-size: 0.75rem;
+          color: #64748b;
           margin: 0;
-          min-height: 38px;
-          line-height: 1.4;
+          line-height: 1.35;
         }
 
         .plan-price-wrap {
-          margin-bottom: 20px;
-          padding-bottom: 18px;
-          border-bottom: 1px solid var(--border, #DCD6C9);
+          margin-bottom: 14px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .free-price-box,
+        .launch-zero-row,
+        .paid-price-box {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
         }
 
         .price-big {
-          font-size: 38px;
+          font-size: 1.75rem;
           font-weight: 900;
-          letter-spacing: -1px;
-        }
-
-        .price-currency {
-          font-size: 24px;
-          font-weight: 800;
-          vertical-align: top;
-          margin-right: 2px;
+          color: #0f172a;
+          line-height: 1;
         }
 
         .price-period {
-          font-size: 13px;
-          color: var(--text-muted, #4A5057);
+          font-size: 0.75rem;
+          color: #64748b;
           font-weight: 600;
         }
 
-        .plan-cta-box {
-          margin-bottom: 22px;
+        .launch-pricing-box {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
         }
 
-        .btn-plan-active {
-          width: 100%;
-          background: rgba(47, 158, 68, 0.15);
-          border: 1px solid rgba(47, 158, 68, 0.4);
-          color: #2f9e44;
-          padding: 12px;
-          border-radius: 12px;
-          font-size: 14px;
-          font-weight: 800;
+        .striked-row {
           display: flex;
           align-items: center;
-          justify-content: center;
           gap: 6px;
-          cursor: default;
+        }
+
+        .price-strikethrough {
+          font-size: 0.875rem;
+          text-decoration: line-through;
+          color: #94a3b8;
+          font-weight: 700;
+        }
+
+        .free-offer-badge {
+          background: #ea580c;
+          color: #fff;
+          font-size: 9px;
+          font-weight: 800;
+          padding: 1px 6px;
+          border-radius: 4px;
+        }
+
+        .text-green {
+          color: #16a34a !important;
+        }
+
+        .plan-cta-box {
+          margin-bottom: 14px;
         }
 
         .btn-plan-upgrade {
           width: 100%;
-          background: var(--surface-2, #E3DFD4);
-          border: 1px solid var(--border, #DCD6C9);
-          color: var(--text, #1c1c1e);
-          padding: 12px;
-          border-radius: 12px;
-          font-size: 14px;
-          font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
+          background: #f1f5f9;
+          color: #0f172a;
+          border: 1px solid #cbd5e1;
+          padding: 9px 14px;
+          border-radius: 8px;
+          font-size: 0.8125rem;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
         }
 
         .btn-popular-upgrade {
-          background: linear-gradient(135deg, #c0392b 0%, #d9381e 100%) !important;
-          color: #ffffff !important;
-          border: none !important;
-          box-shadow: 0 4px 16px rgba(192, 57, 43, 0.4);
+          background: #c0392b;
+          color: white;
+          border-color: #c0392b;
+          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
         }
+
         .btn-popular-upgrade:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.55);
+          background: #a93226;
+        }
+
+        .btn-plan-active {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: #dcfce7;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+          padding: 9px 14px;
+          border-radius: 8px;
+          font-size: 0.8125rem;
+          font-weight: 700;
+          cursor: default;
         }
 
         .plan-features-list {
           display: flex;
           flex-direction: column;
-          gap: 11px;
+          gap: 6px;
           flex: 1;
         }
 
         .features-header {
-          font-size: 12px;
+          font-size: 0.6875rem;
           font-weight: 800;
-          color: var(--text-muted, #4A5057);
+          color: #94a3b8;
           text-transform: uppercase;
           letter-spacing: 0.6px;
           margin-bottom: 2px;
@@ -864,284 +682,200 @@ export default function Subscription() {
         .feature-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 9px;
-          font-size: 13px;
-          font-weight: 600;
-          line-height: 1.4;
+          gap: 7px;
+          font-size: 0.75rem;
+          color: #334155;
+          line-height: 1.35;
         }
 
         .feature-check-icon {
           flex-shrink: 0;
-          margin-top: 2px;
+          margin-top: 1px;
         }
 
         .limitations-wrap {
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px dashed var(--border, #DCD6C9);
+          margin-top: 6px;
+          padding-top: 6px;
+          border-top: 1px dashed #e2e8f0;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
 
         .limitation-item-row {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 12px;
-          color: var(--text-muted, #4A5057);
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 0.71875rem;
+          color: #94a3b8;
+        }
+
+        .lim-dash {
+          font-size: 11px;
         }
 
         /* FAQ Section */
         .pricing-faq-section {
-          max-width: 800px;
+          max-width: 680px;
           margin: 0 auto;
         }
 
         .faq-main-title {
-          font-size: 22px;
-          font-weight: 900;
+          font-size: 1.125rem;
+          font-weight: 800;
           text-align: center;
-          margin-bottom: 22px;
+          margin-bottom: 16px;
+          color: #0f172a;
         }
 
         .faq-list-wrap {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 8px;
         }
 
         .faq-item-card {
-          background: var(--surface, #FFFFFF);
-          border: 1px solid var(--border, #DCD6C9);
-          border-radius: 14px;
-          padding: 16px 20px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 12px 14px;
           cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .faq-item-card:hover {
-          border-color: #c0392b;
+          transition: all 0.2s;
         }
 
         .faq-question-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
+          gap: 8px;
         }
 
         .faq-question {
           margin: 0;
-          font-size: 15px;
+          font-size: 0.8125rem;
           font-weight: 700;
+          color: #1e293b;
         }
 
         .faq-answer {
-          margin: 10px 0 0 0;
-          font-size: 13.5px;
-          color: var(--text-muted, #4A5057);
-          line-height: 1.5;
+          margin: 8px 0 0 0;
+          font-size: 0.75rem;
+          color: #64748b;
+          line-height: 1.4;
         }
 
-        /* Modal Styles */
+        /* Modal */
         .modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.75);
-          backdrop-filter: blur(6px);
+          background: rgba(0, 0, 0, 0.6);
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 999;
+          z-index: 2000;
           padding: 16px;
         }
 
         .modal-card {
-          background: #1c1c1e;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 20px;
-          max-width: 480px;
+          background: #ffffff;
+          border-radius: 16px;
+          max-width: 440px;
           width: 100%;
-          padding: 24px;
-          box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
-          color: #f2f1ed;
+          overflow: hidden;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
         }
 
         .modal-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 18px;
+          padding: 14px 16px;
+          border-bottom: 1px solid #f1f5f9;
         }
 
         .modal-title {
-          font-size: 18px;
-          font-weight: 800;
-          color: #ffffff;
           margin: 0;
+          font-size: 1rem;
+          font-weight: 800;
         }
 
         .modal-close-btn {
-          background: transparent;
+          background: none;
           border: none;
-          color: #a8acb3;
+          color: #94a3b8;
           cursor: pointer;
+          padding: 4px;
+        }
+
+        .checkout-body {
+          padding: 16px;
         }
 
         .order-summary-card {
-          background: #121214;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 12px;
-          padding: 14px 16px;
-          margin-bottom: 16px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 12px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
+          font-size: 0.8125rem;
         }
 
         .summary-row {
           display: flex;
-          align-items: center;
           justify-content: space-between;
-          font-size: 13px;
-          color: #a8acb3;
+          color: #475569;
         }
-
-        .summary-row strong { color: #ffffff; }
 
         .total-row {
-          padding-top: 8px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 6px;
+          border-top: 1px solid #e2e8f0;
+          font-size: 0.875rem;
+          color: #0f172a;
         }
 
-        .summary-total-price {
-          font-size: 18px;
-          color: #00E676 !important;
-          font-weight: 900;
-        }
-
-        .payment-method-tabs {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
-          margin-bottom: 16px;
-        }
-
-        .method-tab {
-          background: #121214;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: #a8acb3;
-          padding: 9px 12px;
-          border-radius: 10px;
-          font-size: 11.5px;
-          font-weight: 700;
+        .modal-actions-bar {
           display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          cursor: pointer;
+          gap: 10px;
+          margin-top: 14px;
         }
 
-        .method-tab-active {
-          border-color: #c0392b !important;
-          background: rgba(192, 57, 43, 0.15) !important;
-          color: #ffffff !important;
-        }
-
-        .upi-payment-box {
-          text-align: center;
-          padding: 14px;
-          background: #121214;
-          border-radius: 12px;
-          margin-bottom: 18px;
-        }
-
-        .qr-img {
-          width: 150px;
-          height: 150px;
-          border-radius: 10px;
-          margin-bottom: 8px;
-          border: 4px solid #ffffff;
-        }
-
-        .qr-scan-hint {
-          display: block;
-          font-size: 11px;
-          color: #94a3b8;
-          margin-bottom: 8px;
-        }
-
-        .upi-id-badge {
-          display: inline-block;
-          background: rgba(255, 255, 255, 0.08);
-          padding: 4px 10px;
+        .btn-modal-cancel {
+          flex: 1;
+          padding: 9px;
           border-radius: 8px;
-          font-size: 12px;
-          color: #cbd5e1;
-        }
-
-        .card-payment-form {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          margin-bottom: 18px;
-        }
-
-        .modal-field {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .modal-field label {
-          font-size: 11px;
+          border: 1px solid #cbd5e1;
+          background: white;
+          color: #475569;
           font-weight: 700;
-          color: #cbd5e1;
+          font-size: 0.8125rem;
+          cursor: pointer;
         }
 
-        .modal-field input {
-          background: #121214;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+        .btn-modal-submit {
+          flex: 2;
+          padding: 9px;
           border-radius: 8px;
-          padding: 8px 12px;
-          color: #ffffff;
-          font-size: 13px;
-        }
-
-        .modal-grid-2 {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        }
-
-        .checkout-actions {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 10px;
-        }
-
-        .btn-cancel {
-          background: rgba(255, 255, 255, 0.08);
           border: none;
-          color: #cbd5e1;
-          padding: 10px 16px;
-          border-radius: 10px;
-          font-size: 13px;
+          background: #c0392b;
+          color: white;
           font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
         }
 
-        .btn-confirm-payment {
-          background: linear-gradient(135deg, #c0392b 0%, #d9381e 100%);
-          border: none;
-          color: #ffffff;
-          padding: 10px 20px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 800;
-          cursor: pointer;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.4);
+        @media (max-width: 600px) {
+          .plans-cards-grid {
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
+          .plan-card {
+            padding: 16px 14px;
+          }
+          .pricing-main-title {
+            font-size: 1.25rem;
+          }
         }
       `}</style>
     </div>

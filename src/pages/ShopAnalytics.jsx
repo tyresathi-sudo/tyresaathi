@@ -181,7 +181,7 @@ export default function ShopAnalytics() {
               <div>
                 <h2 className="insights-title">Business Insights & Views Analytics</h2>
                 <p className="insights-sub">
-                  Aapki shop profile, search views aur live customer inquiries ka 100% original real-time data
+                  100% genuine real-time analytics for your shop profile views, customer inquiries, and bookings.
                 </p>
               </div>
             </div>

@@ -6,6 +6,8 @@ import {
   signOut, 
   onAuthStateChanged, 
   sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   updateProfile,
   deleteUser
 } from "firebase/auth";
@@ -109,8 +111,9 @@ export function AuthProvider({ children }) {
   }
 
   // Register with full profile creation
-  async function register({ name, phone, email, password, role = ROLES.CUSTOMER, shopName = "" }) {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+  async function register({ name, phone, email, password, role = ROLES.CUSTOMER, shopName = "", city = "", address = "", lat = null, lng = null }) {
+    const cleanEmail = (email || "").trim().toLowerCase();
+    const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     if (name) {
       try {
         await updateProfile(cred.user, { displayName: name });
@@ -122,13 +125,15 @@ export function AuthProvider({ children }) {
       uid: cred.user.uid,
       name: name || "",
       phone: phone || "",
-      email: email || "",
+      email: cleanEmail,
       role: role || ROLES.CUSTOMER,
       shopName: shopName || "",
       shopApproved: role === ROLES.SHOP_OWNER ? true : false,
       photoURL: "",
-      address: "",
-      city: "",
+      address: address || "",
+      city: city || "",
+      lat: (lat !== null && lat !== undefined && lat !== "") ? Number(lat) : null,
+      lng: (lng !== null && lng !== undefined && lng !== "") ? Number(lng) : null,
       openingHours: "09:00 AM - 09:00 PM",
       createdAt: serverTimestamp(),
     };
@@ -186,7 +191,7 @@ export function AuthProvider({ children }) {
 
   // Basic Signup alias
   function signup(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
+    return createUserWithEmailAndPassword(auth, (email || "").trim().toLowerCase(), password);
   }
 
   // Logout
@@ -201,7 +206,18 @@ export function AuthProvider({ children }) {
 
   // Reset Password
   function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
+    const cleanEmail = (email || "").trim().toLowerCase();
+    return sendPasswordResetEmail(auth, cleanEmail);
+  }
+
+  // Confirm In-App Password Reset with Action Code
+  function confirmReset(oobCode, newPassword) {
+    return confirmPasswordReset(auth, oobCode, newPassword);
+  }
+
+  // Verify Reset Code
+  function verifyResetCode(oobCode) {
+    return verifyPasswordResetCode(auth, oobCode);
   }
 
   // Delete User Account and associated profile data (Google Play requirement)
@@ -279,6 +295,9 @@ export function AuthProvider({ children }) {
     login,
     register,
     signup,
+    resetPassword,
+    confirmReset,
+    verifyResetCode,
     updateUserProfile,
     logout,
     deleteAccount,

@@ -371,17 +371,17 @@ export default function Profile() {
 
                 <div className="form-two-col">
                   <div className="form-input-group">
-                    <label>City (शहर)</label>
+                    <label>City / Town</label>
                     <input
                       type="text"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="e.g. Raipur / Bhilai / Bilaspur"
+                      placeholder="e.g. Raipur / Delhi / Mumbai / Bilaspur"
                     />
                   </div>
 
                   <div className="form-input-group">
-                    <label>Opening Hours (दुकान का समय)</label>
+                    <label>Opening Hours</label>
                     <input
                       type="text"
                       value={formData.openingHours}
@@ -392,12 +392,12 @@ export default function Profile() {
                 </div>
 
                 <div className="form-input-group">
-                  <label>Dukan ka Pata (Shop Address)</label>
+                  <label>Shop / Residential Address</label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Shop No., Market Road, Near Landmark..."
+                    placeholder="Shop No., Street, Landmark, Area..."
                   />
                 </div>
               </>

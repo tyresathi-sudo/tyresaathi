@@ -26,7 +26,8 @@ import {
   RefreshCw,
   Trash2,
   AlertTriangle,
-  Scale
+  Scale,
+  Globe
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -43,19 +44,23 @@ export default function Settings() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState("shop"); // 'shop', 'billing', 'notifications', 'security', 'sheets'
+  const [activeTab, setActiveTab] = useState("shop"); // 'shop', 'billing', 'notifications', 'security', 'sheets', 'legal'
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [copiedPrivacyUrl, setCopiedPrivacyUrl] = useState(false);
 
   // Google Sheets state
   const [sheetUrl, setSheetUrl] = useState(() => getGoogleSheetUrl());
   const [testingSheet, setTestingSheet] = useState(false);
   const [sheetTestResult, setSheetTestResult] = useState(null);
   const [copiedScript, setCopiedScript] = useState(false);
+
+  // Official Public Privacy Policy URL for Google Play Console
+  const playStorePrivacyPolicyUrl = "https://tyresathi-93306.firebaseapp.com/privacy-policy";
 
   // Settings Form State
   const [settings, setSettings] = useState({
@@ -68,13 +73,13 @@ export default function Settings() {
     // Billing Settings
     defaultTaxMode: profile?.defaultTaxMode || "none", // none, gst18, gst28
     invoicePrefix: profile?.invoicePrefix || "TS-INV-",
-    defaultTerms: profile?.defaultTerms || "Goods once sold cannot be returned without warranty card. Tyre warranty as per company terms.",
+    defaultTerms: profile?.defaultTerms || "Goods once sold cannot be returned without warranty card. Tyre warranty as per manufacturer company terms.",
     // Notifications
     whatsappAlerts: profile?.whatsappAlerts ?? true,
     smsAlerts: profile?.smsAlerts ?? true,
     dailySummaryEmail: profile?.dailySummaryEmail ?? false,
     // Language
-    language: profile?.language || "hi",
+    language: profile?.language || "en",
   });
 
   useEffect(() => {
@@ -110,10 +115,16 @@ export default function Settings() {
       setTimeout(() => setSavedSuccess(false), 4000);
     } catch (err) {
       console.warn("Could not save settings:", err);
-      alert("Settings save karne me samasya aayi: " + (err.message || err));
+      alert("Error saving settings: " + (err.message || err));
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleCopyPrivacyUrl = () => {
+    navigator.clipboard.writeText(playStorePrivacyPolicyUrl);
+    setCopiedPrivacyUrl(true);
+    setTimeout(() => setCopiedPrivacyUrl(false), 3000);
   };
 
   const handleCopyAppsScript = () => {
@@ -126,10 +137,10 @@ export default function Settings() {
     setIsDeleting(true);
     try {
       await deleteAccount();
-      alert("Aapka account aur associated records successfully delete ho gaye hain.");
+      alert("Your account and associated data have been permanently deleted.");
       navigate("/login", { replace: true });
     } catch (err) {
-      alert("Account deletion error: " + err.message + "\nKripya re-login karke try karein.");
+      alert("Account deletion error: " + err.message + "\nPlease re-login and try again.");
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -140,7 +151,7 @@ export default function Settings() {
     if (!sheetUrl || !sheetUrl.trim()) {
       setSheetTestResult({
         type: "error",
-        message: "Pehle apna Google Apps Script Web App URL dalein!"
+        message: "Please enter your Google Apps Script Web App URL first!"
       });
       return;
     }
@@ -151,12 +162,12 @@ export default function Settings() {
       const res = await testGoogleSheetConnection(sheetUrl);
       setSheetTestResult({
         type: "success",
-        message: res.message || "✅ Signal bhej diya gaya! Apni Google Sheet check karein."
+        message: res.message || "✅ Signal sent successfully! Check your Google Sheet."
       });
     } catch (err) {
       setSheetTestResult({
         type: "error",
-        message: err.message || "Connection me dikkat aayi. URL check karein."
+        message: err.message || "Connection error. Please check the URL."
       });
     } finally {
       setTestingSheet(false);
@@ -180,22 +191,22 @@ export default function Settings() {
       <div className="settings-header-row">
         <div>
           <h1 className="settings-title">
-            <SettingsIcon size={26} color="#c0392b" /> TyreSaathi Settings & Preferences (सेटिंग्स)
+            <SettingsIcon size={24} color="#c0392b" /> TyreSaathi Settings & Preferences
           </h1>
           <p className="settings-sub">
-            Apni Dukan, Billing preferences, GSTIN, WhatsApp alerts aur Security settings manage karein.
+            Manage your Shop profile, Billing setup, WhatsApp notifications, and Legal data privacy.
           </p>
         </div>
 
         <button className="btn-save-all-top" onClick={handleSave} disabled={saving}>
-          <Save size={16} /> {saving ? "Saving..." : "Save All Settings"}
+          <Save size={15} /> {saving ? "Saving..." : "Save Settings"}
         </button>
       </div>
 
       {savedSuccess && (
         <div className="settings-success-alert">
-          <CheckCircle2 size={18} color="#27ae60" />
-          <span>✅ Settings successfully save ho gayi hain!</span>
+          <CheckCircle2 size={16} color="#27ae60" />
+          <span>✅ Settings have been saved successfully!</span>
         </div>
       )}
 
@@ -204,57 +215,62 @@ export default function Settings() {
         {/* Left: Settings Menu */}
         <aside className="settings-nav-sidebar">
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === "shop" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("shop")}
           >
-            <Store size={18} />
-            <div>
+            <Store size={17} />
+            <div className="tab-btn-text">
               <strong>Shop & Profile</strong>
-              <small>दुकान विवरण व पता</small>
+              <small>Business details & address</small>
             </div>
           </button>
 
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === "billing" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("billing")}
           >
-            <FileText size={18} />
-            <div>
+            <FileText size={17} />
+            <div className="tab-btn-text">
               <strong>Billing & Invoice</strong>
-              <small>बिलिंग व जीएसटी सेटिंग्स</small>
+              <small>GST & invoice numbering</small>
             </div>
           </button>
 
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === "notifications" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("notifications")}
           >
-            <Bell size={18} />
-            <div>
+            <Bell size={17} />
+            <div className="tab-btn-text">
               <strong>Alerts & WhatsApp</strong>
-              <small>नोटिफिकेशन व अलर्ट्स</small>
+              <small>Booking & customer alerts</small>
             </div>
           </button>
 
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === "security" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("security")}
           >
-            <Lock size={18} />
-            <div>
+            <Lock size={17} />
+            <div className="tab-btn-text">
               <strong>Account & Security</strong>
-              <small>पासवर्ड व सुरक्षा</small>
+              <small>Password & data controls</small>
             </div>
           </button>
 
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === "sheets" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("sheets")}
           >
-            <FileSpreadsheet size={18} color="#27ae60" />
-            <div>
+            <FileSpreadsheet size={17} color="#16a34a" />
+            <div className="tab-btn-text">
               <strong>Google Sheets Sync</strong>
-              <small>गूगल शीट रिकॉर्ड्स लॉग</small>
+              <small>Live spreadsheet logs</small>
             </div>
           </button>
 
@@ -263,18 +279,18 @@ export default function Settings() {
             className={`nav-tab-btn ${activeTab === "legal" ? "tab-btn-active" : ""}`}
             onClick={() => setActiveTab("legal")}
           >
-            <Scale size={18} color="#8e44ad" />
-            <div>
+            <Scale size={17} color="#8e44ad" />
+            <div className="tab-btn-text">
               <strong>Legal, IP & Privacy</strong>
-              <small>ट्रेडमार्क, नीतियां व नियम</small>
+              <small>Play Store compliance links</small>
             </div>
           </button>
 
           <div className="quick-help-link-box">
-            <HelpCircle size={18} color="#c0392b" />
+            <HelpCircle size={16} color="#c0392b" />
             <div>
-              <strong>Need Help?</strong>
-              <p>Kisi samasya ke liye support ticket raise karein.</p>
+              <strong>Need Assistance?</strong>
+              <p>Contact support for setup help.</p>
               <Link to="/support" className="link-to-support">Open Support Ticket →</Link>
             </div>
           </div>
@@ -287,71 +303,74 @@ export default function Settings() {
             {activeTab === "shop" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>🏪 Shop & Business Details (दुकान की जानकारी)</h3>
-                  <p>Ye details aapke invoices aur customer booking cards par dikhayi dengi.</p>
+                  <h3>🏪 Shop & Business Profile</h3>
+                  <p>These details appear on your customer invoices, online store profile, and bookings.</p>
                 </div>
 
                 <div className="settings-form-grid">
                   <div className="set-field-group">
-                    <label>Shop / Business Name (दुकान का नाम) *</label>
+                    <label>Shop / Business Name *</label>
                     <input
                       type="text"
                       value={settings.shopName}
                       onChange={(e) => setSettings({ ...settings, shopName: e.target.value })}
-                      placeholder="e.g. ABC Tyre & Service Center"
+                      placeholder="e.g. National Tyre & Service Center"
+                      required
                     />
                   </div>
 
                   <div className="set-field-group">
-                    <label>GSTIN / Tax Number (जीएसटी नंबर - वैकल्पिक)</label>
-                    <input
-                      type="text"
-                      value={settings.gstin}
-                      onChange={(e) => setSettings({ ...settings, gstin: e.target.value.toUpperCase() })}
-                      placeholder="e.g. 29AAAAA0000A1Z5"
-                      style={{ textTransform: "uppercase" }}
-                    />
-                  </div>
-
-                  <div className="set-field-group">
-                    <label>Contact Mobile Number (दुकान का फोन नंबर)</label>
+                    <label>Contact Phone Number *</label>
                     <input
                       type="tel"
                       value={settings.phone}
                       onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                       placeholder="10 digit mobile number"
+                      required
                     />
                   </div>
 
                   <div className="set-field-group">
-                    <label>Business Email Address (ईमेल)</label>
+                    <label>Business Email Address</label>
                     <input
                       type="email"
                       value={settings.email}
                       onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                      placeholder="shop@email.com"
+                      placeholder="yourshop@gmail.com"
                     />
                   </div>
-                </div>
 
-                <div className="set-field-group" style={{ marginTop: "16px" }}>
-                  <label>City & State (शहर / राज्य)</label>
-                  <input
-                    type="text"
-                    value={settings.city}
-                    onChange={(e) => setSettings({ ...settings, city: e.target.value })}
-                    placeholder="उदा: Transport Nagar, Rawabhatha, Raipur, Chhattisgarh"
-                  />
-                </div>
+                  <div className="set-field-group">
+                    <label>City / Town *</label>
+                    <input
+                      type="text"
+                      value={settings.city}
+                      onChange={(e) => setSettings({ ...settings, city: e.target.value })}
+                      placeholder="e.g. Raipur / Delhi / Mumbai"
+                      required
+                    />
+                  </div>
 
-                <div className="set-field-group" style={{ marginTop: "16px" }}>
-                  <label>Complete Shop Address (दुकान का पूरा पता)</label>
-                  <textarea
-                    rows={3}
-                    value={settings.address}
-                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                    placeholder="Shop No., Main Market Road, Landmark, Pincode..."
-                  />
+                  <div className="set-field-group full-width">
+                    <label>Shop Address & Area</label>
+                    <input
+                      type="text"
+                      value={settings.address}
+                      onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                      placeholder="e.g. Shop 12, Main Market Road, Near Transport Stand"
+                    />
+                  </div>
+
+                  <div className="set-field-group">
+                    <label>GSTIN / Tax Number (Optional)</label>
+                    <input
+                      type="text"
+                      value={settings.gstin}
+                      onChange={(e) => setSettings({ ...settings, gstin: e.target.value.toUpperCase() })}
+                      placeholder="e.g. 22AAAAA0000A1Z5"
+                      maxLength={15}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -360,42 +379,42 @@ export default function Settings() {
             {activeTab === "billing" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>🧾 Billing & Invoice Preferences (बिलिंग सेटिंग्स)</h3>
-                  <p>Invoices me automatic aane wale default tax aur terms set karein.</p>
+                  <h3>🧾 Billing & Invoice Preferences</h3>
+                  <p>Configure tax calculations, invoice prefixes, and default terms & conditions.</p>
                 </div>
 
                 <div className="settings-form-grid">
                   <div className="set-field-group">
-                    <label>Default Tax Mode (डिफ़ॉल्ट टैक्स प्रकार)</label>
+                    <label>Default Tax Calculation Mode</label>
                     <select
                       value={settings.defaultTaxMode}
                       onChange={(e) => setSettings({ ...settings, defaultTaxMode: e.target.value })}
                     >
-                      <option value="none">Non-GST / Kacha Bill (0% Tax)</option>
-                      <option value="gst18">GST 18% (Standard Tyres & Services)</option>
+                      <option value="none">None (No GST on Bills)</option>
+                      <option value="gst18">GST 18% (Standard Auto Tax)</option>
                       <option value="gst28">GST 28% (Commercial / Heavy Vehicles)</option>
                     </select>
                   </div>
 
                   <div className="set-field-group">
-                    <label>Invoice Number Prefix (बिल नंबर का प्रीफिक्स)</label>
+                    <label>Invoice Number Prefix</label>
                     <input
                       type="text"
                       value={settings.invoicePrefix}
                       onChange={(e) => setSettings({ ...settings, invoicePrefix: e.target.value })}
-                      placeholder="e.g. TS-INV- / SR-2026-"
+                      placeholder="e.g. TS-INV- or SHOP-"
                     />
                   </div>
-                </div>
 
-                <div className="set-field-group" style={{ marginTop: "16px" }}>
-                  <label>Default Invoice Terms & Warranty Note (बिल की डिफ़ॉल्ट शर्तें)</label>
-                  <textarea
-                    rows={4}
-                    value={settings.defaultTerms}
-                    onChange={(e) => setSettings({ ...settings, defaultTerms: e.target.value })}
-                    placeholder="उदा: Goods once sold cannot be returned without warranty card..."
-                  />
+                  <div className="set-field-group full-width">
+                    <label>Invoice Terms & Warranty Conditions</label>
+                    <textarea
+                      rows={3}
+                      value={settings.defaultTerms}
+                      onChange={(e) => setSettings({ ...settings, defaultTerms: e.target.value })}
+                      placeholder="Terms and conditions printed at the bottom of customer bills..."
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -404,15 +423,15 @@ export default function Settings() {
             {activeTab === "notifications" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>🔔 Alerts & Notifications (अलर्ट्स व सूचनाएं)</h3>
-                  <p>Customer bookings aur billing ke liye notification channels configure karein.</p>
+                  <h3>🔔 Notification & Alert Preferences</h3>
+                  <p>Choose how you receive booking alerts, reviews, and update notifications.</p>
                 </div>
 
-                <div className="toggle-setting-list">
+                <div className="toggles-list">
                   <div className="toggle-row">
                     <div className="toggle-info">
-                      <strong>📱 WhatsApp Booking Alerts</strong>
-                      <p>Jab bhi koi naya customer tyre repair ya booking karega, aapko WhatsApp par alert milega.</p>
+                      <strong>💬 Instant WhatsApp Alerts</strong>
+                      <p>Receive immediate alerts on WhatsApp when a customer places a booking or submits an inquiry.</p>
                     </div>
                     <label className="switch">
                       <input
@@ -426,8 +445,8 @@ export default function Settings() {
 
                   <div className="toggle-row">
                     <div className="toggle-info">
-                      <strong>💬 SMS Alerts</strong>
-                      <p>Booking confirmation aur payment receipts ke liye SMS notifications.</p>
+                      <strong>📱 SMS Notifications</strong>
+                      <p>Receive SMS alerts for emergency puncture and doorstep fitment requests.</p>
                     </div>
                     <label className="switch">
                       <input
@@ -438,106 +457,6 @@ export default function Settings() {
                       <span className="slider round" />
                     </label>
                   </div>
-
-                  <div className="toggle-row">
-                    <div className="toggle-info">
-                      <strong>⭐ Star Rating & Customer Review Alerts</strong>
-                      <p>Jab bhi koi customer aapki shop ko rating ya feedback dega, turant notification alert milega.</p>
-                    </div>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={settings.starRatingAlerts ?? true}
-                        onChange={(e) => setSettings({ ...settings, starRatingAlerts: e.target.checked })}
-                      />
-                      <span className="slider round" />
-                    </label>
-                  </div>
-
-                  <div className="toggle-row">
-                    <div className="toggle-info">
-                      <strong>🔔 Real-Time In-App Notifications</strong>
-                      <p>Booking status badalne, naye offers aur zaroori messages ka top banner alert.</p>
-                    </div>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={settings.inAppAlerts ?? true}
-                        onChange={(e) => setSettings({ ...settings, inAppAlerts: e.target.checked })}
-                      />
-                      <span className="slider round" />
-                    </label>
-                  </div>
-
-                  <div className="toggle-row">
-                    <div className="toggle-info">
-                      <strong>🚀 App Update Notifications</strong>
-                      <p>TyreSaathi ka naya version release hone par update prompt aur notification mile.</p>
-                    </div>
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={settings.updateAlerts ?? true}
-                        onChange={(e) => setSettings({ ...settings, updateAlerts: e.target.checked })}
-                      />
-                      <span className="slider round" />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Manual App Update Check Card */}
-                <div style={{
-                  marginTop: "24px",
-                  padding: "16px 20px",
-                  background: "linear-gradient(135deg, rgba(235, 87, 87, 0.08) 0%, rgba(242, 153, 74, 0.08) 100%)",
-                  border: "1.5px solid rgba(235, 87, 87, 0.25)",
-                  borderRadius: "14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "12px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{
-                      width: "42px",
-                      height: "42px",
-                      borderRadius: "10px",
-                      background: "linear-gradient(135deg, #c0392b, #e67e22)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#fff"
-                    }}>
-                      <Sparkles size={22} />
-                    </div>
-                    <div>
-                      <strong style={{ fontSize: "14px", display: "block" }}>TyreSaathi App Version v1.1.0</strong>
-                      <small style={{ color: "#666" }}>Aapka app up-to-date hai ya naya update check karein.</small>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      alert("✅ TyreSaathi App v1.1.0 latest version par chal raha hai! Agar naya update aayega to automatic screen par prompt aa jayega (jise aap update ya skip kar sakte hain).");
-                    }}
-                    style={{
-                      background: "#c0392b",
-                      color: "#fff",
-                      border: "none",
-                      padding: "9px 16px",
-                      borderRadius: "8px",
-                      fontWeight: "700",
-                      fontSize: "13px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px"
-                    }}
-                  >
-                    <RefreshCw size={14} /> Check for Updates
-                  </button>
                 </div>
               </div>
             )}
@@ -546,15 +465,15 @@ export default function Settings() {
             {activeTab === "security" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>🔒 Account & Security (पासवर्ड व सुरक्षा)</h3>
-                  <p>Apne login credentials aur theme preferences manage karein.</p>
+                  <h3>🔒 Account & Security</h3>
+                  <p>Manage your login credentials, theme preferences, and account controls.</p>
                 </div>
 
                 <div className="security-box-card">
                   <div className="sec-item-row">
                     <div>
-                      <strong>Password Reset (पासवर्ड बदलें)</strong>
-                      <p>Apne registered email ({user?.email}) par secure password reset link bhejein.</p>
+                      <strong>Password Reset</strong>
+                      <p>Send a secure password reset link to your registered email ({user?.email}).</p>
                     </div>
                     <button
                       type="button"
@@ -567,13 +486,13 @@ export default function Settings() {
 
                   {resetEmailSent && (
                     <div className="reset-alert-success">
-                      ✅ Password reset link '{user?.email}' par bhej diya gaya hai! Inbox check karein.
+                      ✅ Password reset link has been dispatched to '{user?.email}'. Please check your inbox and spam folder.
                     </div>
                   )}
 
-                  <div className="sec-item-row" style={{ marginTop: "16px" }}>
+                  <div className="sec-item-row" style={{ marginTop: "14px" }}>
                     <div>
-                      <strong>Appearance Theme (डार्क / लाइट मोड)</strong>
+                      <strong>Theme Appearance</strong>
                       <p>Current theme: <strong>{theme === "dark" ? "Dark Mode 🌙" : "Light Mode ☀️"}</strong></p>
                     </div>
                     <button
@@ -585,26 +504,14 @@ export default function Settings() {
                     </button>
                   </div>
 
-                  <div className="sec-item-row" style={{ marginTop: "16px" }}>
-                    <div>
-                      <strong>Account Role & Permissions</strong>
-                      <p>Role: <strong style={{ color: "#c0392b" }}>{profile?.role ? profile.role.toUpperCase() : "CUSTOMER"}</strong> {isAdmin && "🛡️ Master Admin"}</p>
-                    </div>
-                    {isAdmin && (
-                      <Link to="/admin" className="btn-sec-admin-link">
-                        🛡️ Open Master Admin Panel
-                      </Link>
-                    )}
-                  </div>
-
-                  {/* Google Play Mandatory: Danger Zone */}
-                  <div className="sec-item-row danger-zone-row" style={{ marginTop: "24px", borderColor: "rgba(231,76,60,0.3)", background: "rgba(231,76,60,0.03)" }}>
+                  {/* Danger Zone: Account Deletion */}
+                  <div className="sec-item-row danger-zone-row" style={{ marginTop: "20px", borderColor: "rgba(231,76,60,0.3)", background: "rgba(231,76,60,0.03)" }}>
                     <div>
                       <strong style={{ color: "#e74c3c", display: "flex", alignItems: "center", gap: "6px" }}>
-                        <AlertTriangle size={15} /> Delete Account & Data (खाता हटाएं)
+                        <AlertTriangle size={15} /> Delete Account & Associated Data
                       </strong>
-                      <p style={{ color: "#888" }}>
-                        Google Play Store data privacy guidelines ke anusar aap apna account aur sabhi personal records permanently delete kar sakte hain.
+                      <p style={{ color: "#64748b", margin: "2px 0 0" }}>
+                        In accordance with Google Play Store Data Safety guidelines, you can permanently delete your account and personal records.
                       </p>
                     </div>
                     <button
@@ -623,212 +530,49 @@ export default function Settings() {
             {activeTab === "sheets" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>📊 Google Sheets Sync & Live Records (गूगल शीट इंटीग्रेशन)</h3>
-                  <p>Customer Logins, Registrations aur Tyre Service Bookings ko real-time me apni Google Sheet me save karein.</p>
+                  <h3>📊 Google Sheets Sync & Live Records</h3>
+                  <p>Automatically synchronize customer logins, registrations, and tyre bookings to your Google Sheet.</p>
                 </div>
 
-                {/* Connection Status Card */}
-                <div style={{
-                  background: sheetUrl ? "#eafaf1" : "#fef9e7",
-                  border: `1.5px solid ${sheetUrl ? "#2ecc71" : "#f1c40f"}`,
-                  borderRadius: "10px",
-                  padding: "16px",
-                  marginBottom: "20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "12px"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <FileSpreadsheet size={24} color={sheetUrl ? "#27ae60" : "#d35400"} />
-                    <div>
-                      <strong style={{ fontSize: "14px", color: "#2c3e50" }}>
-                        {sheetUrl ? "✅ Google Sheet Live Sync Connected" : "⚠️ Google Sheet Not Configured"}
-                      </strong>
-                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#666" }}>
-                        {sheetUrl ? "Logins aur Bookings automatic aapki sheet me sync ho rahe hain." : "Niche apna Web App URL paste karein aur Save karein."}
-                      </p>
-                    </div>
-                  </div>
-
-                  {sheetUrl && (
-                    <button
-                      type="button"
-                      onClick={handleTestSheet}
-                      disabled={testingSheet}
-                      style={{
-                        background: "#27ae60",
-                        color: "#fff",
-                        border: "none",
-                        padding: "8px 14px",
-                        borderRadius: "6px",
-                        fontWeight: "700",
-                        fontSize: "12px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px"
-                      }}
-                    >
-                      {testingSheet ? <RefreshCw size={14} className="spin" /> : "🧪 Test Live Connection"}
-                    </button>
-                  )}
+                <div className="set-field-group">
+                  <label>Google Apps Script Web App URL</label>
+                  <input
+                    type="url"
+                    value={sheetUrl}
+                    onChange={(e) => setSheetUrl(e.target.value)}
+                    placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                    style={{ fontFamily: "monospace", fontSize: "12px" }}
+                  />
                 </div>
 
-                {/* Test Result Message */}
+                <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoogleSheetUrl(sheetUrl);
+                      alert("✅ Google Sheet URL saved successfully!");
+                    }}
+                    className="btn-sec-action"
+                    style={{ background: "#c0392b", color: "white", border: "none" }}
+                  >
+                    <Save size={14} /> Save Sheet URL
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTestSheet}
+                    disabled={testingSheet}
+                    className="btn-sec-action"
+                  >
+                    {testingSheet ? <RefreshCw size={14} className="spin" /> : "🧪 Test Connection"}
+                  </button>
+                </div>
+
                 {sheetTestResult && (
-                  <div style={{
-                    background: sheetTestResult.type === "success" ? "#d4edda" : "#f8d7da",
-                    border: `1px solid ${sheetTestResult.type === "success" ? "#c3e6cb" : "#f5c6cb"}`,
-                    color: sheetTestResult.type === "success" ? "#155724" : "#721c24",
-                    padding: "12px 14px",
-                    borderRadius: "8px",
-                    marginBottom: "16px",
-                    fontSize: "13px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px"
-                  }}>
-                    {sheetTestResult.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                    <span>{sheetTestResult.message}</span>
+                  <div style={{ marginTop: "12px", padding: "10px 12px", borderRadius: "8px", fontSize: "12.5px", background: sheetTestResult.type === "success" ? "#f0fdf4" : "#fef2f2", border: `1px solid ${sheetTestResult.type === "success" ? "#bbf7d0" : "#fecaca"}`, color: sheetTestResult.type === "success" ? "#166534" : "#991b1b" }}>
+                    {sheetTestResult.message}
                   </div>
                 )}
-
-                {/* URL Input Form */}
-                <div className="security-box-card" style={{ marginBottom: "24px" }}>
-                  <div className="set-field-group">
-                    <label style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span>Google Apps Script Web App URL (वेब ऐप यूआरएल)</span>
-                      {sheetUrl && <span style={{ color: "#27ae60", fontSize: "11px", fontWeight: "700" }}>ACTIVE</span>}
-                    </label>
-                    <input
-                      type="url"
-                      value={sheetUrl}
-                      onChange={(e) => setSheetUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                      style={{ fontFamily: "monospace", fontSize: "13px" }}
-                    />
-                    <small style={{ color: "#7f8c8d", marginTop: "4px", display: "block" }}>
-                      Aapka Google Sheet Apps Script Web App URL yahan daalein.
-                    </small>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "10px", marginTop: "14px", flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setGoogleSheetUrl(sheetUrl);
-                        alert("✅ Google Sheet URL save ho gaya!");
-                      }}
-                      style={{
-                        background: "#c0392b",
-                        color: "white",
-                        border: "none",
-                        padding: "8px 16px",
-                        borderRadius: "6px",
-                        fontWeight: "700",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px"
-                      }}
-                    >
-                      <Save size={15} /> Save Sheet URL
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleTestSheet}
-                      disabled={testingSheet}
-                      style={{
-                        background: "#f0f2f5",
-                        color: "#2c3e50",
-                        border: "1px solid #ccc",
-                        padding: "8px 14px",
-                        borderRadius: "6px",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px"
-                      }}
-                    >
-                      {testingSheet ? <RefreshCw size={14} className="spin" /> : "🧪 Test Signal"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Step-by-Step Instructions */}
-                <div style={{
-                  background: "var(--bg-card, #ffffff)",
-                  border: "1px solid var(--border-color, #e0e0e0)",
-                  borderRadius: "10px",
-                  padding: "20px"
-                }}>
-                  <h4 style={{ margin: "0 0 12px", color: "#2c3e50", fontSize: "15px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Sparkles size={16} color="#c0392b" />
-                    Google Sheet Setup Kaise Karein? (सिर्फ 2 मिनट में)
-                  </h4>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "14px", fontSize: "13px", color: "#444" }}>
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>1</span>
-                      <div>
-                        <strong>Nayi Google Sheet Banayein:</strong>
-                        <p style={{ margin: "2px 0 4px" }}>
-                          <a href="https://sheets.new" target="_blank" rel="noopener noreferrer" style={{ color: "#c0392b", fontWeight: "700" }}>
-                            sheets.new ↗
-                          </a> par jakar nayi sheet banayein. Niche do tabs banayein: <code>Logins</code> aur <code>Bookings</code>.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>2</span>
-                      <div>
-                        <strong>Apps Script Code Dalein:</strong>
-                        <p style={{ margin: "2px 0 6px" }}>
-                          Sheet me <strong>Extensions</strong> &gt; <strong>Apps Script</strong> kholein aur ye code paste karein:
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleCopyAppsScript}
-                          style={{
-                            background: copiedScript ? "#27ae60" : "#2c3e50",
-                            color: "#fff",
-                            border: "none",
-                            padding: "6px 12px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px"
-                          }}
-                        >
-                          {copiedScript ? <Check size={14} /> : <Copy size={14} />}
-                          {copiedScript ? "✅ Code Copied!" : "📋 Copy Apps Script Code"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <span style={{ background: "#c0392b", color: "#fff", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>3</span>
-                      <div>
-                        <strong>Deploy Web App:</strong>
-                        <p style={{ margin: "2px 0 0" }}>
-                          Apps Script me <strong>Deploy</strong> &gt; <strong>New deployment</strong> &gt; <strong>Web app</strong> chunein.
-                          <br />
-                          <strong>Execute as:</strong> <code>Me</code> | <strong>Who has access:</strong> <code>Anyone</code> select karein aur mila hua URL upar paste karein!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -836,69 +580,96 @@ export default function Settings() {
             {activeTab === "legal" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>⚖️ Legal, Trademark & Data Privacy Policies (कानूनी नीतियां व अस्वीकरण)</h3>
-                  <p>TyreSaathi ke sabhi statutory compliances, trademark protections aur user data privacy rules.</p>
+                  <h3>⚖️ Legal, Trademark & Data Privacy Compliance</h3>
+                  <p>Statutory compliances, Google Play Store policy links, and user data protections.</p>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
-                  {/* 1. Trademark Fair Use */}
-                  <div style={{ background: "rgba(142, 68, 173, 0.05)", border: "1px solid rgba(142, 68, 173, 0.25)", borderRadius: "12px", padding: "18px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <Scale size={18} color="#8e44ad" />
-                      <strong style={{ color: "#8e44ad", fontSize: "15px" }}>
+                {/* 🌟 1. Prominent Google Play Store Privacy Policy URL Card */}
+                <div className="playstore-privacy-card">
+                  <div className="playstore-privacy-header">
+                    <Globe size={20} color="#15803d" />
+                    <div>
+                      <strong style={{ fontSize: "14px", color: "#166534" }}>
+                        Google Play Console Privacy Policy URL
+                      </strong>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#374151" }}>
+                        Use this official live URL in your Google Play Console & developer listings:
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="privacy-url-input-row">
+                    <input
+                      type="text"
+                      readOnly
+                      value={playStorePrivacyPolicyUrl}
+                      className="privacy-url-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyPrivacyUrl}
+                      className="btn-copy-privacy-url"
+                    >
+                      {copiedPrivacyUrl ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedPrivacyUrl ? "Copied!" : "Copy URL"}</span>
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                    <Link
+                      to="/privacy-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-open-privacy-link"
+                    >
+                      <ExternalLink size={13} /> View Live Privacy Policy Page
+                    </Link>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "16px" }}>
+                  {/* Trademark Fair Use */}
+                  <div className="legal-info-card">
+                    <div className="legal-card-header">
+                      <Scale size={17} color="#8e44ad" />
+                      <strong style={{ color: "#8e44ad" }}>
                         Trade Marks Act, 1999 — Section 30 (Nominative Fair Use Protection)
                       </strong>
                     </div>
-                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
-                      All brand names, trademarks, logos, and registered trade names (such as MRF, Apollo, CEAT, Bridgestone, Michelin, Goodyear, JK Tyre, Continental, Yokohama, TVS Eurogrip, Maruti Suzuki, Hyundai, etc.) displayed on TyreSaathi are property of their respective trademark holders. Their mention is strictly for descriptive compatibility and genuine product identification under Section 30 of the Indian Trade Marks Act 1999, and does not imply direct sponsorship or endorsement.
+                    <p className="legal-card-desc">
+                      All brand names, trademarks, and logos (such as MRF, Apollo, CEAT, Bridgestone, Michelin, Goodyear, JK Tyre, Continental, etc.) displayed on TyreSaathi are property of their respective trademark holders. Mention is strictly for descriptive compatibility and genuine identification under Section 30 of the Indian Trade Marks Act 1999.
                     </p>
-                    <Link to="/disclaimer" style={{ color: "#8e44ad", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
+                    <Link to="/disclaimer" className="legal-card-link">
                       Full Trademark & IP Policy Document ↗
                     </Link>
                   </div>
 
-                  {/* 2. Terms of Service & Warranty */}
-                  <div style={{ background: "rgba(41, 128, 185, 0.05)", border: "1px solid rgba(41, 128, 185, 0.25)", borderRadius: "12px", padding: "18px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <ShieldCheck size={18} color="#2980b9" />
-                      <strong style={{ color: "#2980b9", fontSize: "15px" }}>
-                        Terms of Service & 100% Genuine Manufacturer Warranty
+                  {/* Terms of Service */}
+                  <div className="legal-info-card" style={{ borderColor: "#bae6fd", background: "#f0f9ff" }}>
+                    <div className="legal-card-header">
+                      <ShieldCheck size={17} color="#0284c7" />
+                      <strong style={{ color: "#0284c7" }}>
+                        Terms of Service & Genuine Manufacturer Warranty
                       </strong>
                     </div>
-                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
-                      All tyre products purchased through TyreSaathi partner retail shops come with official brand warranty cards issued directly by the respective manufacturers. Garage and fitment services are facilitated by verified partner hubs.
+                    <p className="legal-card-desc">
+                      All tyre products purchased through TyreSaathi partner retail shops come with official brand warranty cards issued directly by the respective manufacturers.
                     </p>
-                    <Link to="/terms" style={{ color: "#2980b9", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
-                      Read User Agreement & Terms of Service ↗
+                    <Link to="/terms" className="legal-card-link" style={{ color: "#0284c7" }}>
+                      Read Terms of Service & User Agreement ↗
                     </Link>
                   </div>
 
-                  {/* 3. Google Play Data Safety & Privacy */}
-                  <div style={{ background: "rgba(39, 174, 96, 0.05)", border: "1px solid rgba(39, 174, 96, 0.25)", borderRadius: "12px", padding: "18px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                      <Lock size={18} color="#27ae60" />
-                      <strong style={{ color: "#27ae60", fontSize: "15px" }}>
-                        Google Play Data Safety & Privacy Policy
-                      </strong>
-                    </div>
-                    <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: "1.6", margin: "0 0 12px" }}>
-                      Compliant with Google Play Store Developer Guidelines and India Digital Personal Data Protection standards. Camera, storage, and location permissions are used strictly with user consent for profile pictures, receipt uploads, and finding nearby tyre fitment shops.
-                    </p>
-                    <Link to="/privacy-policy" style={{ color: "#27ae60", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
-                      Read Complete Privacy Policy (Data Safety) ↗
-                    </Link>
-                  </div>
-
-                  {/* 4. Grievance Redressal */}
-                  <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "16px" }}>
-                    <strong style={{ fontSize: "14px", display: "block", marginBottom: "6px" }}>
-                      📞 Grievance Redressal & Safe Harbor Intermediary (IT Act 2000 Section 79)
+                  {/* Grievance Redressal */}
+                  <div className="legal-info-card" style={{ borderColor: "#e2e8f0", background: "#f8fafc" }}>
+                    <strong style={{ fontSize: "13px", display: "block", marginBottom: "4px" }}>
+                      📞 Grievance Redressal (IT Act 2000 Section 79)
                     </strong>
-                    <p style={{ fontSize: "12.5px", color: "var(--text-muted)", margin: "0 0 8px" }}>
+                    <p className="legal-card-desc" style={{ marginBottom: "6px" }}>
                       Grievance Officer: <strong>TyreSaathi Compliance Team</strong> | Email: <code>tyresathi@gmail.com</code> | Phone: <code>+91 8877277757</code>
                     </p>
-                    <Link to="/support" style={{ color: "#c0392b", fontWeight: "700", fontSize: "12.5px", textDecoration: "none" }}>
-                      Raise a Grievance / Support Ticket →
+                    <Link to="/support" className="legal-card-link" style={{ color: "#c0392b" }}>
+                      Raise a Support Ticket / Grievance →
                     </Link>
                   </div>
                 </div>
@@ -908,7 +679,7 @@ export default function Settings() {
             {/* Bottom Save Button */}
             <div className="settings-bottom-actions">
               <button type="submit" className="btn-save-settings" disabled={saving}>
-                <Save size={16} /> {saving ? "Saving Changes..." : "Save Settings (सेटिंग्स सेव करें)"}
+                <Save size={15} /> {saving ? "Saving Changes..." : "Save Settings"}
               </button>
             </div>
           </form>
@@ -919,17 +690,17 @@ export default function Settings() {
       {showDeleteModal && (
         <div className="modal-backdrop-st">
           <div className="delete-modal-box-st">
-            <div style={{ textAlign: "center", marginBottom: "12px" }}>
-              <AlertTriangle size={36} color="#e74c3c" />
+            <div style={{ textAlign: "center", marginBottom: "10px" }}>
+              <AlertTriangle size={32} color="#e74c3c" />
             </div>
-            <h3 style={{ margin: "0 0 8px", color: "#1e293b", textAlign: "center" }}>Delete Account Permanently?</h3>
-            <p style={{ fontSize: "13.5px", color: "#64748b", lineHeight: "1.55", textAlign: "center", margin: "0 0 16px" }}>
-              Kya aap sach me apna TyreSaathi account aur saara data delete karna chahte hain? Iske baad aapke sabhi records permanently purge ho jayenge aur recover nahi honge.
+            <h3 style={{ margin: "0 0 6px", color: "#1e293b", textAlign: "center", fontSize: "16px" }}>Delete Account Permanently?</h3>
+            <p style={{ fontSize: "12.5px", color: "#64748b", lineHeight: "1.5", textAlign: "center", margin: "0 0 14px" }}>
+              Are you sure you want to permanently delete your account and associated records? This action cannot be undone.
             </p>
 
-            <div style={{ marginBottom: "18px", textAlign: "left" }}>
-              <label style={{ fontSize: "12px", fontWeight: "700", color: "#e74c3c", display: "block", marginBottom: "6px" }}>
-                Galti se delete hone se rokne ke liye niche "DELETE" type karein:
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ fontSize: "11.5px", fontWeight: "700", color: "#e74c3c", display: "block", marginBottom: "4px" }}>
+                Type "DELETE" below to confirm:
               </label>
               <input 
                 type="text"
@@ -938,10 +709,10 @@ export default function Settings() {
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
+                  padding: "8px 10px",
+                  borderRadius: "6px",
                   border: "1.5px solid #e74c3c",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: "700",
                   letterSpacing: "1px",
                   color: "#e74c3c",
@@ -950,7 +721,7 @@ export default function Settings() {
               />
             </div>
 
-            <div style={{ display: "flex", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "10px" }}>
               <button 
                 type="button"
                 className="btn-cancel-modal-st"
@@ -960,7 +731,7 @@ export default function Settings() {
                 }}
                 disabled={isDeleting}
               >
-                Cancel (रद्द करें)
+                Cancel
               </button>
               <button 
                 type="button"
@@ -968,7 +739,7 @@ export default function Settings() {
                 onClick={handleDeleteAccount}
                 disabled={isDeleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
                 style={{
-                  opacity: deleteConfirmText.trim().toUpperCase() === "DELETE" ? 1 : 0.45,
+                  opacity: deleteConfirmText.trim().toUpperCase() === "DELETE" ? 1 : 0.5,
                   cursor: deleteConfirmText.trim().toUpperCase() === "DELETE" ? "pointer" : "not-allowed"
                 }}
               >
@@ -981,58 +752,63 @@ export default function Settings() {
 
       <style>{`
         .settings-page-container {
-          max-width: 1200px;
+          max-width: 1140px;
           margin: 0 auto;
-          padding: 6px 4px 30px;
+          padding: 16px 12px 60px 12px;
+          color: #0f172a;
         }
         .settings-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
         }
-        @media (max-width: 768px) {
-          .settings-header-row { flex-direction: column; gap: 10px; }
+        @media (max-width: 640px) {
+          .settings-header-row { 
+            flex-direction: column; 
+            gap: 10px; 
+          }
         }
         .settings-title {
-          font-size: 1.25rem; /* text-xl on mobile */
+          font-size: 1.25rem;
           font-weight: 800;
-          color: var(--text);
+          color: #0f172a;
           margin: 0 0 4px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           line-height: 1.25;
         }
-        @media (min-width: 640px) {
-          .settings-title { font-size: 1.5rem; }
-        }
         .settings-sub {
-          font-size: 0.75rem; /* text-xs */
-          color: var(--text-muted);
+          font-size: 0.75rem;
+          color: #64748b;
           margin: 0;
-          line-height: 1.35;
+          line-height: 1.4;
         }
         .btn-save-all-top {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 8px 14px;
-          border-radius: 6px;
+          padding: 7px 14px;
+          border-radius: 8px;
           font-weight: 700;
           font-size: 0.8125rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           white-space: nowrap;
+          transition: background 0.2s;
+        }
+        .btn-save-all-top:hover {
+          background: #a93226;
         }
         .settings-success-alert {
-          background: #eafaf1;
-          border: 1.5px solid #2ecc71;
-          color: #27ae60;
-          padding: 10px 12px;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          color: #166534;
+          padding: 8px 12px;
           border-radius: 8px;
           font-weight: 600;
           font-size: 0.78rem;
@@ -1045,51 +821,62 @@ export default function Settings() {
         /* Layout Grid */
         .settings-layout-grid {
           display: grid;
-          grid-template-columns: 240px 1fr;
-          gap: 16px;
+          grid-template-columns: 220px 1fr;
+          gap: 14px;
           align-items: start;
         }
-        @media (max-width: 900px) {
-          .settings-layout-grid { grid-template-columns: 1fr; gap: 12px; }
+        @media (max-width: 860px) {
+          .settings-layout-grid { 
+            grid-template-columns: 1fr; 
+            gap: 12px; 
+          }
         }
 
         /* Nav Sidebar */
         .settings-nav-sidebar {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 5px;
         }
-        @media (max-width: 900px) {
+        @media (max-width: 860px) {
           .settings-nav-sidebar {
             flex-direction: row;
             overflow-x: auto;
-            padding-bottom: 4px;
+            padding-bottom: 6px;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
+            gap: 6px;
           }
           .settings-nav-sidebar::-webkit-scrollbar {
             display: none;
           }
           .nav-tab-btn {
             flex-shrink: 0;
-            padding: 8px 10px !important;
+            padding: 7px 12px !important;
+            border-radius: 20px !important;
+          }
+          .tab-btn-text small {
+            display: none !important;
+          }
+          .quick-help-link-box {
+            display: none !important;
           }
         }
         .nav-tab-btn {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          background: var(--surface);
-          color: var(--text);
+          padding: 9px 12px;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          color: #334155;
           text-align: left;
           cursor: pointer;
           transition: all 0.15s ease;
         }
         .nav-tab-btn:hover {
-          background: var(--surface-2);
+          background: #f8fafc;
         }
         .tab-btn-active {
           background: #c0392b !important;
@@ -1099,32 +886,32 @@ export default function Settings() {
         .tab-btn-active small {
           color: rgba(255,255,255,0.8) !important;
         }
-        .nav-tab-btn strong {
+        .tab-btn-text strong {
           display: block;
           font-size: 0.8125rem;
         }
-        .nav-tab-btn small {
+        .tab-btn-text small {
           font-size: 0.6875rem;
-          color: var(--text-muted);
+          color: #64748b;
         }
 
         .quick-help-link-box {
-          background: var(--surface);
-          border: 1px dashed var(--border);
-          border-radius: 8px;
+          background: #f8fafc;
+          border: 1px dashed #cbd5e1;
+          border-radius: 10px;
           padding: 10px 12px;
-          margin-top: 12px;
+          margin-top: 10px;
           display: flex;
           gap: 8px;
           font-size: 0.75rem;
         }
         .quick-help-link-box strong {
           display: block;
-          margin-bottom: 2px;
+          margin-bottom: 1px;
         }
         .quick-help-link-box p {
-          margin: 0 0 4px;
-          color: var(--text-muted);
+          margin: 0 0 3px;
+          color: #64748b;
         }
         .link-to-support {
           color: #c0392b;
@@ -1134,65 +921,58 @@ export default function Settings() {
 
         /* Content Card */
         .settings-content-card {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
           padding: 16px 14px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
-        }
-        @media (min-width: 640px) {
-          .settings-content-card {
-            padding: 20px;
-            border-radius: 12px;
-          }
+          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
         }
         .sec-header {
           margin-bottom: 14px;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 8px;
         }
         .sec-header h3 {
-          font-size: 1.05rem; /* text-lg */
+          font-size: 1rem;
           font-weight: 800;
-          margin: 0 0 2px;
-          color: var(--text);
+          color: #0f172a;
+          margin: 0 0 3px;
         }
         .sec-header p {
           font-size: 0.75rem;
-          color: var(--text-muted);
+          color: #64748b;
           margin: 0;
         }
 
+        /* Forms */
         .settings-form-grid {
           display: grid;
-          grid-template-columns: 1fr;
-          gap: 10px;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
         }
-        @media (min-width: 650px) {
-          .settings-form-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        @media (max-width: 600px) {
+          .settings-form-grid { grid-template-columns: 1fr; }
         }
-
         .set-field-group {
           display: flex;
           flex-direction: column;
           gap: 4px;
         }
+        .full-width {
+          grid-column: 1 / -1;
+        }
         .set-field-group label {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.75rem;
           font-weight: 700;
-          color: var(--text-muted);
+          color: #334155;
         }
         .set-field-group input,
         .set-field-group select,
         .set-field-group textarea {
           padding: 8px 10px;
-          border-radius: 6px;
-          border: 1.5px solid var(--border);
-          background: var(--bg);
-          color: var(--text);
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
           font-size: 0.8125rem;
           outline: none;
-          font-family: inherit;
+          background: #ffffff;
         }
         .set-field-group input:focus,
         .set-field-group select:focus,
@@ -1200,64 +980,63 @@ export default function Settings() {
           border-color: #c0392b;
         }
 
-        /* Toggle Rows */
-        .toggle-setting-list {
+        /* Toggles */
+        .toggles-list {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
         }
         .toggle-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 10px 12px;
-          background: var(--bg);
-          border-radius: 8px;
-          border: 1px solid var(--border);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          gap: 10px;
         }
         .toggle-info strong {
           display: block;
           font-size: 0.8125rem;
-          margin-bottom: 1px;
+          margin-bottom: 2px;
         }
         .toggle-info p {
           margin: 0;
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          font-size: 0.71875rem;
+          color: #64748b;
+          line-height: 1.35;
         }
 
-        /* Switch Toggle */
         .switch {
           position: relative;
           display: inline-block;
           width: 40px;
-          height: 20px;
+          height: 22px;
           flex-shrink: 0;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
           position: absolute;
           cursor: pointer;
-          inset: 0;
-          background-color: #ccc;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background-color: #cbd5e1;
           transition: .3s;
+          border-radius: 22px;
         }
         .slider:before {
           position: absolute;
           content: "";
-          height: 14px;
-          width: 14px;
-          left: 3px;
-          bottom: 3px;
+          height: 16px; width: 16px;
+          left: 3px; bottom: 3px;
           background-color: white;
           transition: .3s;
+          border-radius: 50%;
         }
         input:checked + .slider { background-color: #27ae60; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .slider.round { border-radius: 20px; }
-        .slider.round:before { border-radius: 50%; }
+        input:checked + .slider:before { transform: translateX(18px); }
 
-        /* Security Card */
+        /* Security */
         .security-box-card {
           display: flex;
           flex-direction: column;
@@ -1268,137 +1047,184 @@ export default function Settings() {
           align-items: center;
           justify-content: space-between;
           padding: 10px 12px;
-          background: var(--bg);
-          border-radius: 8px;
-          border: 1px solid var(--border);
-          gap: 8px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
         .sec-item-row strong {
           display: block;
           font-size: 0.8125rem;
         }
         .sec-item-row p {
-          margin: 1px 0 0;
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          margin: 2px 0 0;
+          font-size: 0.71875rem;
+          color: #64748b;
         }
         .btn-sec-action {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          padding: 6px 10px;
+          padding: 6px 12px;
           border-radius: 6px;
-          font-weight: 700;
+          border: 1px solid #cbd5e1;
+          background: white;
+          color: #334155;
           font-size: 0.75rem;
+          font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          white-space: nowrap;
         }
-        .btn-sec-admin-link {
-          background: #c0392b;
+        .btn-danger-del {
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: 1px solid #fecaca;
+          background: #fee2e2;
+          color: #dc2626;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        /* Play Store Privacy Card */
+        .playstore-privacy-card {
+          background: #f0fdf4;
+          border: 1.5px solid #86efac;
+          border-radius: 12px;
+          padding: 14px;
+        }
+        .playstore-privacy-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        .privacy-url-input-row {
+          display: flex;
+          gap: 8px;
+        }
+        .privacy-url-input {
+          flex: 1;
+          padding: 7px 10px;
+          border-radius: 6px;
+          border: 1px solid #86efac;
+          background: white;
+          font-family: monospace;
+          font-size: 0.75rem;
+          color: #166534;
+        }
+        .btn-copy-privacy-url {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 7px 12px;
+          background: #16a34a;
           color: white;
-          text-decoration: none;
-          padding: 6px 10px;
+          border: none;
           border-radius: 6px;
           font-weight: 700;
           font-size: 0.75rem;
-          white-space: nowrap;
+          cursor: pointer;
         }
-        .reset-alert-success {
-          background: #eafaf1;
-          color: #27ae60;
-          padding: 8px 10px;
-          border-radius: 6px;
+        .btn-open-privacy-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           font-size: 0.75rem;
-          font-weight: 600;
+          font-weight: 700;
+          color: #15803d;
+          text-decoration: none;
+        }
+
+        .legal-info-card {
+          background: #faf5ff;
+          border: 1px solid #e9d5ff;
+          border-radius: 10px;
+          padding: 12px;
+        }
+        .legal-card-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 4px;
+          font-size: 0.8125rem;
+        }
+        .legal-card-desc {
+          font-size: 0.71875rem;
+          color: #475569;
+          margin: 0 0 6px;
+          line-height: 1.4;
+        }
+        .legal-card-link {
+          font-size: 0.71875rem;
+          font-weight: 700;
+          color: #7c3aed;
+          text-decoration: none;
         }
 
         .settings-bottom-actions {
           margin-top: 16px;
-          padding-top: 12px;
-          border-top: 1px solid var(--border);
+          padding-top: 14px;
+          border-top: 1px solid #f1f5f9;
+          display: flex;
+          justify-content: flex-end;
         }
         .btn-save-settings {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 9px 18px;
-          border-radius: 6px;
-          font-weight: 800;
-          font-size: 0.85rem;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.8125rem;
           cursor: pointer;
-          display: inline-flex;
+          display: flex;
           align-items: center;
           gap: 6px;
         }
-        .btn-danger-del {
-          background: transparent;
-          border: 1.5px solid #e74c3c;
-          color: #e74c3c;
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.75rem;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          white-space: nowrap;
-          transition: all 0.2s;
-        }
-        .btn-danger-del:hover {
-          background: #e74c3c;
-          color: white;
-        }
+
+        /* Delete Modal */
         .modal-backdrop-st {
           position: fixed;
           inset: 0;
-          background: rgba(0,0,0,0.65);
+          background: rgba(0,0,0,0.6);
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 9999;
+          z-index: 2000;
           padding: 16px;
         }
         .delete-modal-box-st {
-          background: var(--surface, #ffffff);
-          border: 1px solid var(--border, #e2e8f0);
-          border-radius: 12px;
-          padding: 20px 16px;
-          max-width: 400px;
+          background: white;
+          border-radius: 14px;
+          max-width: 380px;
           width: 100%;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+          padding: 18px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
         .btn-cancel-modal-st {
           flex: 1;
-          background: var(--surface-2, #f1f5f9);
-          border: 1px solid var(--border, #cbd5e1);
-          color: var(--text, #334155);
-          padding: 8px 12px;
+          padding: 8px;
           border-radius: 6px;
-          font-weight: 600;
-          font-size: 0.8125rem;
+          border: 1px solid #cbd5e1;
+          background: white;
+          color: #475569;
+          font-weight: 700;
+          font-size: 0.78rem;
           cursor: pointer;
         }
         .btn-confirm-delete-st {
-          flex: 1.2;
-          background: #e74c3c;
-          border: none;
-          color: white;
-          padding: 8px 12px;
+          flex: 1;
+          padding: 8px;
           border-radius: 6px;
+          border: none;
+          background: #dc2626;
+          color: white;
           font-weight: 700;
-          font-size: 0.8125rem;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
-        }
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          font-size: 0.78rem;
         }
       `}</style>
     </div>

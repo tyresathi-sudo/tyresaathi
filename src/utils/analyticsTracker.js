@@ -54,7 +54,7 @@ function calculateGrowth(points) {
 }
 
 /**
- * Fetch all real analytics events and calculate actual metrics & graph curves (100% Real Data)
+ * Fetch all real analytics events and calculate actual metrics & graph curves (100% Genuine Shop Data)
  */
 export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) {
   const daysCount = timeframe === "7d" ? 7 : 30;
@@ -101,6 +101,7 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
   // Target shop matching identifiers
   const targetId = typeof targetShop === "object" ? (targetShop?.id || targetShop?.uid) : targetShop;
   const targetName = typeof targetShop === "object" ? (targetShop?.shopName || targetShop?.name) : null;
+  const isFilteringSpecificShop = Boolean(targetShop !== undefined && targetShop !== null);
 
   // 3. Initialize daily counters with 0
   const dailyViews = {};
@@ -115,9 +116,9 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
     dailyBookings[k] = 0;
   });
 
-  // Populate from real events with shop-specific filter
+  // Populate from real events with strict shop-specific filter
   allEvents.forEach((ev) => {
-    if (targetShop) {
+    if (isFilteringSpecificShop) {
       const meta = ev.metadata || {};
       const evShopId = meta.shopId || ev.shopId;
       const evShopName = meta.shopName || ev.shopName;
@@ -125,15 +126,15 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
       const matchId = targetId && evShopId && String(evShopId).toLowerCase() === String(targetId).toLowerCase();
       const matchName = targetName && evShopName && String(evShopName).toLowerCase() === String(targetName).toLowerCase();
 
-      // If event belongs to another specific shop, skip it
-      if (!matchId && !matchName && (evShopId || evShopName)) {
+      // Only count if event explicitly belongs to this shop
+      if (!matchId && !matchName) {
         return;
       }
     }
 
     const date = ev.dateStr || (ev.timestamp ? ev.timestamp.split("T")[0] : null);
     if (date && dailyViews[date] !== undefined) {
-      if (ev.type === "view" || ev.type === "view_shop_profile" || ev.type === "store_view" || ev.type === "page_view") {
+      if (ev.type === "view" || ev.type === "view_shop_profile" || ev.type === "store_view") {
         dailyViews[date]++;
       } else if (ev.type === "map_direction" || ev.type === "direction" || ev.type === "map_click") {
         dailyMaps[date]++;
@@ -143,13 +144,14 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
     }
   });
 
-  // Populate from real bookings with shop-specific filter
+  // Populate from real bookings with strict shop-specific filter
   realBookings.forEach((b) => {
-    if (targetShop) {
+    if (isFilteringSpecificShop) {
       const matchId = targetId && b.shopId && String(b.shopId).toLowerCase() === String(targetId).toLowerCase();
       const matchName = targetName && b.shopName && String(b.shopName).toLowerCase() === String(targetName).toLowerCase();
 
-      if (!matchId && !matchName && (b.shopId || b.shopName)) {
+      // Only count if booking explicitly belongs to this shop
+      if (!matchId && !matchName) {
         return;
       }
     }
@@ -160,7 +162,7 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
     }
   });
 
-  // Real point arrays without any simulated or dummy values
+  // Real point arrays calculated strictly from genuine data
   const viewsPoints = dateKeys.map((k) => dailyViews[k]);
   const mapPoints = dateKeys.map((k) => dailyMaps[k]);
   const callPoints = dateKeys.map((k) => dailyCalls[k]);
@@ -169,9 +171,9 @@ export async function getRealAnalyticsData(timeframe = "7d", targetShop = null) 
   const totalViews = viewsPoints.reduce((a, b) => a + b, 0);
   const totalMaps = mapPoints.reduce((a, b) => a + b, 0);
   const totalCalls = callPoints.reduce((a, b) => a + b, 0);
-  const totalBookings = bookingPoints.reduce((a, b) => a + b, 0) || realBookings.length;
+  const totalBookings = bookingPoints.reduce((a, b) => a + b, 0);
 
-  // Real conversion calculation
+  // Real conversion calculation based strictly on actual customer bookings vs views
   const convRate = totalViews > 0 ? ((totalBookings / totalViews) * 100).toFixed(1) : "0.0";
   const convPoints = viewsPoints.map((v, i) => {
     const b = bookingPoints[i] || 0;

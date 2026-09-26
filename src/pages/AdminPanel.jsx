@@ -1461,7 +1461,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       id: sId,
       name: shop.shopName || shop.name || "Partner Hub",
       owner: shop.name || "Shop Partner",
-      city: shop.city || "Raipur",
+      city: shop.city || "All Cities",
       phone: shop.phone || "8877277757",
       views,
       mapClicks,
@@ -1544,7 +1544,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         name: formatSafeText(u.name, "Registered Customer"),
         email: formatSafeText(u.email, "—"),
         phone: formatSafeText(u.phone, "—"),
-        city: formatSafeText(u.city, "Raipur"),
+        city: formatSafeText(u.city, "Not Specified"),
         address: formatSafeText(u.address, "—"),
         vehicleType: formatSafeText(u.vehicleType, "Car / SUV"),
         vehicleNumber: formatSafeText(u.vehicleNumber, "—"),
@@ -1582,7 +1582,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         name: safeName || "Customer",
         email: safeEmail || "—",
         phone: safePhone || "—",
-        city: formatSafeText(b.city, "Raipur"),
+        city: formatSafeText(b.city, "Not Specified"),
         address: formatSafeText(b.address, "—"),
         vehicleType: formatSafeText(b.vehicleType, "Car / SUV"),
         vehicleNumber: formatSafeText(b.vehicleNumber, "—"),
@@ -1618,7 +1618,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         name: safeName || "Customer",
         email: "—",
         phone: safePhone || "—",
-        city: formatSafeText(inv.customerCity, "Raipur"),
+        city: formatSafeText(inv.customerCity, "Not Specified"),
         address: formatSafeText(inv.customerAddress, "—"),
         vehicleType: formatSafeText(inv.vehicleType, "Car / SUV"),
         vehicleNumber: formatSafeText(inv.vehicleNumber, "—"),
@@ -3205,7 +3205,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
                               <td>
                                 <div className="tbl-contact-info">
-                                  <span>📍 {c.city || "Raipur"}</span>
+                                  <span>📍 {c.city || "Not Specified"}</span>
                                   {c.address && c.address !== "—" && <small style={{ maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.address}</small>}
                                 </div>
                               </td>

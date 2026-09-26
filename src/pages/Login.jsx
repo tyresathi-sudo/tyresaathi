@@ -6,24 +6,31 @@ import { logUserActivityToSheet } from "../utils/googleSheets";
 
 export function friendlyError(code) {
   if (typeof code === "string" && (code.includes("offline") || code.includes("unavailable"))) {
-    return "Network connection issue. Please check your internet.";
+    return "Network connection issue. Please check your internet connection.";
   }
   switch (code) {
     case "auth/invalid-email":
-      return "Email format galat hai. Kripya sahi email dalein.";
+      return "Invalid email address format. Please enter a valid email.";
     case "auth/user-not-found":
+      return "No account found with this email address.";
     case "auth/invalid-credential":
-      return "Incorrect Email ya Password! (ईमेल या पासवर्ड गलत है)";
+      return "Incorrect email or password. Please verify and try again.";
     case "auth/wrong-password":
-      return "Galat password! (Incorrect password)";
+      return "Incorrect password. Please try again or reset your password.";
     case "auth/email-already-in-use":
-      return "Ye email pehle se registered hai. Kripya login karein.";
+      return "This email is already registered. Please log in instead.";
     case "auth/weak-password":
-      return "Password kam se kam 6 characters ka hona chahiye.";
+      return "Password must be at least 6 characters long.";
     case "auth/too-many-requests":
-      return "Bahut zyada attempts ho gaye hain. Thodi der baad try karein ya password reset karein.";
+      return "Too many unsuccessful attempts. Please wait a few moments or reset your password.";
+    case "auth/unauthorized-domain":
+      return "Domain is not authorized in Firebase Auth. Please contact support.";
+    case "auth/expired-action-code":
+      return "This password reset link has expired. Please request a new one.";
+    case "auth/invalid-action-code":
+      return "Invalid or already used password reset link.";
     default:
-      return code ? `Error: ${code}` : "Login fail ho gaya. Kripya email aur password check karein.";
+      return code ? `Error: ${code}` : "Authentication failed. Please check your email and password.";
   }
 }
 
@@ -80,16 +87,16 @@ export default function Login() {
   async function handleQuickReset() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setError("Pehle apna email ID dalein.");
+      setError("Please enter your email address first.");
       return;
     }
     setResetting(true);
     try {
       await resetPassword(cleanEmail);
-      setResetSuccess(`Password reset link '${cleanEmail}' par bhej diya gaya hai! Apna Gmail inbox aur spam folder check karein.`);
+      setResetSuccess(`Password reset link sent to '${cleanEmail}'! Please check your Inbox and Spam/Junk folder.`);
       setError("");
     } catch (err) {
-      setError("Reset link bhejne me dikkat aayi: " + (err.message || err.code));
+      setError("Could not send password reset link: " + (err.message || err.code));
     } finally {
       setResetting(false);
     }
@@ -119,7 +126,7 @@ export default function Login() {
               <strong>{error}</strong>
             </div>
             <p className="error-desc-text">
-              Firebase me ye email ya password match nahi hua. Aap niche diye gaye options use kar sakte hain:
+              Unable to authenticate with this email and password. You can choose an action below:
             </p>
 
             <div className="error-action-btns">
@@ -129,14 +136,14 @@ export default function Login() {
                 disabled={resetting}
                 onClick={handleQuickReset}
               >
-                <KeyRound size={13} /> {resetting ? "Bhej rahe hain..." : "📩 Password Reset Link Bhejein"}
+                <KeyRound size={13} /> {resetting ? "Sending link..." : "📩 Send Password Reset Link"}
               </button>
 
               <Link
                 to={`/register?email=${encodeURIComponent(email)}`}
                 className="btn-quick-register"
               >
-                <UserPlus size={13} /> 🏪 Naya Shop Owner Account Banayein
+                <UserPlus size={13} /> 🏪 Create a New Account
               </Link>
             </div>
           </div>
@@ -151,7 +158,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="auth-field">
-            <label>Email Address (ईमेल आईडी)</label>
+            <label>Email Address</label>
             <input
               type="email"
               value={email}
@@ -163,7 +170,7 @@ export default function Login() {
           </div>
 
           <div className="auth-field">
-            <label>Password (पासवर्ड)</label>
+            <label>Password</label>
             <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
               <input
                 type={showPassword ? "text" : "password"}
@@ -196,7 +203,7 @@ export default function Login() {
           </div>
 
           <button className="auth-btn" disabled={loading} type="submit">
-            {loading ? "कृपया प्रतीक्षा करें..." : "Login (लॉग इन करें)"}
+            {loading ? "Please wait..." : "Login"}
           </button>
         </form>
 
