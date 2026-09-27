@@ -6,6 +6,7 @@ import {
   Receipt,
   PlusCircle,
   User,
+  Menu as MenuIcon,
   Settings as SettingsIcon,
   LifeBuoy,
   BarChart3,
@@ -46,7 +47,7 @@ export const BOTTOM_NAV_ITEMS = [
   { to: "/search", label: "Search", icon: Search },
   { to: "/billing", label: "Invoices", icon: Receipt },
   { to: "/bookings", label: "Bookings", icon: Calendar },
-  { to: "/profile", label: "Menu", icon: User },
+  { isMenuAction: true, label: "Menu", icon: MenuIcon },
 ];
 
 // Legacy exports for compatibility

@@ -22,7 +22,7 @@ export default function Layout() {
           <Footer />
         </main>
       </div>
-      <BottomNav />
+      <BottomNav onMenuClick={() => setSidebarOpen(true)} sidebarOpen={sidebarOpen} />
 
       {/* 💬 Global Floating WhatsApp / Support Widget */}
       <a

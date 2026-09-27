@@ -3,23 +3,47 @@ import { NavLink } from "react-router-dom";
 import { BOTTOM_NAV_ITEMS } from "../config/navItems.js";
 import { triggerHaptic } from "../utils/nativeBridge.js";
 
-export default function BottomNav() {
+export default function BottomNav({ onMenuClick, sidebarOpen }) {
   return (
     <nav className="bottom-nav">
-      {BOTTOM_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={() => triggerHaptic("light")}
-          className={({ isActive }) => "bottom-nav-btn" + (isActive ? " bottom-nav-btn-active" : "")}
-        >
-          <div className="icon-wrapper">
-            <Icon size={18} />
-          </div>
-          <span className="btn-label">{label}</span>
-        </NavLink>
-      ))}
+      {BOTTOM_NAV_ITEMS.map((item, idx) => {
+        const { to, label, icon: Icon, end, isMenuAction } = item;
+
+        if (isMenuAction) {
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                triggerHaptic("medium");
+                if (onMenuClick) onMenuClick();
+              }}
+              className={"bottom-nav-btn" + (sidebarOpen ? " bottom-nav-btn-active" : "")}
+              aria-label="Open Menu Drawer"
+            >
+              <div className="icon-wrapper">
+                <Icon size={18} />
+              </div>
+              <span className="btn-label">{label}</span>
+            </button>
+          );
+        }
+
+        return (
+          <NavLink
+            key={to || idx}
+            to={to}
+            end={end}
+            onClick={() => triggerHaptic("light")}
+            className={({ isActive }) => "bottom-nav-btn" + (isActive ? " bottom-nav-btn-active" : "")}
+          >
+            <div className="icon-wrapper">
+              <Icon size={18} />
+            </div>
+            <span className="btn-label">{label}</span>
+          </NavLink>
+        );
+      })}
 
       <style>{`
         .bottom-nav {
@@ -47,6 +71,10 @@ export default function BottomNav() {
           font-weight: 700;
           color: var(--text-muted);
           text-decoration: none;
+          background: none;
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
           transition: all 0.18s ease;
           position: relative;
         }
