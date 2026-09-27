@@ -370,37 +370,6 @@ export default function Navbar({ onMenuClick }) {
             </form>
           </div>
         )}
-
-        {/* 📱 Mobile Quick Navigation Pill Strip (Matches Top Header on Mobile) */}
-        <div className="mobile-nav-pills-bar">
-          <NavLink to="/" end className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
-            🏠 Home
-          </NavLink>
-          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("car")}>
-            🚗 Car Tyres
-          </button>
-          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("bike")}>
-            🏍️ Bike Tyres
-          </button>
-          <button className="mobile-nav-pill" onClick={() => handleCategoryClick("commercial")}>
-            🚚 Commercial
-          </button>
-          <NavLink to="/store-location" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
-            📍 Stores
-          </NavLink>
-          <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
-            📑 Bookings
-          </NavLink>
-          <NavLink to="/billing" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
-            🧾 Billing
-          </NavLink>
-          <NavLink to="/subscription" className={({ isActive }) => `mobile-nav-pill pill-gold ${isActive ? "active" : ""}`}>
-            👑 Plans
-          </NavLink>
-          <NavLink to="/privacy-policy" className={({ isActive }) => `mobile-nav-pill ${isActive ? "active" : ""}`}>
-            ℹ️ About
-          </NavLink>
-        </div>
       </div>
 
       <style>{`
@@ -653,54 +622,6 @@ export default function Navbar({ onMenuClick }) {
           white-space: nowrap;
         }
 
-        /* Mobile Quick Navigation Pill Strip */
-        .mobile-nav-pills-bar {
-          display: none;
-          overflow-x: auto;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-          padding: 6px 10px 8px;
-          background: var(--surface);
-          border-top: 1px solid rgba(128, 128, 128, 0.12);
-          gap: 6px;
-          white-space: nowrap;
-          -webkit-overflow-scrolling: touch;
-        }
-        .mobile-nav-pills-bar::-webkit-scrollbar {
-          display: none;
-        }
-        .mobile-nav-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          padding: 6px 12px;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--text);
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 20px;
-          text-decoration: none;
-          cursor: pointer;
-          flex-shrink: 0;
-          transition: all 0.15s ease;
-        }
-        .mobile-nav-pill:active {
-          transform: scale(0.95);
-        }
-        .mobile-nav-pill.active {
-          background: #c0392b !important;
-          color: #ffffff !important;
-          border-color: #c0392b !important;
-          box-shadow: 0 2px 6px rgba(192, 57, 43, 0.35);
-        }
-        .pill-gold {
-          color: #d35400;
-        }
-        .pill-gold.active {
-          color: #ffffff !important;
-        }
-
         @media (max-width: 899px) {
           .main-site-header {
             padding-top: calc(env(safe-area-inset-top, 0px) + 4px);
@@ -708,7 +629,6 @@ export default function Navbar({ onMenuClick }) {
           }
           .mobile-hamburger-btn { display: flex; }
           .mobile-right-actions { display: flex; }
-          .mobile-nav-pills-bar { display: flex; }
           .desktop-nav-links { display: none !important; }
           .desktop-actions { display: none !important; }
           .nav-container {

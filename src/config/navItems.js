@@ -13,7 +13,8 @@ import {
   Crown,
   Package,
   MessageCircle,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from "lucide-react";
 
 // 1. Manage Business (Shop Owner Tools)
@@ -39,6 +40,7 @@ export const SERVICE_NAV_ITEMS = [
 // 4. Account & Support
 export const ACCOUNT_NAV_ITEMS = [
   { to: "/settings", label: "App & Account Settings", icon: SettingsIcon, color: "#64748b", bg: "#f8fafc" },
+  { to: "/privacy-policy", label: "About Us & Policies (कंपनी विवरण)", icon: Info, color: "#0284c7", bg: "#f0f9ff" },
 ];
 
 // 5. Mobile Bottom Navigation Bar (5 Core Tabs with Store in Center)
