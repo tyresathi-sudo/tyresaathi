@@ -59,6 +59,7 @@ export default function Login() {
 
   // Mode Selection: "email" | "otp"
   const [loginMode, setLoginMode] = useState("email");
+  const [logoTapCount, setLogoTapCount] = useState(0);
 
   // Email & Password State
   const [email, setEmail] = useState("");
@@ -68,6 +69,16 @@ export default function Login() {
   const [resetSuccess, setResetSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
+
+  // Handle secret 3-tap on logo for Admin Login
+  const handleLogoTap = () => {
+    const nextCount = logoTapCount + 1;
+    setLogoTapCount(nextCount);
+    if (nextCount >= 3) {
+      setLogoTapCount(0);
+      navigate("/admin-login");
+    }
+  };
 
   // Mobile OTP State
   const [phone, setPhone] = useState("");
@@ -237,8 +248,10 @@ export default function Login() {
           <img
             src="/logo.png"
             alt="TyreSaathi Logo"
-            style={{ height: "48px", objectFit: "contain", borderRadius: "6px" }}
+            onClick={handleLogoTap}
+            style={{ height: "48px", objectFit: "contain", borderRadius: "6px", cursor: "pointer", userSelect: "none" }}
             onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
+            title="TyreSaathi"
           />
         </div>
 
@@ -363,6 +376,30 @@ export default function Login() {
             <button className="auth-btn" disabled={loading} type="submit">
               {loading ? "Please wait..." : "Login with Email"}
             </button>
+
+            {/* 🛡️ Exclusive Dynamic Shortcut strictly visible when Admin Email is entered */}
+            {(email.trim().toLowerCase().includes("tyresathi") || email.trim().toLowerCase().includes("admin")) && (
+              <div style={{ marginTop: "14px", textAlign: "center" }}>
+                <Link 
+                  to="/admin-login" 
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#fef2f2",
+                    color: "#c0392b",
+                    border: "1px solid #fecaca",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    textDecoration: "none"
+                  }}
+                >
+                  <ShieldCheck size={15} color="#c0392b" /> 🛡️ Master Admin Portal Login ➔
+                </Link>
+              </div>
+            )}
           </form>
         )}
 
