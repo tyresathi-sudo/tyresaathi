@@ -77,17 +77,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.3
-          name: "TyreSaathi Android App v1.2.3 (Official Release)"
+          tag_name: v1.2.4
+          name: "TyreSaathi Android App v1.2.4 (Official Release)"
           body: |
-            ⚡ TyreSaathi Official Android APK Release v1.2.3
-            - 🎨 Official Red & Black TyreSaathi App Icon & Brand Assets
-            - 👥 Staff & Sub-Admin Role-Based Delegation & PIN Login
-            - 🔒 Bank Account & Master Pricing Security Lock
-            - 🔔 Mobile Responsive Centered Notification Dropdown
-            - 🏪 In-Place Direct Store Booking with Autofill
-            - 🎫 Sequential Support Ticket ID Numbering (#TS-TCK-01)
-            - 🔐 Permanent Session & Auto-Login Persistence
+            ⚡ TyreSaathi Official Android APK Release v1.2.4
+            - 🧹 Clean Mobile Navigation & Header (Shifted About to Menu)
+            - 🏪 Center Store Navigation Tab in Bottom Bar
+            - 🧾 Fully Responsive Billing & Invoicing on Mobile & PC
+            - 📊 Clean Real-time Shop Analytics with Red Wave Trend
+            - 🚀 Enhanced Performance & Live Sync
           draft: false
           prerelease: false
           files: output-apks/*.apk
