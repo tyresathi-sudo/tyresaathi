@@ -1415,7 +1415,13 @@ export default function Billing() {
         .billing-page-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 6px 4px 30px;
+          padding: 12px 16px 50px;
+          box-sizing: border-box;
+        }
+        @media (max-width: 600px) {
+          .billing-page-container {
+            padding: 8px 12px 60px;
+          }
         }
         .billing-header-row {
           display: flex;
@@ -1428,7 +1434,7 @@ export default function Billing() {
           .billing-header-row { flex-direction: column; gap: 10px; }
         }
         .billing-title {
-          font-size: 1.25rem; /* text-xl on mobile */
+          font-size: 1.25rem;
           font-weight: 800;
           color: var(--text);
           margin: 0 0 4px;
@@ -1441,7 +1447,7 @@ export default function Billing() {
           .billing-title { font-size: 1.5rem; }
         }
         .billing-sub {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.8rem;
           color: var(--text-muted);
           margin: 0;
           line-height: 1.35;
@@ -1460,7 +1466,7 @@ export default function Billing() {
           padding: 6px 12px;
           border-radius: 6px;
           font-weight: 700;
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.8rem;
           color: var(--text-muted);
           cursor: pointer;
           display: inline-flex;
@@ -1480,7 +1486,7 @@ export default function Billing() {
           padding: 10px 12px;
           border-radius: 8px;
           font-weight: 600;
-          font-size: 0.78rem;
+          font-size: 0.82rem;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -1503,6 +1509,8 @@ export default function Billing() {
           display: flex;
           flex-direction: column;
           gap: 14px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .form-sub-card {
           background: var(--surface);
@@ -1510,6 +1518,8 @@ export default function Billing() {
           border-radius: 10px;
           padding: 14px 12px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+          box-sizing: border-box;
+          width: 100%;
         }
         @media (min-width: 640px) {
           .form-sub-card {
@@ -1526,7 +1536,7 @@ export default function Billing() {
           gap: 6px;
         }
         .card-section-title {
-          font-size: 0.95rem; /* text-base or text-sm */
+          font-size: 0.95rem;
           font-weight: 700;
           color: var(--text);
           display: flex;
@@ -1577,7 +1587,7 @@ export default function Billing() {
           border: 1px dashed var(--border);
         }
         .preset-label {
-          font-size: 0.6875rem;
+          font-size: 0.75rem;
           font-weight: 700;
           color: #c0392b;
         }
@@ -1585,7 +1595,7 @@ export default function Billing() {
           background: var(--surface);
           border: 1px solid var(--border);
           color: var(--text);
-          font-size: 0.6875rem;
+          font-size: 0.72rem;
           padding: 3px 6px;
           border-radius: 4px;
           cursor: pointer;
@@ -1602,11 +1612,13 @@ export default function Billing() {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 10px;
+          box-sizing: border-box;
         }
         .form-grid-2 {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
           gap: 10px;
+          box-sizing: border-box;
         }
         @media (max-width: 700px) {
           .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; gap: 8px; }
@@ -1616,6 +1628,8 @@ export default function Billing() {
           display: flex;
           flex-direction: column;
           gap: 4px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .form-input-group label {
           font-size: 0.88rem;
@@ -1627,6 +1641,8 @@ export default function Billing() {
           position: relative;
           display: flex;
           align-items: center;
+          width: 100%;
+          box-sizing: border-box;
         }
         .input-with-icon svg {
           position: absolute;
@@ -1647,6 +1663,7 @@ export default function Billing() {
           font-size: 0.95rem;
           outline: none;
           font-weight: 500;
+          box-sizing: border-box;
         }
         .input-with-icon input:focus,
         .form-input-group input:focus,
@@ -1655,6 +1672,7 @@ export default function Billing() {
         }
         .form-input-group input,
         .form-input-group select {
+          width: 100%;
           padding: 11px 14px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
@@ -1663,11 +1681,20 @@ export default function Billing() {
           font-size: 0.95rem;
           outline: none;
           font-weight: 500;
+          box-sizing: border-box;
         }
 
         .payment-status-toggle {
           display: flex;
           gap: 8px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (max-width: 600px) {
+          .payment-status-toggle {
+            flex-direction: column;
+            gap: 6px;
+          }
         }
         .status-toggle-btn {
           flex: 1;
@@ -1680,6 +1707,11 @@ export default function Billing() {
           color: var(--text-muted);
           cursor: pointer;
           transition: all 0.15s ease;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-sizing: border-box;
         }
         .status-paid-active {
           background: #eafaf1;
@@ -1695,10 +1727,14 @@ export default function Billing() {
         /* Items Entry Table */
         .items-table-wrapper {
           overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
           margin-bottom: 14px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .items-entry-table {
           width: 100%;
+          min-width: 500px;
           border-collapse: collapse;
           font-size: 0.88rem;
         }
@@ -1729,6 +1765,7 @@ export default function Billing() {
           font-size: 0.9rem;
           font-weight: 600;
           outline: none;
+          box-sizing: border-box;
         }
         .item-serial-input {
           font-family: monospace;
@@ -1752,6 +1789,7 @@ export default function Billing() {
           color: var(--text);
           font-size: 0.88rem;
           font-weight: 600;
+          box-sizing: border-box;
         }
         .item-qty-input,
         .item-rate-input {
@@ -1764,6 +1802,7 @@ export default function Billing() {
           font-size: 0.92rem;
           font-weight: 700;
           text-align: right;
+          box-sizing: border-box;
         }
         .item-amount-col {
           font-weight: 800;
@@ -1793,6 +1832,7 @@ export default function Billing() {
           align-items: center;
           justify-content: center;
           gap: 6px;
+          box-sizing: border-box;
           transition: background 0.15s ease;
         }
         .btn-add-row-full:hover {
@@ -1803,6 +1843,14 @@ export default function Billing() {
           display: flex;
           gap: 12px;
           margin-top: 14px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (max-width: 600px) {
+          .billing-action-buttons {
+            flex-direction: column;
+            gap: 8px;
+          }
         }
         .btn-reset-bill {
           flex: 1;
@@ -1814,6 +1862,8 @@ export default function Billing() {
           font-weight: 700;
           font-size: 0.92rem;
           cursor: pointer;
+          box-sizing: border-box;
+          text-align: center;
         }
         .btn-generate-bill {
           flex: 2;
@@ -1829,6 +1879,7 @@ export default function Billing() {
           align-items: center;
           justify-content: center;
           gap: 8px;
+          box-sizing: border-box;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
           transition: transform 0.15s ease, background 0.15s ease;
         }
@@ -1838,6 +1889,10 @@ export default function Billing() {
         }
 
         /* Live Receipt Sidebar */
+        .billing-receipt-sidebar {
+          width: 100%;
+          box-sizing: border-box;
+        }
         .live-receipt-card {
           background: var(--surface);
           border: 1.5px solid var(--border);
@@ -1846,6 +1901,16 @@ export default function Billing() {
           box-shadow: 0 6px 20px rgba(0,0,0,0.05);
           position: sticky;
           top: 85px;
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 100%;
+        }
+        @media (max-width: 1050px) {
+          .live-receipt-card {
+            position: static;
+            padding: 16px 14px;
+            margin-top: 8px;
+          }
         }
         .receipt-top-brand {
           display: flex;
@@ -1931,6 +1996,8 @@ export default function Billing() {
           flex-direction: column;
           gap: 6px;
           font-size: 0.88rem;
+          width: 100%;
+          box-sizing: border-box;
         }
         .calc-row {
           display: flex;
@@ -1960,6 +2027,8 @@ export default function Billing() {
           border-radius: 8px;
           font-size: 0.82rem;
           margin: 12px 0 14px;
+          box-sizing: border-box;
+          width: 100%;
         }
         .badge-paid {
           background: #eafaf1;
@@ -1978,35 +2047,41 @@ export default function Billing() {
         .receipt-actions-grid {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .btn-print-preview {
           background: #2c3e50;
           color: white;
           border: none;
-          padding: 8px;
-          border-radius: 6px;
+          padding: 10px 14px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.78rem;
+          font-size: 0.88rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .btn-whatsapp-share {
           background: #25D366;
           color: white;
           text-decoration: none;
-          padding: 10px;
-          border-radius: 6px;
+          padding: 10px 14px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 0.88rem;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
           text-align: center;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         /* History Tab Styles */

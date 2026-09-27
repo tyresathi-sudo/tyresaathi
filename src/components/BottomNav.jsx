@@ -3,31 +3,11 @@ import { NavLink } from "react-router-dom";
 import { BOTTOM_NAV_ITEMS } from "../config/navItems.js";
 import { triggerHaptic } from "../utils/nativeBridge.js";
 
-export default function BottomNav({ onMenuClick, sidebarOpen }) {
+export default function BottomNav() {
   return (
     <nav className="bottom-nav">
       {BOTTOM_NAV_ITEMS.map((item, idx) => {
-        const { to, label, icon: Icon, end, isMenuAction } = item;
-
-        if (isMenuAction) {
-          return (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => {
-                triggerHaptic("medium");
-                if (onMenuClick) onMenuClick();
-              }}
-              className={"bottom-nav-btn" + (sidebarOpen ? " bottom-nav-btn-active" : "")}
-              aria-label="Open Menu Drawer"
-            >
-              <div className="icon-wrapper">
-                <Icon size={18} />
-              </div>
-              <span className="btn-label">{label}</span>
-            </button>
-          );
-        }
+        const { to, label, icon: Icon, end } = item;
 
         return (
           <NavLink

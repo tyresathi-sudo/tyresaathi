@@ -6,7 +6,7 @@ import {
   Receipt,
   PlusCircle,
   User,
-  Menu as MenuIcon,
+  Store,
   Settings as SettingsIcon,
   LifeBuoy,
   BarChart3,
@@ -41,13 +41,13 @@ export const ACCOUNT_NAV_ITEMS = [
   { to: "/settings", label: "App & Account Settings", icon: SettingsIcon, color: "#64748b", bg: "#f8fafc" },
 ];
 
-// 5. Mobile Bottom Navigation Bar (5 Core Tabs)
+// 5. Mobile Bottom Navigation Bar (5 Core Tabs with Store in Center)
 export const BOTTOM_NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/search", label: "Search", icon: Search },
+  { to: "/store-location", label: "Stores", icon: Store },
   { to: "/billing", label: "Invoices", icon: Receipt },
   { to: "/bookings", label: "Bookings", icon: Calendar },
-  { isMenuAction: true, label: "Menu", icon: MenuIcon },
 ];
 
 // Legacy exports for compatibility
