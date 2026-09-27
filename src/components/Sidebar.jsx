@@ -40,21 +40,26 @@ export default function Sidebar({ open, onClose }) {
           </button>
         </div>
 
-        {/* 🏪 Top Store Profile Card */}
+        {/* 🏪 Top Store / User Profile Card */}
         {user ? (
           <div className="drawer-profile-container">
             <Link to="/profile" className="drawer-store-card" onClick={onClose} title="Click to view & edit profile">
               <div className="drawer-store-avatar">
                 {profile?.photoURL ? (
-                  <img src={profile.photoURL} alt="Store" className="drawer-avatar-img" />
+                  <img src={profile.photoURL} alt="User" className="drawer-avatar-img" />
                 ) : (
-                  <span className="store-avatar-icon">🏪</span>
+                  <span className="store-avatar-icon">{isVendor ? "🏪" : "👤"}</span>
                 )}
               </div>
               <div className="drawer-store-info">
-                <strong className="drawer-store-name">{shopNameDisplay}</strong>
+                <strong className="drawer-store-name">{isVendor ? shopNameDisplay : (profile?.name || user.email?.split("@")[0] || "Customer")}</strong>
                 <div className="drawer-rating-row">
-                  <span className="drawer-star-tag">⭐ Verified Partner</span>
+                  <span 
+                    className="drawer-star-tag"
+                    style={isVendor ? {} : { background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
+                  >
+                    {isVendor ? "⭐ Verified Partner" : "👤 Verified Customer"}
+                  </span>
                 </div>
                 <span className="drawer-role-tag">{userRoleDisplay}</span>
               </div>
@@ -98,42 +103,52 @@ export default function Sidebar({ open, onClose }) {
             <ChevronRight size={14} className="nav-chevron" />
           </NavLink>
 
-          {/* 1. MANAGE BUSINESS */}
-          <div className="nav-section-label" style={{ marginTop: "12px" }}>MANAGE BUSINESS</div>
-          {BUSINESS_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
-              onClick={onClose}
-            >
-              <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                <Icon size={16} />
-              </div>
-              <span className="nav-link-text">{label}</span>
-              <ChevronRight size={14} className="nav-chevron" />
-            </NavLink>
-          ))}
+          {/* 1. MANAGE BUSINESS (Shop Owners & Admin Only) */}
+          {(isVendor || isAdmin) && (
+            <>
+              <div className="nav-section-label" style={{ marginTop: "12px" }}>MANAGE BUSINESS</div>
+              {BUSINESS_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
+                  onClick={onClose}
+                >
+                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                    <Icon size={16} />
+                  </div>
+                  <span className="nav-link-text">{label}</span>
+                  <ChevronRight size={14} className="nav-chevron" />
+                </NavLink>
+              ))}
+            </>
+          )}
 
-          {/* 2. GROWTH & INSIGHTS */}
-          <div className="nav-section-label" style={{ marginTop: "14px" }}>GROWTH & INSIGHTS</div>
-          {GROWTH_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
-              onClick={onClose}
-            >
-              <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                <Icon size={16} />
-              </div>
-              <span className="nav-link-text">{label}</span>
-              <ChevronRight size={14} className="nav-chevron" />
-            </NavLink>
-          ))}
+          {/* 2. GROWTH & INSIGHTS (Shop Owners & Admin Only) */}
+          {(isVendor || isAdmin) && (
+            <>
+              <div className="nav-section-label" style={{ marginTop: "14px" }}>GROWTH & INSIGHTS</div>
+              {GROWTH_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
+                  onClick={onClose}
+                >
+                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                    <Icon size={16} />
+                  </div>
+                  <span className="nav-link-text">{label}</span>
+                  <ChevronRight size={14} className="nav-chevron" />
+                </NavLink>
+              ))}
+            </>
+          )}
 
           {/* 3. CUSTOMER SERVICES */}
-          <div className="nav-section-label" style={{ marginTop: "14px" }}>CUSTOMER SERVICES</div>
+          <div className="nav-section-label" style={{ marginTop: "14px" }}>
+            {isVendor || isAdmin ? "CUSTOMER SERVICES" : "SERVICES & DIRECTORY"}
+          </div>
           {SERVICE_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
             <NavLink
               key={to}

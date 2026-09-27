@@ -515,30 +515,6 @@ export default function Login() {
           <Link to="/forgot-password">Forgot Password?</Link>
           <Link to="/register">Create a new account</Link>
         </div>
-
-        {/* 🛡️ Dedicated Admin Portal Shortcut */}
-        <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: "1px dashed var(--border, #e2e8f0)", textAlign: "center" }}>
-          <Link 
-            to="/admin-login" 
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              color: "#c0392b",
-              fontSize: "12px",
-              fontWeight: "700",
-              textDecoration: "none",
-              background: "#fff1f2",
-              padding: "6px 14px",
-              borderRadius: "20px",
-              border: "1px solid #fecdd3",
-              transition: "all 0.15s ease"
-            }}
-          >
-            <ShieldCheck size={14} color="#c0392b" />
-            <span>🛡️ Admin Portal / Control Login</span>
-          </Link>
-        </div>
       </div>
 
       <style>{`

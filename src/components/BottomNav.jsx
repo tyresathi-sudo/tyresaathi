@@ -1,12 +1,31 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { BOTTOM_NAV_ITEMS } from "../config/navItems.js";
+import { Home, Search, Store, Receipt, Calendar, User } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 import { triggerHaptic } from "../utils/nativeBridge.js";
 
 export default function BottomNav() {
+  const { isVendor, isAdmin } = useAuth();
+
+  const navItems = isVendor || isAdmin
+    ? [
+        { to: "/", label: "Home", icon: Home, end: true },
+        { to: "/search", label: "Search", icon: Search },
+        { to: "/store-location", label: "Stores", icon: Store },
+        { to: "/billing", label: "Invoices", icon: Receipt },
+        { to: "/bookings", label: "Bookings", icon: Calendar },
+      ]
+    : [
+        { to: "/", label: "Home", icon: Home, end: true },
+        { to: "/search", label: "Search", icon: Search },
+        { to: "/store-location", label: "Stores", icon: Store },
+        { to: "/bookings", label: "Bookings", icon: Calendar },
+        { to: "/profile", label: "Profile", icon: User },
+      ];
+
   return (
     <nav className="bottom-nav">
-      {BOTTOM_NAV_ITEMS.map((item, idx) => {
+      {navItems.map((item, idx) => {
         const { to, label, icon: Icon, end } = item;
 
         return (

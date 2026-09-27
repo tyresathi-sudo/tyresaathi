@@ -366,27 +366,35 @@ export default function Bookings() {
       {/* 📅 Top Page Header */}
       <div className="bookings-header-row">
         <div>
-          <h1 className="page-heading">📅 Customer Service Bookings</h1>
-          <p className="page-sub">Manage, accept or complete appointment tickets</p>
+          <h1 className="page-heading">
+            {isVendor || isAdmin ? "📅 Customer Service Bookings" : "📅 My Service Appointments"}
+          </h1>
+          <p className="page-sub">
+            {isVendor || isAdmin ? "Manage, accept or complete appointment tickets" : "View and track your tyre service bookings"}
+          </p>
         </div>
 
         <div className="header-actions-group">
-          <Link
-            to="/analytics"
-            className="btn-header-insights"
-            title="View Business Insights & Views Analytics"
-          >
-            <BarChart3 size={15} /> 📊 Shop Insights
-          </Link>
+          {(isVendor || isAdmin) && (
+            <>
+              <Link
+                to="/analytics"
+                className="btn-header-insights"
+                title="View Business Insights & Views Analytics"
+              >
+                <BarChart3 size={15} /> 📊 Shop Insights
+              </Link>
 
-          <button
-            type="button"
-            className="btn-header-excel"
-            onClick={() => exportBookingsToExcel(filteredBookings)}
-            title="Download Bookings as Excel Sheet (.csv)"
-          >
-            <Download size={15} /> 📥 Export to Excel
-          </button>
+              <button
+                type="button"
+                className="btn-header-excel"
+                onClick={() => exportBookingsToExcel(filteredBookings)}
+                title="Download Bookings as Excel Sheet (.csv)"
+              >
+                <Download size={15} /> 📥 Export to Excel
+              </button>
+            </>
+          )}
 
           <button className="btn-header-new-booking" onClick={() => setModalOpen(true)}>
             <Plus size={16} /> Book New Service (नई बुकिंग)
