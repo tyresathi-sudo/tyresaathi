@@ -543,22 +543,22 @@ export default function Subscription() {
         }
 
         .plan-title {
-          font-size: 1.15rem;
+          font-size: 1.35rem;
           font-weight: 800;
-          margin: 0 0 3px 0;
+          margin: 0 0 4px 0;
           color: #0f172a;
         }
 
         .plan-tagline {
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           color: #64748b;
           margin: 0;
-          line-height: 1.35;
+          line-height: 1.45;
         }
 
         .plan-price-wrap {
-          margin-bottom: 14px;
-          padding-bottom: 12px;
+          margin-bottom: 16px;
+          padding-bottom: 14px;
           border-bottom: 1px solid #f1f5f9;
         }
 
@@ -567,18 +567,18 @@ export default function Subscription() {
         .paid-price-box {
           display: flex;
           align-items: baseline;
-          gap: 4px;
+          gap: 6px;
         }
 
         .price-big {
-          font-size: 1.75rem;
+          font-size: 2.15rem;
           font-weight: 900;
           color: #0f172a;
           line-height: 1;
         }
 
         .price-period {
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           color: #64748b;
           font-weight: 600;
         }
@@ -586,17 +586,17 @@ export default function Subscription() {
         .launch-pricing-box {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 4px;
         }
 
         .striked-row {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
         }
 
         .price-strikethrough {
-          font-size: 0.875rem;
+          font-size: 1rem;
           text-decoration: line-through;
           color: #94a3b8;
           font-weight: 700;
@@ -605,10 +605,10 @@ export default function Subscription() {
         .free-offer-badge {
           background: #ea580c;
           color: #fff;
-          font-size: 9px;
+          font-size: 11px;
           font-weight: 800;
-          padding: 1px 6px;
-          border-radius: 4px;
+          padding: 2px 8px;
+          border-radius: 6px;
         }
 
         .text-green {
@@ -616,7 +616,7 @@ export default function Subscription() {
         }
 
         .plan-cta-box {
-          margin-bottom: 14px;
+          margin-bottom: 18px;
         }
 
         .btn-plan-upgrade {
@@ -624,14 +624,14 @@ export default function Subscription() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           background: #f1f5f9;
           color: #0f172a;
-          border: 1px solid #cbd5e1;
-          padding: 9px 14px;
-          border-radius: 8px;
-          font-size: 0.8125rem;
-          font-weight: 700;
+          border: 1.5px solid #cbd5e1;
+          padding: 12px 18px;
+          border-radius: 10px;
+          font-size: 0.95rem;
+          font-weight: 800;
           cursor: pointer;
           transition: all 0.2s;
         }
@@ -640,11 +640,12 @@ export default function Subscription() {
           background: #c0392b;
           color: white;
           border-color: #c0392b;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
         }
 
         .btn-popular-upgrade:hover {
           background: #a93226;
+          transform: translateY(-1px);
         }
 
         .btn-plan-active {
@@ -652,93 +653,93 @@ export default function Subscription() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           background: #dcfce7;
           color: #15803d;
-          border: 1px solid #bbf7d0;
-          padding: 9px 14px;
-          border-radius: 8px;
-          font-size: 0.8125rem;
-          font-weight: 700;
+          border: 1.5px solid #bbf7d0;
+          padding: 12px 18px;
+          border-radius: 10px;
+          font-size: 0.95rem;
+          font-weight: 800;
           cursor: default;
         }
 
         .plan-features-list {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
           flex: 1;
         }
 
         .features-header {
-          font-size: 0.6875rem;
+          font-size: 0.8rem;
           font-weight: 800;
           color: #94a3b8;
           text-transform: uppercase;
           letter-spacing: 0.6px;
-          margin-bottom: 2px;
+          margin-bottom: 4px;
         }
 
         .feature-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 7px;
-          font-size: 0.75rem;
+          gap: 8px;
+          font-size: 0.88rem;
           color: #334155;
-          line-height: 1.35;
+          line-height: 1.45;
         }
 
         .feature-check-icon {
           flex-shrink: 0;
-          margin-top: 1px;
+          margin-top: 2px;
         }
 
         .limitations-wrap {
-          margin-top: 6px;
-          padding-top: 6px;
+          margin-top: 8px;
+          padding-top: 8px;
           border-top: 1px dashed #e2e8f0;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
 
         .limitation-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 6px;
-          font-size: 0.71875rem;
+          gap: 8px;
+          font-size: 0.82rem;
           color: #94a3b8;
         }
 
         .lim-dash {
-          font-size: 11px;
+          font-size: 13px;
         }
 
         /* FAQ Section */
         .pricing-faq-section {
-          max-width: 680px;
+          max-width: 760px;
           margin: 0 auto;
         }
 
         .faq-main-title {
-          font-size: 1.125rem;
+          font-size: 1.35rem;
           font-weight: 800;
           text-align: center;
-          margin-bottom: 16px;
+          margin-bottom: 20px;
           color: #0f172a;
         }
 
         .faq-list-wrap {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
 
         .faq-item-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 12px 14px;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 16px 18px;
           cursor: pointer;
           transition: all 0.2s;
         }
@@ -747,21 +748,21 @@ export default function Subscription() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: 10px;
         }
 
         .faq-question {
           margin: 0;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #1e293b;
         }
 
         .faq-answer {
-          margin: 8px 0 0 0;
-          font-size: 0.75rem;
+          margin: 10px 0 0 0;
+          font-size: 0.88rem;
           color: #64748b;
-          line-height: 1.4;
+          line-height: 1.5;
         }
 
         /* Modal */

@@ -27,7 +27,10 @@ import {
   Trash2,
   AlertTriangle,
   Scale,
-  Globe
+  Globe,
+  Volume2,
+  Vibrate,
+  Play
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -38,6 +41,7 @@ import {
   testGoogleSheetConnection, 
   APPS_SCRIPT_TEMPLATE 
 } from "../utils/googleSheets";
+import { playNotificationSound, triggerNotificationVibration } from "../utils/soundService";
 
 export default function Settings() {
   const { user, profile, updateUserProfile, resetPassword, isVendor, isAdmin, deleteAccount } = useAuth();
@@ -74,9 +78,14 @@ export default function Settings() {
     defaultTaxMode: profile?.defaultTaxMode || "none", // none, gst18, gst28
     invoicePrefix: profile?.invoicePrefix || "TS-INV-",
     defaultTerms: profile?.defaultTerms || "Goods once sold cannot be returned without warranty card. Tyre warranty as per manufacturer company terms.",
-    // Notifications
+    // Notifications & Audio/Vibration
     whatsappAlerts: profile?.whatsappAlerts ?? true,
     smsAlerts: profile?.smsAlerts ?? true,
+    inAppAlerts: profile?.inAppAlerts ?? true,
+    soundEnabled: profile?.soundEnabled ?? true,
+    soundTone: profile?.soundTone || "chime", // chime, modern, pop
+    vibrationEnabled: profile?.vibrationEnabled ?? true,
+    vibrationStyle: profile?.vibrationStyle || "medium", // light, medium, heavy
     dailySummaryEmail: profile?.dailySummaryEmail ?? false,
     // Language
     language: profile?.language || "en",
@@ -97,6 +106,11 @@ export default function Settings() {
         defaultTerms: profile.defaultTerms || prev.defaultTerms,
         whatsappAlerts: profile.whatsappAlerts ?? prev.whatsappAlerts,
         smsAlerts: profile.smsAlerts ?? prev.smsAlerts,
+        inAppAlerts: profile.inAppAlerts ?? prev.inAppAlerts,
+        soundEnabled: profile.soundEnabled ?? prev.soundEnabled,
+        soundTone: profile.soundTone || prev.soundTone,
+        vibrationEnabled: profile.vibrationEnabled ?? prev.vibrationEnabled,
+        vibrationStyle: profile.vibrationStyle || prev.vibrationStyle,
         dailySummaryEmail: profile.dailySummaryEmail ?? prev.dailySummaryEmail,
         language: profile.language || prev.language,
       }));
@@ -423,11 +437,12 @@ export default function Settings() {
             {activeTab === "notifications" && (
               <div className="settings-section">
                 <div className="sec-header">
-                  <h3>🔔 Notification & Alert Preferences</h3>
-                  <p>Choose how you receive booking alerts, reviews, and update notifications.</p>
+                  <h3>🔔 Notification, Sound & Vibration Preferences</h3>
+                  <p>Choose how you receive booking alerts, reviews, ringtones, and vibration.</p>
                 </div>
 
                 <div className="toggles-list">
+                  {/* WhatsApp Alerts */}
                   <div className="toggle-row">
                     <div className="toggle-info">
                       <strong>💬 Instant WhatsApp Alerts</strong>
@@ -443,6 +458,7 @@ export default function Settings() {
                     </label>
                   </div>
 
+                  {/* SMS Notifications */}
                   <div className="toggle-row">
                     <div className="toggle-info">
                       <strong>📱 SMS Notifications</strong>
@@ -453,6 +469,152 @@ export default function Settings() {
                         type="checkbox"
                         checked={settings.smsAlerts}
                         onChange={(e) => setSettings({ ...settings, smsAlerts: e.target.checked })}
+                      />
+                      <span className="slider round" />
+                    </label>
+                  </div>
+
+                  {/* In-App Live Alerts */}
+                  <div className="toggle-row">
+                    <div className="toggle-info">
+                      <strong>🔔 In-App Live Popups & Badge Alerts</strong>
+                      <p>Show real-time floating banners and unread badges inside the app when a new booking arrives.</p>
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={settings.inAppAlerts}
+                        onChange={(e) => setSettings({ ...settings, inAppAlerts: e.target.checked })}
+                      />
+                      <span className="slider round" />
+                    </label>
+                  </div>
+
+                  {/* 🔊 Sound Notification */}
+                  <div className="toggle-row sound-setting-card">
+                    <div className="toggle-info">
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Volume2 size={16} color="#c0392b" />
+                        <strong>Notification Sound (ध्वनि / साउंड अलर्ट)</strong>
+                      </div>
+                      <p>Play an instant audio ringtone when a new booking, status update, or 5-star rating arrives.</p>
+                      
+                      {settings.soundEnabled && (
+                        <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <select
+                            value={settings.soundTone}
+                            onChange={(e) => setSettings({ ...settings, soundTone: e.target.value })}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--border)",
+                              background: "var(--bg)",
+                              color: "var(--text)",
+                              fontSize: "12px",
+                              fontWeight: "700"
+                            }}
+                          >
+                            <option value="chime">🔔 Classic Chime (प्लेज़िंग बेल)</option>
+                            <option value="modern">⚡ Modern Tech Ping (स्मार्ट बीप)</option>
+                            <option value="pop">🫧 Gentle Bubble Pop (सॉफ्ट पॉप)</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() => playNotificationSound(settings.soundTone)}
+                            style={{
+                              background: "#eff6ff",
+                              color: "#2563eb",
+                              border: "1px solid #bfdbfe",
+                              padding: "5px 10px",
+                              borderRadius: "6px",
+                              fontSize: "11.5px",
+                              fontWeight: "700",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            <Play size={11} fill="#2563eb" /> Test Sound (साउंड सुनें)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={settings.soundEnabled}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setSettings({ ...settings, soundEnabled: val });
+                          if (val) playNotificationSound(settings.soundTone);
+                        }}
+                      />
+                      <span className="slider round" />
+                    </label>
+                  </div>
+
+                  {/* 📳 Vibration / Haptic */}
+                  <div className="toggle-row vibration-setting-card">
+                    <div className="toggle-info">
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <Vibrate size={16} color="#7c3aed" />
+                        <strong>Haptic Vibration (कंपन / वाइब्रेशन अलर्ट)</strong>
+                      </div>
+                      <p>Vibrate mobile device on new bookings, service completions, and urgent customer requests.</p>
+                      
+                      {settings.vibrationEnabled && (
+                        <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                          <select
+                            value={settings.vibrationStyle}
+                            onChange={(e) => setSettings({ ...settings, vibrationStyle: e.target.value })}
+                            style={{
+                              padding: "5px 10px",
+                              borderRadius: "6px",
+                              border: "1px solid var(--border)",
+                              background: "var(--bg)",
+                              color: "var(--text)",
+                              fontSize: "12px",
+                              fontWeight: "700"
+                            }}
+                          >
+                            <option value="light">📳 Light Pulse (हल्का कंपन)</option>
+                            <option value="medium">📳 Medium Buzz (स्टैंडर्ड कंपन)</option>
+                            <option value="heavy">📳 Strong Vibration (तेज कंपन)</option>
+                          </select>
+
+                          <button
+                            type="button"
+                            onClick={() => triggerNotificationVibration(settings.vibrationStyle)}
+                            style={{
+                              background: "#f5f3ff",
+                              color: "#7c3aed",
+                              border: "1px solid #ddd6fe",
+                              padding: "5px 10px",
+                              borderRadius: "6px",
+                              fontSize: "11.5px",
+                              fontWeight: "700",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            <Vibrate size={12} /> Test Vibration (वाइब्रेट करें)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={settings.vibrationEnabled}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setSettings({ ...settings, vibrationEnabled: val });
+                          if (val) triggerNotificationVibration(settings.vibrationStyle);
+                        }}
                       />
                       <span className="slider round" />
                     </label>

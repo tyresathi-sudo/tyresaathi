@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { 
-  Phone, 
-  Search, 
-  ShoppingCart, 
-  User, 
-  Menu, 
-  X, 
-  ChevronDown, 
-  Moon, 
-  Sun, 
-  LogOut, 
-  PlusCircle, 
-  Calendar, 
-  MapPin, 
+import {
+  Phone,
+  Search,
+  ShoppingCart,
+  User,
+  Menu,
+  X,
+  ChevronDown,
+  Moon,
+  Sun,
+  LogOut,
+  PlusCircle,
+  Calendar,
+  MapPin,
   Store,
   Receipt,
   Settings as SettingsIcon,
@@ -109,8 +109,8 @@ export default function Navbar({ onMenuClick }) {
 
             {/* User Account / Profile */}
             <div className="user-profile-menu-wrap" ref={userDropdownRef}>
-              <button 
-                className="utility-tool-btn user-btn" 
+              <button
+                className="utility-tool-btn user-btn"
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
               >
                 <User size={14} />
@@ -199,11 +199,11 @@ export default function Navbar({ onMenuClick }) {
 
           {/* Logo Section */}
           <Link to="/" className="site-brand-logo">
-            <img 
-              src="/logo.png" 
-              alt="TyreSaathi Logo" 
-              className="logo-img" 
-              onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }} 
+            <img
+              src="/logo.png"
+              alt="TyreSaathi Logo"
+              className="logo-img"
+              onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
             />
             <div className="logo-text-group">
               <span className="brand-primary-name">TYRE<span className="brand-highlight">SAATHI</span></span>
@@ -217,16 +217,15 @@ export default function Navbar({ onMenuClick }) {
               HOME
             </NavLink>
 
-            {/* CATEGORIES with Mega Menu Dropdown */}
-            <div 
-              className="categories-mega-wrap" 
+            {/* CATEGORIES with Mega Menu Dropdown (Click Only) */}
+            <div
+              className="categories-mega-wrap"
               ref={megaMenuRef}
-              onMouseEnter={() => setMegaMenuOpen(true)}
-              onMouseLeave={() => setMegaMenuOpen(false)}
             >
-              <button 
+              <button
+                type="button"
                 className={`nav-link categories-trigger-btn ${megaMenuOpen ? "nav-link-active" : ""}`}
-                onClick={() => setMegaMenuOpen(!megaMenuOpen)}
+                onClick={() => setMegaMenuOpen((prev) => !prev)}
               >
                 CATEGORIES <ChevronDown size={14} className={`chevron-icon ${megaMenuOpen ? "chevron-open" : ""}`} />
               </button>
@@ -258,8 +257,8 @@ export default function Navbar({ onMenuClick }) {
 
                       <div className="mega-brands-multi-columns">
                         {MEGA_MENU_BRANDS.map((brand, idx) => (
-                          <button 
-                            key={idx} 
+                          <button
+                            key={idx}
                             className={`mega-brand-btn ${brand.popular ? "mega-brand-popular" : ""} ${brand.tag ? "mega-brand-tagged" : ""}`}
                             onClick={() => handleBrandClick(brand.name)}
                           >
@@ -328,9 +327,9 @@ export default function Navbar({ onMenuClick }) {
           <div className="mobile-right-actions">
             <NotificationBell />
 
-            <button 
-              className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`} 
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)} 
+            <button
+              className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`}
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
               title="Search Tyres"
               aria-label="Search"
             >
@@ -418,9 +417,9 @@ export default function Navbar({ onMenuClick }) {
         .top-utility-bar {
           background: #1e1e24;
           color: #e0e0e0;
-          font-size: 12px;
+          font-size: 13px;
           border-bottom: 1px solid rgba(255,255,255,0.08);
-          padding: 5px 0;
+          padding: 6px 0;
         }
         .utility-container {
           max-width: 1350px;
@@ -433,41 +432,42 @@ export default function Navbar({ onMenuClick }) {
         .top-left-info {
           display: flex;
           align-items: center;
-          gap: 16px;
+          gap: 18px;
         }
         .top-phone {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           font-weight: 700;
           color: #ffc145;
           letter-spacing: 0.3px;
+          font-size: 13px;
         }
         .top-timing {
-          color: #a8acb3;
-          font-size: 11.5px;
+          color: #cbd5e1;
+          font-size: 12.5px;
         }
         .top-right-tools {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 16px;
         }
         .utility-tool-btn {
           background: none;
           border: none;
           color: #e0e0e0;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           cursor: pointer;
-          padding: 3px 6px;
-          border-radius: 4px;
+          padding: 4px 8px;
+          border-radius: 6px;
         }
         .utility-tool-btn:hover {
           color: #ff6b35;
-          background: rgba(255,255,255,0.06);
+          background: rgba(255,255,255,0.08);
         }
         .user-profile-menu-wrap {
           position: relative;
@@ -478,22 +478,22 @@ export default function Navbar({ onMenuClick }) {
           top: calc(100% + 8px);
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 10px;
+          border-radius: 12px;
           box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-          min-width: 220px;
+          min-width: 240px;
           z-index: 120;
           padding: 8px 0;
           color: var(--text);
         }
         .user-dropdown-header {
-          padding: 10px 16px;
+          padding: 12px 18px;
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
         }
         .role-tag {
           display: inline-block;
-          font-size: 11px;
+          font-size: 12px;
           color: var(--orange);
           font-weight: 700;
         }
@@ -505,11 +505,11 @@ export default function Navbar({ onMenuClick }) {
         .dropdown-item {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 9px 16px;
+          gap: 10px;
+          padding: 10px 18px;
           color: var(--text);
           text-decoration: none;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 600;
           width: 100%;
           text-align: left;
@@ -527,25 +527,25 @@ export default function Navbar({ onMenuClick }) {
         .top-cart-btn {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           background: #c0392b;
           color: white;
-          padding: 3px 8px;
-          border-radius: 12px;
+          padding: 4px 10px;
+          border-radius: 14px;
           text-decoration: none;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 700;
         }
         .cart-badge-count {
           background: white;
           color: #c0392b;
           border-radius: 50%;
-          width: 16px;
-          height: 16px;
+          width: 18px;
+          height: 18px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 800;
         }
 
@@ -557,11 +557,11 @@ export default function Navbar({ onMenuClick }) {
         .nav-container {
           max-width: 1350px;
           margin: 0 auto;
-          padding: 8px 16px;
+          padding: 10px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
+          gap: 14px;
         }
         .mobile-hamburger-btn {
           display: none;
@@ -627,7 +627,7 @@ export default function Navbar({ onMenuClick }) {
           border: none;
           background: none;
           outline: none;
-          font-size: 13.5px;
+          font-size: 14px;
           width: 100%;
           color: var(--text);
           font-weight: 500;
@@ -646,8 +646,8 @@ export default function Navbar({ onMenuClick }) {
           color: white;
           border: none;
           border-radius: 6px;
-          padding: 4px 10px;
-          font-size: 12px;
+          padding: 5px 12px;
+          font-size: 13px;
           font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
@@ -673,8 +673,8 @@ export default function Navbar({ onMenuClick }) {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          padding: 5px 11px;
-          font-size: 12px;
+          padding: 6px 12px;
+          font-size: 13px;
           font-weight: 700;
           color: var(--text);
           background: var(--bg);
@@ -715,13 +715,13 @@ export default function Navbar({ onMenuClick }) {
             padding: 4px 10px 6px;
           }
           .logo-img {
-            height: 34px !important;
+            height: 36px !important;
           }
           .brand-primary-name {
-            font-size: 1.18rem !important;
+            font-size: 1.25rem !important;
           }
           .brand-tagline {
-            font-size: 0.52rem !important;
+            font-size: 0.55rem !important;
             line-height: 1.1;
           }
         }
@@ -730,15 +730,15 @@ export default function Navbar({ onMenuClick }) {
         .site-brand-logo {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           text-decoration: none;
           color: var(--text);
         }
         .logo-img {
-          height: 42px;
+          height: 44px;
           width: auto;
           object-fit: contain;
-          border-radius: 6px;
+          border-radius: 8px;
         }
         .logo-text-group {
           display: flex;
@@ -746,7 +746,7 @@ export default function Navbar({ onMenuClick }) {
         }
         .brand-primary-name {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 1.45rem;
+          font-size: 1.55rem;
           font-weight: 800;
           letter-spacing: 0.5px;
           line-height: 1;
@@ -755,7 +755,7 @@ export default function Navbar({ onMenuClick }) {
           color: #c0392b;
         }
         .brand-tagline {
-          font-size: 0.625rem;
+          font-size: 0.7rem;
           color: var(--text-muted);
           font-weight: 600;
           letter-spacing: 0.2px;
@@ -765,13 +765,13 @@ export default function Navbar({ onMenuClick }) {
         .desktop-nav-links {
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 22px;
         }
         .nav-link {
           text-decoration: none;
           color: var(--text);
           font-weight: 700;
-          font-size: 13.5px;
+          font-size: 14.5px;
           letter-spacing: 0.3px;
           padding: 8px 4px;
           position: relative;
@@ -780,7 +780,7 @@ export default function Navbar({ onMenuClick }) {
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           transition: color 0.15s ease;
         }
         .nav-link:hover,
@@ -832,12 +832,12 @@ export default function Navbar({ onMenuClick }) {
           padding-right: 20px;
         }
         .mega-col-title {
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           color: #c0392b;
-          margin: 0 0 12px;
+          margin: 0 0 14px;
           border-bottom: 2px solid var(--surface-2);
           padding-bottom: 6px;
         }
@@ -847,16 +847,16 @@ export default function Navbar({ onMenuClick }) {
           margin: 0;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
         .cat-type-list button {
           width: 100%;
           text-align: left;
           background: none;
           border: none;
-          padding: 8px 10px;
-          border-radius: 6px;
-          font-size: 13px;
+          padding: 9px 12px;
+          border-radius: 8px;
+          font-size: 14px;
           font-weight: 600;
           color: var(--text);
           cursor: pointer;
@@ -876,16 +876,16 @@ export default function Navbar({ onMenuClick }) {
           display: flex;
           align-items: baseline;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
         .brands-subnote {
-          font-size: 12px;
+          font-size: 13px;
           color: var(--text-muted);
         }
         .mega-brands-multi-columns {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 8px 16px;
+          gap: 10px 18px;
         }
         @media (max-width: 1100px) {
           .mega-brands-multi-columns {
@@ -896,10 +896,10 @@ export default function Navbar({ onMenuClick }) {
           background: none;
           border: none;
           text-align: left;
-          padding: 8px 12px;
-          border-radius: 6px;
+          padding: 9px 12px;
+          border-radius: 8px;
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 14px;
           font-weight: 600;
           cursor: pointer;
           display: flex;
@@ -916,10 +916,10 @@ export default function Navbar({ onMenuClick }) {
           font-weight: 700;
         }
         .brand-deal-tag {
-          font-size: 10px;
+          font-size: 11px;
           background: #c0392b;
           color: white;
-          padding: 2px 6px;
+          padding: 2px 7px;
           border-radius: 4px;
           font-weight: 700;
         }
@@ -928,27 +928,27 @@ export default function Navbar({ onMenuClick }) {
         .desktop-actions {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
         }
         .nav-search-form {
           display: flex;
           align-items: center;
           background: var(--bg);
           border: 1.5px solid var(--border);
-          border-radius: 20px;
-          padding: 4px 10px 4px 14px;
-          width: 220px;
+          border-radius: 22px;
+          padding: 6px 12px 6px 16px;
+          width: 250px;
           transition: width 0.2s ease, border-color 0.2s ease;
         }
         .nav-search-form:focus-within {
-          width: 260px;
+          width: 290px;
           border-color: #c0392b;
         }
         .nav-search-form input {
           border: none;
           background: none;
           outline: none;
-          font-size: 12.5px;
+          font-size: 13.5px;
           width: 100%;
           color: var(--text);
         }
@@ -967,16 +967,18 @@ export default function Navbar({ onMenuClick }) {
           gap: 6px;
           background: #c0392b;
           color: white;
-          padding: 8px 14px;
-          border-radius: 8px;
+          padding: 9px 16px;
+          border-radius: 10px;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           box-shadow: 0 2px 6px rgba(192, 57, 43, 0.3);
           white-space: nowrap;
+          transition: all 0.2s ease;
         }
         .nav-add-product-btn:hover {
           background: #a93226;
+          transform: translateY(-1px);
         }
       `}</style>
     </header>

@@ -388,7 +388,7 @@ export default function AddProduct() {
                   >
                     {MEGA_MENU_BRANDS.map((b, i) => (
                       <option key={i} value={b.name}>
-                        {b.name} {b.popular ? "★ Popular" : ""}
+                        {b.name}
                       </option>
                     ))}
                     <option value="OTHER">✏️ Other (Custom Brand / अन्य)</option>
@@ -778,48 +778,52 @@ export default function AddProduct() {
 
       <style>{`
         .add-product-container {
-          max-width: 1300px;
+          max-width: 1350px;
           margin: 0 auto;
-          padding: 6px 4px 30px;
+          padding: 8px 4px 40px;
         }
         .page-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 22px;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 10px;
-          gap: 8px;
+          padding-bottom: 14px;
+          gap: 12px;
         }
         .page-main-heading {
-          font-size: 1.25rem; /* text-xl to text-2xl on mobile */
+          font-size: 1.5rem;
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 4px;
+          margin: 0 0 6px;
           line-height: 1.25;
         }
         @media (min-width: 640px) {
-          .page-main-heading { font-size: 1.5rem; }
+          .page-main-heading { font-size: 1.85rem; }
         }
         .page-subheading {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.92rem;
           color: var(--text-muted);
           margin: 0;
-          line-height: 1.35;
+          line-height: 1.45;
         }
         .back-link-btn {
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           color: var(--orange);
           text-decoration: none;
           font-weight: 700;
-          padding: 5px 10px;
-          border-radius: 6px;
+          padding: 8px 16px;
+          border-radius: 8px;
           background: var(--surface-2);
           white-space: nowrap;
+          transition: background 0.2s ease;
+        }
+        .back-link-btn:hover {
+          background: var(--border);
         }
         .form-preview-grid {
           display: flex;
-          gap: 16px;
+          gap: 24px;
           align-items: flex-start;
         }
         @media (max-width: 950px) {
@@ -831,103 +835,108 @@ export default function AddProduct() {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 20px;
         }
         .form-section-card {
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 14px 12px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+          border: 1.5px solid var(--border);
+          border-radius: 14px;
+          padding: 20px 18px;
+          box-shadow: 0 3px 14px rgba(0,0,0,0.04);
         }
         @media (min-width: 640px) {
           .form-section-card {
-            padding: 18px 20px;
-            border-radius: 12px;
+            padding: 24px 26px;
+            border-radius: 16px;
           }
         }
         .section-title {
-          font-size: 0.95rem; /* text-base or text-sm */
-          font-weight: 600;
+          font-size: 1.15rem;
+          font-weight: 800;
           color: var(--text);
-          margin: 0 0 12px;
+          margin: 0 0 16px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           line-height: 1.3;
         }
         .step-num {
           background: #c0392b;
           color: white;
-          width: 20px;
-          height: 20px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-size: 11px;
+          font-size: 13px;
           font-weight: 800;
           flex-shrink: 0;
         }
         .product-type-pill-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 6px;
-          margin-bottom: 12px;
+          gap: 10px;
+          margin-bottom: 16px;
         }
         @media (min-width: 640px) {
           .product-type-pill-grid {
-            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
           }
         }
         .type-select-pill {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 3px;
-          padding: 8px 6px; /* tight p-2 */
-          border-radius: 8px;
+          justify-content: center;
+          gap: 6px;
+          padding: 12px 10px;
+          border-radius: 12px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.88rem;
           font-weight: 700;
           cursor: pointer;
+          min-height: 72px;
           transition: all 0.15s ease;
         }
         .type-select-pill:hover {
           border-color: #c0392b;
+          transform: translateY(-2px);
         }
         .type-pill-selected {
           border-color: #c0392b;
-          background: color-mix(in srgb, #c0392b 10%, var(--bg));
+          background: color-mix(in srgb, #c0392b 12%, var(--bg));
           color: #c0392b;
+          box-shadow: 0 3px 10px rgba(192, 57, 43, 0.15);
         }
         .pill-icon {
-          font-size: 16px;
+          font-size: 22px;
         }
         .condition-toggle-row {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding-top: 8px;
+          gap: 12px;
+          padding-top: 12px;
           border-top: 1px dashed var(--border);
           flex-wrap: wrap;
         }
         .toggle-btn-group {
           display: flex;
-          gap: 6px;
+          gap: 8px;
         }
         .toggle-option {
-          padding: 5px 10px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 600;
+          font-size: 0.88rem;
+          font-weight: 700;
           cursor: pointer;
+          transition: all 0.15s ease;
         }
         .toggle-active {
           background: #c0392b;
@@ -935,27 +944,29 @@ export default function AddProduct() {
           border-color: #c0392b;
         }
         .input-field-group {
-          margin-bottom: 10px;
+          margin-bottom: 14px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
         .field-label {
-          font-size: 0.75rem; /* text-xs */
-          font-weight: 600;
-          color: var(--text-muted);
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: var(--text);
         }
         .smart-select,
         .smart-text-input,
         .smart-textarea {
           width: 100%;
-          padding: 8px 10px; /* tight padding */
-          border-radius: 8px;
+          padding: 11px 14px;
+          border-radius: 10px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.8125rem; /* text-xs to text-sm */
+          font-size: 0.95rem;
           outline: none;
+          font-weight: 500;
+          transition: border-color 0.2s ease;
         }
         .smart-select:focus,
         .smart-text-input:focus,
@@ -963,24 +974,24 @@ export default function AddProduct() {
           border-color: #c0392b;
         }
         .custom-input {
-          margin-top: 4px;
+          margin-top: 6px;
           border-color: #c0392b;
         }
         .two-col-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 8px;
+          gap: 12px;
         }
         @media (min-width: 600px) {
           .two-col-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 16px;
           }
         }
         .highlight-price-input {
           border-color: #27ae60;
-          font-weight: 700;
-          font-size: 0.875rem;
+          font-weight: 800;
+          font-size: 1.15rem;
         }
 
         /* 📸 4 Photo Slots Grid */
@@ -988,37 +999,37 @@ export default function AddProduct() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
-          gap: 8px;
+          margin-bottom: 16px;
+          gap: 10px;
         }
         .section-subtext {
-          font-size: 0.75rem; /* text-xs (12px) */
+          font-size: 0.88rem;
           color: var(--text-muted);
-          margin: 2px 0 0;
-          line-height: 1.35;
+          margin: 3px 0 0;
+          line-height: 1.45;
         }
         .photos-counter-tag {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           background: #27ae60;
           color: white;
-          padding: 3px 8px;
-          border-radius: 12px;
+          padding: 4px 10px;
+          border-radius: 14px;
           font-weight: 700;
           white-space: nowrap;
         }
         .four-photo-slots-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          gap: 14px;
         }
         @media (min-width: 640px) {
           .four-photo-slots-grid {
-            gap: 14px;
+            gap: 18px;
           }
         }
         .photo-slot-box {
           border: 1.5px solid var(--border);
-          border-radius: 12px;
+          border-radius: 14px;
           overflow: hidden;
           background: var(--surface-2, #f8fafc);
           transition: all 0.2s ease;
@@ -1028,22 +1039,22 @@ export default function AddProduct() {
         }
         .slot-title-bar {
           background: var(--surface, #ffffff);
-          padding: 6px 10px;
-          font-size: 0.75rem;
+          padding: 8px 12px;
+          font-size: 0.85rem;
           font-weight: 700;
           color: var(--text);
           border-bottom: 1px solid var(--border);
         }
         .slot-upload-dropzone {
-          min-height: 150px;
+          min-height: 160px;
           aspect-ratio: 4 / 3;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           cursor: pointer;
-          padding: 14px 8px;
+          padding: 16px 10px;
           text-align: center;
           border: 2px dashed transparent;
           transition: all 0.15s ease;
@@ -1053,17 +1064,17 @@ export default function AddProduct() {
           border-color: #c0392b;
         }
         .slot-cta-text {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.88rem;
           font-weight: 700;
           color: #c0392b;
         }
         .slot-desc-text {
-          font-size: 0.6875rem; /* subtext */
+          font-size: 0.78rem;
           color: var(--text-muted);
         }
         .slot-img-preview-wrap {
           position: relative;
-          min-height: 150px;
+          min-height: 160px;
           aspect-ratio: 4 / 3;
           background: #0f172a;
           display: flex;
@@ -1083,18 +1094,18 @@ export default function AddProduct() {
         }
         .slot-remove-btn {
           position: absolute;
-          bottom: 6px;
-          right: 6px;
+          bottom: 8px;
+          right: 8px;
           background: rgba(192, 57, 43, 0.95);
           color: white;
           border: none;
-          border-radius: 6px;
-          padding: 3px 8px;
-          font-size: 0.7rem;
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 0.78rem;
           font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           cursor: pointer;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3);
           backdrop-filter: blur(4px);
@@ -1105,8 +1116,8 @@ export default function AddProduct() {
         .uploading-spinner-box {
           display: flex;
           align-items: center;
-          gap: 6px;
-          font-size: 0.75rem;
+          gap: 8px;
+          font-size: 0.85rem;
           color: #c0392b;
           font-weight: 700;
         }
@@ -1114,18 +1125,18 @@ export default function AddProduct() {
         /* Action Buttons */
         .form-action-row {
           display: flex;
-          gap: 8px;
-          margin-top: 14px;
+          gap: 12px;
+          margin-top: 18px;
         }
         .save-draft-btn {
           flex: 1;
           background: var(--surface-2);
           color: var(--text);
-          border: 1px solid var(--border);
-          padding: 10px 12px;
-          border-radius: 8px;
+          border: 1.5px solid var(--border);
+          padding: 12px 16px;
+          border-radius: 10px;
           font-weight: 700;
-          font-size: 0.85rem; /* text-sm */
+          font-size: 0.95rem;
           cursor: pointer;
         }
         .publish-submit-btn {
@@ -1133,31 +1144,36 @@ export default function AddProduct() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 14px;
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 0.85rem; /* text-sm */
+          padding: 12px 20px;
+          border-radius: 10px;
+          font-weight: 800;
+          font-size: 1rem;
           cursor: pointer;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.3);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
+          transition: transform 0.15s ease, background 0.15s ease;
+        }
+        .publish-submit-btn:hover {
+          background: #a93226;
+          transform: translateY(-2px);
         }
 
         /* Live Preview Sidebar */
         .live-preview-sidebar {
-          flex: 0 0 320px;
-          max-width: 340px;
+          flex: 0 0 350px;
+          max-width: 380px;
           width: 100%;
         }
         .preview-sticky-card {
           position: sticky;
-          top: 80px;
+          top: 85px;
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
+          border: 1.5px solid var(--border);
+          border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.06);
         }
         .preview-header {
-          padding: 10px 14px;
+          padding: 12px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -1166,16 +1182,16 @@ export default function AddProduct() {
         }
         .preview-header h4 {
           margin: 0;
-          font-size: 0.8125rem;
-          font-weight: 700;
+          font-size: 0.92rem;
+          font-weight: 800;
         }
         .preview-tag {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: var(--text-muted);
         }
         .preview-main-img-box {
           position: relative;
-          height: 200px;
+          height: 220px;
           background: #0f172a;
           display: flex;
           align-items: center;
@@ -1192,39 +1208,39 @@ export default function AddProduct() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           color: var(--text-muted);
-          font-size: 0.75rem;
+          font-size: 0.85rem;
         }
         .preview-discount-badge {
           position: absolute;
-          top: 8px;
-          left: 8px;
+          top: 10px;
+          left: 10px;
           background: #c0392b;
           color: white;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 0.6875rem;
+          padding: 3px 8px;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 800;
         }
         .preview-thumbs-row {
           display: flex;
-          gap: 4px;
-          padding: 8px 12px;
+          gap: 6px;
+          padding: 10px 14px;
           background: var(--bg);
           border-bottom: 1px solid var(--border);
         }
         .preview-thumb {
           flex: 1;
-          height: 42px;
-          border-radius: 4px;
-          border: 1px solid var(--border);
+          height: 48px;
+          border-radius: 6px;
+          border: 1.5px solid var(--border);
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
           background: var(--surface);
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: var(--text-muted);
         }
         .preview-thumb img {
@@ -1233,46 +1249,48 @@ export default function AddProduct() {
           object-fit: cover;
         }
         .preview-body {
-          padding: 12px 14px;
+          padding: 16px 18px;
         }
         .preview-category-badge {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: #c0392b;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
         .preview-product-title {
-          font-size: 0.875rem; /* text-sm */
-          font-weight: 700;
+          font-size: 1.05rem;
+          font-weight: 800;
           color: var(--text);
-          margin: 3px 0 6px;
-          line-height: 1.25;
+          margin: 4px 0 8px;
+          line-height: 1.3;
         }
         .preview-price-box {
           display: flex;
           align-items: baseline;
-          gap: 6px;
-          margin-bottom: 10px;
+          gap: 8px;
+          margin-bottom: 12px;
         }
         .preview-offer-price {
-          font-size: 1.25rem; /* text-xl */
+          font-size: 1.45rem;
           font-weight: 800;
           color: #27ae60;
         }
         .preview-mrp {
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           color: var(--text-muted);
           text-decoration: line-through;
         }
         .preview-features-list {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 0.72rem;
-          color: var(--text-muted);
+          gap: 6px;
+          font-size: 0.82rem;
+          color: var(--text);
           background: var(--bg);
-          padding: 8px;
-          border-radius: 6px;
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-weight: 600;
         }
       `}</style>
     </div>

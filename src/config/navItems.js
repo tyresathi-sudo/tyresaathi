@@ -1,12 +1,12 @@
-import { 
-  Home, 
-  Search, 
-  MapPin, 
-  Calendar, 
-  Receipt, 
-  PlusCircle, 
-  User, 
-  Settings as SettingsIcon, 
+import {
+  Home,
+  Search,
+  MapPin,
+  Calendar,
+  Receipt,
+  PlusCircle,
+  User,
+  Settings as SettingsIcon,
   LifeBuoy,
   BarChart3,
   Crown,
@@ -37,8 +37,7 @@ export const SERVICE_NAV_ITEMS = [
 
 // 4. Account & Support
 export const ACCOUNT_NAV_ITEMS = [
-  { to: "/profile", label: "Shop Profile", icon: User, color: "#0284c7", bg: "#f0f9ff" },
-  { to: "/settings", label: "Settings", icon: SettingsIcon, color: "#64748b", bg: "#f8fafc" },
+  { to: "/settings", label: "App & Account Settings", icon: SettingsIcon, color: "#64748b", bg: "#f8fafc" },
 ];
 
 // 5. Mobile Bottom Navigation Bar (5 Core Tabs)

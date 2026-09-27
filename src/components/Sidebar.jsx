@@ -1,11 +1,11 @@
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
-import { X, ShieldCheck, User, MessageCircle, ChevronRight, LogOut } from "lucide-react";
-import { 
-  BUSINESS_NAV_ITEMS, 
-  GROWTH_NAV_ITEMS, 
-  SERVICE_NAV_ITEMS, 
-  ACCOUNT_NAV_ITEMS 
+import { Home, X, ShieldCheck, User, MessageCircle, ChevronRight, LogOut } from "lucide-react";
+import {
+  BUSINESS_NAV_ITEMS,
+  GROWTH_NAV_ITEMS,
+  SERVICE_NAV_ITEMS,
+  ACCOUNT_NAV_ITEMS
 } from "../config/navItems.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -15,8 +15,8 @@ export default function Sidebar({ open, onClose }) {
   const supportWhatsappUrl = "https://wa.me/918877277757?text=" + encodeURIComponent("Hello TyreSaathi Support, I need assistance with my account/shop.");
 
   const shopNameDisplay = profile?.shopName || profile?.name || "TyreSaathi Partner";
-  const userRoleDisplay = profile?.role === "shop_owner" 
-    ? "🏪 Shop Owner" 
+  const userRoleDisplay = profile?.role === "shop_owner"
+    ? "🏪 Shop Owner"
     : (isAdmin ? "🛡️ Super Admin" : "👤 Customer");
 
   return (
@@ -27,11 +27,11 @@ export default function Sidebar({ open, onClose }) {
       <aside className={"sidebar" + (open ? " sidebar-open" : "")}>
         <div className="sidebar-header">
           <div className="sidebar-brand-group">
-            <img 
-              src="/logo.png" 
-              alt="Logo" 
-              className="sidebar-logo-img" 
-              onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }} 
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="sidebar-logo-img"
+              onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
             />
             <span className="brand-font sidebar-title">TyreSaathi</span>
           </div>
@@ -43,7 +43,7 @@ export default function Sidebar({ open, onClose }) {
         {/* 🏪 Top Store Profile Card */}
         {user ? (
           <div className="drawer-profile-container">
-            <Link to="/profile" className="drawer-store-card" onClick={onClose}>
+            <Link to="/profile" className="drawer-store-card" onClick={onClose} title="Click to view & edit profile">
               <div className="drawer-store-avatar">
                 {profile?.photoURL ? (
                   <img src={profile.photoURL} alt="Store" className="drawer-avatar-img" />
@@ -54,7 +54,7 @@ export default function Sidebar({ open, onClose }) {
               <div className="drawer-store-info">
                 <strong className="drawer-store-name">{shopNameDisplay}</strong>
                 <div className="drawer-rating-row">
-                  <span className="drawer-star-tag">⭐ 4.9 Verified Partner</span>
+                  <span className="drawer-star-tag">⭐ Verified Partner</span>
                 </div>
                 <span className="drawer-role-tag">{userRoleDisplay}</span>
               </div>
@@ -84,8 +84,22 @@ export default function Sidebar({ open, onClose }) {
         )}
 
         <nav className="sidebar-nav">
+          {/* 🏠 TOP HOME LINK */}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
+            onClick={onClose}
+          >
+            <div className="nav-icon-badge" style={{ color: "#c0392b", backgroundColor: "#fdedec" }}>
+              <Home size={16} />
+            </div>
+            <span className="nav-link-text">Home (मुख्य पृष्ठ)</span>
+            <ChevronRight size={14} className="nav-chevron" />
+          </NavLink>
+
           {/* 1. MANAGE BUSINESS */}
-          <div className="nav-section-label">MANAGE BUSINESS</div>
+          <div className="nav-section-label" style={{ marginTop: "12px" }}>MANAGE BUSINESS</div>
           {BUSINESS_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
             <NavLink
               key={to}
@@ -186,7 +200,10 @@ export default function Sidebar({ open, onClose }) {
         </nav>
 
         <div className="sidebar-footer">
-          <span>TyreSaathi • India's Verified Tyre Hub</span>
+          <span className="footer-small-brand">TyreSaathi Hub</span>
+          <span className="sidebar-version-pill">
+            <span className="version-status-dot" /> v1.2.3
+          </span>
         </div>
       </aside>
 
@@ -203,7 +220,7 @@ export default function Sidebar({ open, onClose }) {
           top: 0;
           left: 0;
           bottom: 0;
-          width: 290px;
+          width: 310px;
           background: #ffffff;
           border-right: 1px solid #e2e8f0;
           z-index: 1050;
@@ -216,26 +233,26 @@ export default function Sidebar({ open, onClose }) {
         }
         .sidebar-open { transform: translateX(0); }
         .sidebar-header {
-          height: 56px;
+          height: 62px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 16px;
+          padding: 0 18px;
           border-bottom: 1px solid #f1f5f9;
         }
         .sidebar-brand-group {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
         .sidebar-logo-img {
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           object-fit: contain;
-          border-radius: 6px;
+          border-radius: 8px;
         }
         .sidebar-title { 
-          font-size: 1.15rem;
+          font-size: 1.35rem;
           font-weight: 800;
           color: #0f172a;
           letter-spacing: 0.5px;
@@ -246,36 +263,40 @@ export default function Sidebar({ open, onClose }) {
           border: none;
           color: #64748b;
           cursor: pointer;
-          padding: 4px;
+          padding: 6px;
         }
         
         .drawer-profile-container {
-          padding: 10px 12px 4px;
+          padding: 12px 14px 6px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
         .drawer-store-card {
-          padding: 10px 12px;
+          padding: 12px 14px;
           background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 14px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           text-decoration: none;
           color: #0f172a;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+          transition: border-color 0.2s ease;
+        }
+        .drawer-store-card:hover {
+          border-color: #c0392b;
         }
         .drawer-store-avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
+          width: 46px;
+          height: 46px;
+          border-radius: 12px;
           background: #e2e8f0;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.2rem;
+          font-size: 1.4rem;
           overflow: hidden;
           flex-shrink: 0;
         }
@@ -291,7 +312,7 @@ export default function Sidebar({ open, onClose }) {
           flex: 1;
         }
         .drawer-store-name {
-          font-size: 0.875rem;
+          font-size: 0.98rem;
           font-weight: 800;
           color: #0f172a;
           white-space: nowrap;
@@ -301,16 +322,16 @@ export default function Sidebar({ open, onClose }) {
         .drawer-rating-row {
           display: flex;
           align-items: center;
-          gap: 4px;
-          margin-top: 1px;
+          gap: 6px;
+          margin-top: 2px;
         }
         .drawer-star-tag {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: #16a34a;
           font-weight: 700;
         }
         .drawer-role-tag {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: #64748b;
           font-weight: 600;
         }
@@ -319,20 +340,20 @@ export default function Sidebar({ open, onClose }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 9px 12px;
+          padding: 11px 14px;
           background: #fff5f5;
           border: 1.5px solid #fecaca;
-          border-radius: 10px;
+          border-radius: 12px;
           text-decoration: none;
           transition: all 0.2s ease;
         }
         .admin-card-inner {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
         .admin-card-title {
-          font-size: 0.8125rem;
+          font-size: 0.92rem;
           font-weight: 800;
           color: #c0392b;
         }
@@ -342,50 +363,50 @@ export default function Sidebar({ open, onClose }) {
         }
 
         .drawer-auth-cta {
-          padding: 10px 12px 4px;
+          padding: 12px 14px 6px;
         }
         .drawer-login-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           background: #c0392b;
           color: white;
-          padding: 9px 12px;
-          border-radius: 8px;
+          padding: 11px 16px;
+          border-radius: 10px;
           text-decoration: none;
-          font-size: 0.8125rem;
+          font-size: 0.92rem;
           font-weight: 700;
         }
 
         .sidebar-nav { 
           flex: 1; 
-          padding: 8px 10px; 
+          padding: 10px 12px; 
           display: flex; 
           flex-direction: column; 
-          gap: 2px;
+          gap: 4px;
           overflow-y: auto;
         }
 
         .nav-section-label {
-          font-size: 0.6875rem;
+          font-size: 0.76rem;
           font-weight: 800;
-          color: #94a3b8;
+          color: #64748b;
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          padding: 8px 10px 4px;
+          padding: 10px 10px 4px;
         }
 
         .sidebar-link-modern {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 7px 10px;
-          border-radius: 10px;
+          gap: 12px;
+          padding: 9px 12px;
+          border-radius: 12px;
           color: #334155;
           text-decoration: none;
-          font-weight: 600;
-          font-size: 0.8125rem;
+          font-weight: 700;
+          font-size: 0.92rem;
           transition: all 0.15s ease;
           border: none;
           background: transparent;
@@ -398,9 +419,9 @@ export default function Sidebar({ open, onClose }) {
           color: #0f172a;
         }
         .nav-icon-badge {
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -421,19 +442,45 @@ export default function Sidebar({ open, onClose }) {
           color: #0f172a;
         }
         .btn-sidebar-logout {
-          margin-top: 10px;
+          margin-top: 12px;
         }
         .btn-sidebar-logout:hover {
           background: #fff1f2;
         }
         
         .sidebar-footer {
-          padding: 10px 12px;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          color: #94a3b8;
+          padding: 10px 16px;
           border-top: 1px solid #f1f5f9;
-          text-align: center;
+          background: #fafafa;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 12px;
+        }
+        .footer-small-brand {
+          color: #64748b;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+        }
+        .sidebar-version-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          color: #166534;
+          padding: 3px 10px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .version-status-dot {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #22c55e;
+          display: inline-block;
         }
 
         /* Desktop */

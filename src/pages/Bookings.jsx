@@ -28,7 +28,7 @@ import {
   MessageCircle,
   BarChart3
 } from "lucide-react";
-import { SERVICE_TYPES, SAMPLE_SHOPS } from "../config/tyreCatalog";
+import { SHOP_PRIMARY_CATEGORIES, SERVICE_TYPES, getCategoryByCode } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
 import { logBookingToSheet } from "../utils/googleSheets";
 import { triggerHaptic, showNativeToast, scheduleServiceReminder } from "../utils/nativeBridge.js";
@@ -54,12 +54,12 @@ export default function Bookings() {
   const isShopManager = (b) => {
     if (isAdmin) return true;
     if (!isVendor && !isShopOwner) return false;
-    
+
     const myUid = user?.uid;
     const myShopName = (profile?.shopName || "").toLowerCase().trim();
     const bShopId = b?.shopId;
     const bShopName = (b?.shopName || "").toLowerCase().trim();
-    
+
     return (
       (bShopId && bShopId === myUid) ||
       (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)))
@@ -76,16 +76,28 @@ export default function Bookings() {
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((u) => u.role === "vendor" || u.role === "admin" || u.shopName);
           if (vendorDocs.length > 0) {
-            const formatted = vendorDocs.map((v) => ({
-              id: v.id || v.uid,
-              name: v.shopName || v.name,
-              phone: v.phone || "8877277757",
-              city: v.city || (v.address ? v.address.split(",").slice(-2)[0]?.trim() : "") || "Authorized Location",
-              address: v.address || (v.city ? `${v.city}, India` : "TyreSaathi Partner Hub"),
-              services: v.services || ["Tyre Replacement & Fitting", "Tubeless Puncture Repair", "Tyre Cut Repair", "Nitrogen Air Fill"],
-              rating: 4.9,
-              reviewsCount: 24
-            }));
+            const formatted = vendorDocs.map((v) => {
+              const catCode = v.shopCategory || v.categoryCode || "CAT_PUNCTURE_REPAIR";
+              const catObj = getCategoryByCode(catCode);
+              const shopServices = (Array.isArray(v.services) && v.services.length > 0)
+                ? v.services
+                : ((Array.isArray(v.servicesOffered) && v.servicesOffered.length > 0)
+                    ? v.servicesOffered
+                    : catObj.services);
+
+              return {
+                id: v.id || v.uid,
+                name: v.shopName || v.name,
+                phone: v.phone || "8877277757",
+                categoryCode: catCode,
+                categoryName: v.shopType || catObj.name,
+                city: v.city || (v.address ? v.address.split(",").slice(-2)[0]?.trim() : "") || "Authorized Location",
+                address: v.address || (v.city ? `${v.city}, India` : "TyreSaathi Partner Hub"),
+                services: shopServices,
+                rating: 0,
+                reviewsCount: 0
+              };
+            });
             setAvailableShops(formatted);
             if (paramShopId || paramShopName) {
               const matched = formatted.find(s => s.id === paramShopId || (paramShopName && s.name?.toLowerCase() === paramShopName.toLowerCase()));
@@ -325,8 +337,8 @@ export default function Bookings() {
       const myShopName = (profile?.shopName || "").toLowerCase().trim();
       const bShopId = b?.shopId;
       const bShopName = (b?.shopName || "").toLowerCase().trim();
-      const isForMyShop = (bShopId && bShopId === myUid) || 
-                          (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)));
+      const isForMyShop = (bShopId && bShopId === myUid) ||
+        (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)));
       const isMyCustomerBooking = b.customerId === user?.uid || b.customerEmail === user?.email;
       return isForMyShop || isMyCustomerBooking;
     }
@@ -491,9 +503,11 @@ export default function Bookings() {
                 <div className="meta-block">
                   <span className="meta-label">👤 Customer Details:</span>
                   <span className="meta-value">{b.customerName}</span>
-                  <a href={`tel:${b.customerPhone}`} className="meta-phone-link">
-                    <Phone size={12} /> {b.customerPhone}
-                  </a>
+                  {b.customerPhone && (
+                    <a href={`tel:${b.customerPhone}`} className="meta-phone-link">
+                      <Phone size={12} /> {b.customerPhone}
+                    </a>
+                  )}
                 </div>
 
                 <div className="meta-block">
@@ -520,7 +534,7 @@ export default function Bookings() {
                 <div className="action-left-info">
                   <span className="time-ago-text">Booking ID: #{b.id.slice(-6)}</span>
                   {!isShopManager(b) && (
-                    <span style={{ fontSize: "11px", color: "#64748b", marginLeft: "8px", fontWeight: "600" }}>
+                    <span style={{ fontSize: "11px", color: "#64748b", marginLeft: "6px", fontWeight: "600" }}>
                       (Aapki Booking)
                     </span>
                   )}
@@ -536,13 +550,13 @@ export default function Bookings() {
                             className="btn-action-reject"
                             onClick={() => handleUpdateStatus(b.id, "rejected")}
                           >
-                            <XCircle size={14} /> Reject (अस्वीकार करें)
+                            <XCircle size={13} /> Reject
                           </button>
                           <button
                             className="btn-action-accept"
                             onClick={() => handleUpdateStatus(b.id, "accepted")}
                           >
-                            <CheckCircle2 size={14} /> Accept (स्वीकार करें)
+                            <CheckCircle2 size={13} /> Accept
                           </button>
                         </>
                       )}
@@ -552,7 +566,7 @@ export default function Bookings() {
                           className="btn-action-progress"
                           onClick={() => handleUpdateStatus(b.id, "in_progress")}
                         >
-                          <Wrench size={14} /> Start Service (काम शुरू करें)
+                          <Wrench size={13} /> Start Service
                         </button>
                       )}
 
@@ -561,7 +575,7 @@ export default function Bookings() {
                           className="btn-action-complete"
                           onClick={() => handleUpdateStatus(b.id, "completed")}
                         >
-                          <CheckCircle2 size={14} /> Mark Completed (पूरा हुआ)
+                          <CheckCircle2 size={13} /> Mark Completed
                         </button>
                       )}
 
@@ -572,7 +586,7 @@ export default function Bookings() {
                             className="btn-action-call"
                             title={`Call Customer (${b.customerName})`}
                           >
-                            <Phone size={13} /> Call ({b.customerPhone})
+                            <Phone size={12} /> Call ({b.customerPhone})
                           </a>
 
                           <a
@@ -607,7 +621,7 @@ export default function Bookings() {
                             }
                           }}
                         >
-                          <XCircle size={14} /> Cancel Booking (रद्द करें)
+                          <XCircle size={13} /> Cancel Booking
                         </button>
                       )}
 
@@ -618,7 +632,7 @@ export default function Bookings() {
                             className="btn-action-call"
                             title={`Call Shop (${b.shopName})`}
                           >
-                            <Phone size={13} /> Call Shop ({b.shopPhone})
+                            <Phone size={12} /> Call Shop ({b.shopPhone})
                           </a>
 
                           <a
@@ -628,7 +642,7 @@ export default function Bookings() {
                             className="btn-action-whatsapp"
                             title="Chat with Shop on WhatsApp"
                           >
-                            💬 WhatsApp Shop
+                            💬 WhatsApp
                           </a>
                         </>
                       )}
@@ -962,24 +976,63 @@ export default function Bookings() {
           box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3) !important;
         }
 
-        /* Bookings List Grid & Clean Cards */
+        /* Bookings List Grid (Responsive: 2 comfortable columns on Desktop/Tablet, 1 column on Mobile) */
         .bookings-list-grid {
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: 1fr;
           gap: 16px;
         }
 
+        @media (min-width: 768px) {
+          .bookings-list-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+          }
+          .bookings-page-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 20px 24px;
+          }
+          .page-heading {
+            font-size: 24px;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .bookings-page-container {
+            padding: 12px 14px;
+          }
+          .bookings-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 12px;
+          }
+          .header-actions-group {
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            gap: 6px;
+          }
+          .page-heading {
+            font-size: 18px;
+          }
+          .page-sub {
+            font-size: 12px;
+          }
+        }
+
         .no-bookings-card {
+          grid-column: 1 / -1;
           text-align: center;
-          padding: 60px 24px;
+          padding: 36px 20px;
           background: #ffffff;
           border: 1.5px dashed #cbd5e1;
-          border-radius: 16px;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          border-radius: 14px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
         .no-bookings-card h3 {
           font-size: 18px;
@@ -998,14 +1051,17 @@ export default function Bookings() {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
           border-left: 5px solid #c0392b;
-          border-radius: 16px;
-          padding: 20px 22px;
-          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+          border-radius: 14px;
+          padding: 18px 20px;
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
           transition: all 0.2s ease;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
         .booking-item-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
           border-color: #cbd5e1;
         }
 
@@ -1019,34 +1075,36 @@ export default function Bookings() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
+          gap: 10px;
           flex-wrap: wrap;
-          gap: 12px;
         }
 
         .service-info-group {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
+          min-width: 0;
         }
 
         .service-icon-circle {
-          width: 44px;
-          height: 44px;
+          width: 40px;
+          height: 40px;
           background: #fef2f2;
           color: #c0392b;
           border: 1px solid #fee2e2;
-          border-radius: 12px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
         }
 
         .booking-service-title {
-          font-size: 17px;
+          font-size: 16px;
           font-weight: 800;
           color: #0f172a;
           margin: 0;
+          line-height: 1.3;
         }
 
         .booking-vehicle-tag {
@@ -1055,7 +1113,7 @@ export default function Bookings() {
           gap: 5px;
           font-size: 12.5px;
           color: #64748b;
-          margin-top: 3px;
+          margin-top: 2px;
         }
 
         .booking-vehicle-tag strong {
@@ -1065,8 +1123,10 @@ export default function Bookings() {
         .status-badge {
           font-size: 12px;
           font-weight: 800;
-          padding: 5px 14px;
-          border-radius: 20px;
+          padding: 4px 12px;
+          border-radius: 16px;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
         .badge-pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
         .badge-accepted { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
@@ -1076,31 +1136,39 @@ export default function Bookings() {
 
         .booking-meta-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
           background: #f8fafc;
           border: 1px solid #f1f5f9;
-          padding: 14px 16px;
-          border-radius: 12px;
-          margin-bottom: 14px;
+          padding: 12px 14px;
+          border-radius: 10px;
+        }
+
+        @media (max-width: 640px) {
+          .booking-meta-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            padding: 10px 12px;
+          }
         }
 
         .meta-block {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
+          min-width: 0;
         }
 
         .meta-label {
-          font-size: 11px;
+          font-size: 10.5px;
           color: #64748b;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.25px;
         }
 
         .meta-value {
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 800;
           color: #0f172a;
         }
@@ -1110,10 +1178,9 @@ export default function Bookings() {
           align-items: center;
           gap: 4px;
           color: #0284c7;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 700;
           text-decoration: none;
-          margin-top: 2px;
         }
         .meta-phone-link:hover { text-decoration: underline; }
 
@@ -1125,36 +1192,36 @@ export default function Bookings() {
         .booking-notes-box {
           background: #fffbeb;
           border: 1px solid #fef3c7;
-          padding: 10px 14px;
-          border-radius: 10px;
+          padding: 8px 12px;
+          border-radius: 8px;
           font-size: 12.5px;
           color: #92400e;
-          margin-bottom: 14px;
         }
 
         .booking-card-actions {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding-top: 14px;
+          padding-top: 10px;
           border-top: 1px solid #f1f5f9;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 8px;
         }
 
         .time-ago-text {
-          font-size: 12px;
+          font-size: 11.5px;
           color: #64748b;
           font-family: monospace;
           background: #f1f5f9;
           padding: 3px 8px;
           border-radius: 6px;
+          font-weight: 600;
         }
 
         .action-buttons-group {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
         }
 
@@ -1165,12 +1232,11 @@ export default function Bookings() {
           background: #16a34a;
           color: #fff;
           border: none;
-          padding: 7px 14px;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2);
         }
         .btn-action-accept:hover {
           background: #15803d;
@@ -1183,7 +1249,7 @@ export default function Bookings() {
           background: #fee2e2;
           border: 1px solid #fecaca;
           color: #b91c1c;
-          padding: 7px 14px;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 12.5px;
           font-weight: 700;
@@ -1200,12 +1266,11 @@ export default function Bookings() {
           background: #7c3aed;
           color: #fff;
           border: none;
-          padding: 7px 14px;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(124, 58, 237, 0.2);
         }
         .btn-action-progress:hover {
           background: #6d28d9;
@@ -1218,12 +1283,11 @@ export default function Bookings() {
           background: #0284c7;
           color: #fff;
           border: none;
-          padding: 7px 14px;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
         }
         .btn-action-complete:hover {
           background: #0369a1;
@@ -1236,7 +1300,7 @@ export default function Bookings() {
           background: #f0fdf4;
           color: #15803d;
           border: 1px solid #bbf7d0;
-          padding: 6px 12px;
+          padding: 5px 11px;
           border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
@@ -1253,7 +1317,7 @@ export default function Bookings() {
           background: #f0fdf4;
           color: #16a34a;
           border: 1px solid #bbf7d0;
-          padding: 6px 12px;
+          padding: 5px 11px;
           border-radius: 8px;
           font-size: 12px;
           font-weight: 700;
@@ -1271,13 +1335,13 @@ export default function Bookings() {
           color: #ffffff;
           padding: 6px 13px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 800;
           text-decoration: none;
           box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
         }
         .btn-action-bill-shortcut:hover {
-          transform: translateY(-1px);
+          background: #b91c1c;
         }
 
         /* 🪟 Clean White Modal Styles */

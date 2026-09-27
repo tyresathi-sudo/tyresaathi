@@ -1618,9 +1618,10 @@ export default function Billing() {
           gap: 4px;
         }
         .form-input-group label {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.88rem;
           font-weight: 700;
-          color: var(--text-muted);
+          color: var(--text);
+          margin-bottom: 2px;
         }
         .input-with-icon {
           position: relative;
@@ -1629,22 +1630,23 @@ export default function Billing() {
         }
         .input-with-icon svg {
           position: absolute;
-          left: 10px;
+          left: 12px;
           color: var(--text-muted);
           pointer-events: none;
           z-index: 1;
-          width: 16px;
-          height: 16px;
+          width: 18px;
+          height: 18px;
         }
         .input-with-icon input {
           width: 100%;
-          padding: 8px 10px 8px 32px !important;
-          border-radius: 6px;
+          padding: 11px 12px 11px 38px !important;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           outline: none;
+          font-weight: 500;
         }
         .input-with-icon input:focus,
         .form-input-group input:focus,
@@ -1653,29 +1655,31 @@ export default function Billing() {
         }
         .form-input-group input,
         .form-input-group select {
-          padding: 8px 10px;
-          border-radius: 6px;
+          padding: 11px 14px;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           outline: none;
+          font-weight: 500;
         }
 
         .payment-status-toggle {
           display: flex;
-          gap: 6px;
+          gap: 8px;
         }
         .status-toggle-btn {
           flex: 1;
-          padding: 8px 6px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
+          padding: 10px 12px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
           background: var(--bg);
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.88rem;
           font-weight: 700;
           color: var(--text-muted);
           cursor: pointer;
+          transition: all 0.15s ease;
         }
         .status-paid-active {
           background: #eafaf1;
@@ -1691,36 +1695,38 @@ export default function Billing() {
         /* Items Entry Table */
         .items-table-wrapper {
           overflow-x: auto;
-          margin-bottom: 10px;
+          margin-bottom: 14px;
         }
         .items-entry-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.75rem;
+          font-size: 0.88rem;
         }
         .items-entry-table th {
           background: var(--surface-2);
-          padding: 6px 8px;
+          padding: 10px 10px;
           text-align: left;
-          font-weight: 700;
-          color: var(--text-muted);
-          border-bottom: 1px solid var(--border);
-          font-size: 0.72rem;
+          font-weight: 800;
+          color: var(--text);
+          border-bottom: 1.5px solid var(--border);
+          font-size: 0.82rem;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
         }
         .items-entry-table td {
-          padding: 6px 4px;
+          padding: 8px 6px;
           border-bottom: 1px solid var(--border);
         }
         .item-name-input,
         .item-size-input,
         .item-serial-input {
           width: 100%;
-          padding: 6px 8px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
+          padding: 9px 12px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.78rem;
+          font-size: 0.9rem;
           font-weight: 600;
           outline: none;
         }
@@ -1739,52 +1745,55 @@ export default function Billing() {
         }
         .item-type-select {
           width: 100%;
-          padding: 6px 4px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
+          padding: 9px 8px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.72rem;
+          font-size: 0.88rem;
+          font-weight: 600;
         }
         .item-qty-input,
         .item-rate-input {
           width: 100%;
-          padding: 6px 6px;
-          border-radius: 6px;
-          border: 1px solid var(--border);
+          padding: 9px 10px;
+          border-radius: 8px;
+          border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.75rem;
+          font-size: 0.92rem;
+          font-weight: 700;
           text-align: right;
         }
         .item-amount-col {
           font-weight: 800;
           color: #c0392b;
           text-align: right;
-          padding-right: 8px;
-          font-size: 0.78rem;
+          padding-right: 10px;
+          font-size: 0.95rem;
         }
         .btn-remove-row {
           background: none;
           border: none;
           color: #c0392b;
           cursor: pointer;
-          padding: 3px;
+          padding: 6px;
         }
         .btn-add-row-full {
           width: 100%;
           background: var(--surface-2);
           border: 1.5px dashed var(--border);
           color: var(--text);
-          padding: 7px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 0.75rem;
+          padding: 11px;
+          border-radius: 8px;
+          font-weight: 800;
+          font-size: 0.88rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
+          transition: background 0.15s ease;
         }
         .btn-add-row-full:hover {
           background: var(--border);
@@ -1792,18 +1801,18 @@ export default function Billing() {
 
         .billing-action-buttons {
           display: flex;
-          gap: 10px;
-          margin-top: 8px;
+          gap: 12px;
+          margin-top: 14px;
         }
         .btn-reset-bill {
           flex: 1;
           background: var(--surface-2);
-          border: 1px solid var(--border);
+          border: 1.5px solid var(--border);
           color: var(--text);
-          padding: 10px;
-          border-radius: 6px;
+          padding: 12px 16px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.92rem;
           cursor: pointer;
         }
         .btn-generate-bill {
@@ -1811,91 +1820,94 @@ export default function Billing() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 16px;
-          border-radius: 6px;
+          padding: 12px 20px;
+          border-radius: 8px;
           font-weight: 800;
-          font-size: 0.875rem;
+          font-size: 1rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
+          transition: transform 0.15s ease, background 0.15s ease;
         }
         .btn-generate-bill:hover {
           background: #a93226;
+          transform: translateY(-1px);
         }
 
         /* Live Receipt Sidebar */
         .live-receipt-card {
           background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 16px 14px;
+          border: 1.5px solid var(--border);
+          border-radius: 14px;
+          padding: 20px 18px;
           box-shadow: 0 6px 20px rgba(0,0,0,0.05);
           position: sticky;
-          top: 80px;
+          top: 85px;
         }
         .receipt-top-brand {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
         }
         .brand-badge {
-          font-size: 0.6875rem;
+          font-size: 0.82rem;
           font-weight: 800;
           color: #c0392b;
           letter-spacing: 0.5px;
         }
         .receipt-inv-num {
-          font-size: 0.72rem;
-          font-weight: 700;
+          font-size: 0.85rem;
+          font-weight: 800;
           color: var(--text-muted);
         }
         .receipt-shop-meta h3 {
-          font-size: 0.95rem;
+          font-size: 1.15rem;
           font-weight: 800;
-          margin: 0 0 2px;
+          margin: 0 0 4px;
           color: var(--text);
         }
         .receipt-shop-meta p {
-          font-size: 0.72rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           margin: 0;
         }
         .receipt-shop-meta small {
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
           color: var(--text-muted);
         }
         .receipt-divider {
           height: 1px;
           background: var(--border);
-          margin: 10px 0;
+          margin: 12px 0;
         }
         .receipt-customer-details {
           display: flex;
           flex-direction: column;
-          gap: 3px;
-          font-size: 0.75rem;
+          gap: 4px;
+          font-size: 0.85rem;
         }
         .meta-lbl {
           color: var(--text-muted);
           display: inline-block;
-          width: 65px;
+          width: 75px;
+          font-weight: 600;
         }
         .receipt-items-list {
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          max-height: 160px;
+          gap: 8px;
+          max-height: 180px;
           overflow-y: auto;
         }
         .receipt-item-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          font-size: 0.75rem;
+          font-size: 0.85rem;
         }
         .it-left {
           display: flex;
@@ -1903,51 +1915,51 @@ export default function Billing() {
           max-width: 75%;
         }
         .it-name {
-          font-weight: 600;
+          font-weight: 700;
           color: var(--text);
         }
         .it-qty {
           color: var(--text-muted);
-          font-size: 0.6875rem;
+          font-size: 0.78rem;
         }
         .it-amt {
-          font-weight: 700;
+          font-weight: 800;
           color: var(--text);
         }
         .receipt-calc-table {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 0.75rem;
+          gap: 6px;
+          font-size: 0.88rem;
         }
         .calc-row {
           display: flex;
           justify-content: space-between;
           color: var(--text-muted);
         }
-        .discount-row { color: #27ae60; font-weight: 600; }
-        .tax-row { color: #8e44ad; font-weight: 600; }
+        .discount-row { color: #27ae60; font-weight: 700; }
+        .tax-row { color: #8e44ad; font-weight: 700; }
         .grand-total-row {
           border-top: 1.5px dashed var(--border);
-          padding-top: 6px;
-          margin-top: 2px;
+          padding-top: 8px;
+          margin-top: 4px;
           font-weight: 800;
-          font-size: 0.95rem;
+          font-size: 1.1rem;
           color: var(--text);
         }
         .grand-amount {
           color: #c0392b;
-          font-size: 1.15rem;
+          font-size: 1.35rem;
         }
         .receipt-payment-tag {
           display: flex;
           align-items: center;
           justify-content: space-between;
           background: var(--bg);
-          padding: 6px 10px;
-          border-radius: 6px;
-          font-size: 0.72rem;
-          margin: 10px 0 12px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          margin: 12px 0 14px;
         }
         .badge-paid {
           background: #eafaf1;

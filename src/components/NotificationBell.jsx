@@ -20,6 +20,7 @@ import {
   markNotificationAsRead, 
   markAllNotificationsAsRead 
 } from "../utils/notificationService";
+import { playNotificationSound, triggerNotificationVibration } from "../utils/soundService";
 
 export default function NotificationBell() {
   const { user, profile } = useAuth();
@@ -41,6 +42,10 @@ export default function NotificationBell() {
       const unreadList = list.filter((n) => !n.read);
       if (unreadList.length > prevCountRef.current && unreadList[0]) {
         const newest = unreadList[0];
+        // 🔔 Play notification sound & trigger vibration
+        playNotificationSound();
+        triggerNotificationVibration("medium");
+
         // Show in-app live toast
         setLatestToast(newest);
         const timer = setTimeout(() => {
@@ -546,8 +551,8 @@ export default function NotificationBell() {
         .notif-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 12px;
-          padding: 14px 16px;
+          gap: 9px;
+          padding: 9px 12px;
           border-bottom: 1px solid #f1f5f9;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -566,9 +571,9 @@ export default function NotificationBell() {
         }
 
         .notif-icon-box {
-          width: 36px;
-          height: 36px;
-          border-radius: 10px;
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -589,19 +594,22 @@ export default function NotificationBell() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
-          margin-bottom: 3px;
+          gap: 6px;
+          margin-bottom: 2px;
         }
 
         .notif-item-title {
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 800;
           color: #0f172a;
           line-height: 1.25;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .notif-item-time {
-          font-size: 10.5px;
+          font-size: 10px;
           color: #94a3b8;
           font-weight: 600;
           flex-shrink: 0;
@@ -610,44 +618,44 @@ export default function NotificationBell() {
 
         .notif-item-msg {
           margin: 0;
-          font-size: 12px;
+          font-size: 11px;
           color: #475569;
-          line-height: 1.4;
+          line-height: 1.35;
           word-break: break-word;
         }
 
         .unread-dot {
-          width: 8px;
-          height: 8px;
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
           background: #dc2626;
-          margin-top: 6px;
+          margin-top: 4px;
           flex-shrink: 0;
-          box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+          box-shadow: 0 0 0 2.5px rgba(220, 38, 38, 0.2);
         }
 
         .notif-panel-footer {
           background: #f8fafc;
-          border-top: 1.5px solid #e2e8f0;
-          padding: 10px 14px;
+          border-top: 1px solid #e2e8f0;
+          padding: 8px 10px;
           display: flex;
-          gap: 10px;
+          gap: 6px;
         }
 
         .btn-view-bookings, .btn-view-shops {
           flex: 1;
           background: #ffffff;
-          border: 1.5px solid #cbd5e1;
+          border: 1px solid #cbd5e1;
           color: #334155;
-          padding: 8px 10px;
-          border-radius: 8px;
-          font-size: 11.5px;
+          padding: 6px 8px;
+          border-radius: 6px;
+          font-size: 11px;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
+          gap: 4px;
           transition: all 0.15s ease;
         }
         .btn-view-bookings:hover, .btn-view-shops:hover {
@@ -655,7 +663,7 @@ export default function NotificationBell() {
           border-color: #94a3b8;
         }
 
-        /* 📱 Mobile Responsive Full View (< 640px) */
+        /* 📱 Mobile Responsive Compact View (< 640px) */
         @media (max-width: 640px) {
           .notif-mobile-backdrop {
             display: block;
@@ -664,10 +672,10 @@ export default function NotificationBell() {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(15, 23, 42, 0.45);
-            backdrop-filter: blur(3px);
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(2px);
             z-index: 999990;
-            animation: fadeInBackdrop 0.2s ease-out;
+            animation: fadeInBackdrop 0.15s ease-out;
           }
 
           @keyframes fadeInBackdrop {
@@ -677,20 +685,19 @@ export default function NotificationBell() {
 
           .notification-dropdown-panel {
             position: fixed !important;
-            top: 62px !important;
-            left: 10px !important;
+            top: 54px !important;
             right: 10px !important;
-            width: auto !important;
-            max-width: 440px !important;
-            margin: 0 auto !important;
-            max-height: calc(100vh - 120px) !important;
-            border-radius: 18px !important;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+            left: auto !important;
+            width: calc(100vw - 20px) !important;
+            max-width: 350px !important;
+            max-height: 420px !important;
+            border-radius: 14px !important;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22) !important;
             z-index: 999999 !important;
           }
 
           .notif-panel-body {
-            max-height: calc(100vh - 240px) !important;
+            max-height: 270px !important;
           }
         }
       `}</style>

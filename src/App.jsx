@@ -22,6 +22,7 @@ import Billing from "./pages/Billing.jsx";
 import Settings from "./pages/Settings.jsx";
 import SupportTickets from "./pages/SupportTickets.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx";
+import AdminLogin from "./pages/AdminLogin.jsx";
 import ShopAnalytics from "./pages/ShopAnalytics.jsx";
 import Subscription from "./pages/Subscription.jsx";
 import ManageProducts from "./pages/ManageProducts.jsx";
@@ -50,6 +51,7 @@ export default function App() {
       <AppUpdateChecker />
       <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ForgotPassword />} />

@@ -965,26 +965,26 @@ export default function ManageProducts() {
 
         .inventory-cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 22px;
         }
 
         .inventory-product-card {
           background: var(--surface, #ffffff);
           border: 1.5px solid var(--border, #e2e8f0);
           border-radius: 16px;
-          padding: 18px;
+          padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
           position: relative;
           transition: all 0.22s ease;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.04);
         }
         .inventory-product-card:hover {
           border-color: #cbd5e1;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+          transform: translateY(-3px);
         }
 
         .card-draft-mode {
@@ -999,12 +999,12 @@ export default function ManageProducts() {
         }
 
         .status-pill {
-          font-size: 11.5px;
-          font-weight: 700;
-          padding: 3px 10px;
+          font-size: 12.5px;
+          font-weight: 800;
+          padding: 4px 12px;
           border-radius: 20px;
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.4px;
         }
         .status-pill-live {
           background: #dcfce7;
@@ -1016,32 +1016,32 @@ export default function ManageProducts() {
         }
 
         .type-badge-pill {
-          font-size: 11.5px;
-          font-weight: 600;
+          font-size: 13px;
+          font-weight: 700;
           background: var(--bg, #f1f5f9);
           color: var(--text-muted, #475569);
-          padding: 3px 8px;
-          border-radius: 6px;
+          padding: 4px 10px;
+          border-radius: 8px;
         }
 
         .card-main-info {
           display: flex;
-          gap: 14px;
+          gap: 16px;
         }
 
         .product-thumb-wrap {
           position: relative;
-          width: 84px;
-          height: 84px;
-          border-radius: 12px;
+          width: 96px;
+          height: 96px;
+          border-radius: 14px;
           overflow: hidden;
           background: #ffffff;
-          border: 1px solid var(--border, #e2e8f0);
+          border: 1.5px solid var(--border, #e2e8f0);
           flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 4px;
+          padding: 6px;
         }
 
         .product-thumb-img {
@@ -1058,9 +1058,9 @@ export default function ManageProducts() {
           left: 4px;
           background: #e74c3c;
           color: white;
-          font-size: 9.5px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 2px 5px;
+          padding: 2px 6px;
           border-radius: 4px;
         }
 
@@ -1073,17 +1073,18 @@ export default function ManageProducts() {
         }
 
         .product-category-name {
-          font-size: 11px;
-          font-weight: 700;
+          font-size: 12.5px;
+          font-weight: 800;
           color: #c0392b;
           text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
 
         .product-name-heading {
-          font-size: 15px;
-          font-weight: 700;
+          font-size: 16.5px;
+          font-weight: 800;
           color: var(--text, #0f172a);
-          margin: 3px 0 6px 0;
+          margin: 4px 0 8px 0;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1092,31 +1093,31 @@ export default function ManageProducts() {
         .spec-chips-row {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 8px;
         }
 
         .spec-chip {
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 600;
           background: var(--bg, #f1f5f9);
           color: var(--text, #334155);
-          padding: 2px 7px;
-          border-radius: 5px;
+          padding: 3px 9px;
+          border-radius: 6px;
         }
 
         .card-price-stock-row {
           background: var(--bg, #f8fafc);
-          border: 1px solid var(--border, #e2e8f0);
-          border-radius: 10px;
-          padding: 10px 14px;
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 12px;
+          padding: 12px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
         }
 
         .price-label {
-          font-size: 10.5px;
-          font-weight: 600;
+          font-size: 12px;
+          font-weight: 700;
           color: var(--text-muted, #64748b);
           display: block;
           margin-bottom: 2px;
@@ -1125,26 +1126,26 @@ export default function ManageProducts() {
         .price-numbers {
           display: flex;
           align-items: baseline;
-          gap: 6px;
+          gap: 8px;
         }
 
         .offer-price-val {
-          font-size: 16px;
+          font-size: 18.5px;
           font-weight: 800;
           color: #27ae60;
         }
 
         .mrp-price-val {
-          font-size: 12px;
+          font-size: 13.5px;
           color: #94a3b8;
           text-decoration: line-through;
         }
 
         .stock-badge {
-          font-size: 11.5px;
+          font-size: 13px;
           font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 6px;
+          padding: 4px 10px;
+          border-radius: 8px;
           display: inline-block;
         }
         .stock-good { background: #dcfce7; color: #166534; }
@@ -1156,8 +1157,8 @@ export default function ManageProducts() {
         .card-actions-bar {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding-top: 6px;
+          gap: 10px;
+          padding-top: 8px;
           border-top: 1px solid var(--border, #f1f5f9);
         }
 
@@ -1166,10 +1167,10 @@ export default function ManageProducts() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 8px 10px;
-          border-radius: 8px;
-          font-size: 12px;
+          gap: 8px;
+          padding: 9px 12px;
+          border-radius: 10px;
+          font-size: 13px;
           font-weight: 700;
           cursor: pointer;
           border: none;
@@ -1190,13 +1191,13 @@ export default function ManageProducts() {
         .action-btn-quick, .action-btn-edit {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 8px 12px;
-          border-radius: 8px;
-          font-size: 12px;
+          gap: 6px;
+          padding: 9px 14px;
+          border-radius: 10px;
+          font-size: 13px;
           font-weight: 700;
           cursor: pointer;
-          border: 1px solid var(--border, #cbd5e1);
+          border: 1.5px solid var(--border, #cbd5e1);
           background: var(--surface, #fff);
           color: var(--text, #334155);
           transition: all 0.2s;
@@ -1216,9 +1217,9 @@ export default function ManageProducts() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid var(--border, #fee2e2);
+          padding: 9px 12px;
+          border-radius: 10px;
+          border: 1.5px solid var(--border, #fee2e2);
           background: #fef2f2;
           color: #dc2626;
           cursor: pointer;

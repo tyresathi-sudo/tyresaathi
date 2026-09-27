@@ -99,17 +99,99 @@ export const POPULAR_PATTERNS = [
   "Yokohama Geolandar A/T G015"
 ];
 
-export const SERVICE_TYPES = [
-  { id: "fitting", name: "New Tyre Fitting & Nitrogen Fill (फिटिंग)", duration: "20 Mins" },
-  { id: "puncture", name: "Tubeless Puncture Repair (पंचर रिपेयर)", duration: "15 Mins" },
-  { id: "cut_repair", name: "Tyre Cut & Sidewall Repair (टायर कट रिपेयर)", duration: "45 Mins" },
-  { id: "doorstep", name: "Doorstep Emergency Assistance (घर/रास्ते पर सर्विस)", duration: "45 Mins" },
-  { id: "rotation", name: "Tyre Rotation & Inspection (रोटेशन)", duration: "25 Mins" },
-  { id: "nitrogen", name: "Nitrogen Air Fill - All 4 Tyres (नाइट्रोजन)", duration: "10 Mins" },
-  { id: "tube_valve", name: "Tube Replacement & Valve Pin Fitting (ट्यूब/वॉल्व)", duration: "15 Mins" }
+export const SHOP_PRIMARY_CATEGORIES = [
+  {
+    code: "CAT_PUNCTURE_REPAIR",
+    name: "Puncture & Service",
+    hindiName: "पंचर एवं सर्विस",
+    target: "Daily Retail Customers",
+    icon: "🔧",
+    badgeColor: "#0284c7",
+    badgeBg: "#e0f2fe",
+    services: ["Puncher", "Air / Nitrogen Fill", "Tube & Valve Pin", "Roadside Help"]
+  },
+  {
+    code: "CAT_CUT_REPAIR",
+    name: "Tyre Cut Specialist",
+    hindiName: "टायर कट स्पेशलिस्ट",
+    target: "Major Damage / Rim Work",
+    icon: "✂️",
+    badgeColor: "#dc2626",
+    badgeBg: "#fee2e2",
+    services: ["Sidewall Vulcanizing", "Hot Patch", "Rim Bending"]
+  },
+  {
+    code: "CAT_RETREADING",
+    name: "Retreading Unit",
+    hindiName: "रीट्रेडिंग यूनिट (कमर्शियल)",
+    target: "Trucks, Buses, Commercial",
+    icon: "🏗️",
+    badgeColor: "#d97706",
+    badgeBg: "#fef3c7",
+    services: ["Casing Buffing", "Rubber Tread Fitting", "Re-molding"]
+  },
+  {
+    code: "CAT_RETREADING_CUT_REPAIR",
+    name: "Retreading & Cut Specialist",
+    hindiName: "रीट्रेडिंग एवं कट रिपेयर",
+    target: "Commercial Fleet & Major Damage",
+    icon: "⚙️",
+    badgeColor: "#ea580c",
+    badgeBg: "#ffedd5",
+    services: ["Casing Buffing", "Rubber Tread Fitting", "Re-molding", "Sidewall Vulcanizing", "Hot Patch", "Rim Bending"]
+  },
+  {
+    code: "CAT_NEW_TYRE_DEALER",
+    name: "New Tyre Showroom",
+    hindiName: "न्यू टायर शोरूम",
+    target: "New Buyers & Maintenance",
+    icon: "🏬",
+    badgeColor: "#16a34a",
+    badgeBg: "#dcfce7",
+    services: ["New Sales", "Wheel Alignment", "Balancing", "Warranty Support"]
+  },
+  {
+    code: "CAT_MATERIAL_SUPPLIER",
+    name: "Raw Material Wholesale",
+    hindiName: "रॉ मटेरियल होलसेल",
+    target: "B2B (Other Shops)",
+    icon: "📦",
+    badgeColor: "#7c3aed",
+    badgeBg: "#f3e8ff",
+    services: ["Strips", "Chemical Solutions", "Tools", "Compressors"]
+  }
 ];
 
-export const SAMPLE_SHOPS = [];
+export const ALL_AVAILABLE_SERVICES = [
+  "Puncher",
+  "Air / Nitrogen Fill",
+  "Tube & Valve Pin",
+  "Roadside Help",
+  "Sidewall Vulcanizing",
+  "Hot Patch",
+  "Rim Bending",
+  "Casing Buffing",
+  "Rubber Tread Fitting",
+  "Re-molding",
+  "New Sales",
+  "Wheel Alignment",
+  "Balancing",
+  "Warranty Support",
+  "Strips",
+  "Chemical Solutions",
+  "Tools",
+  "Compressors"
+];
 
+export const getCategoryByCode = (code) => {
+  return SHOP_PRIMARY_CATEGORIES.find((c) => c.code === code) || SHOP_PRIMARY_CATEGORIES[0];
+};
+
+export const SAMPLE_SHOPS = [];
 export const INITIAL_FEATURED_PRODUCTS = [];
+export const SERVICE_TYPES = SHOP_PRIMARY_CATEGORIES.map((c) => ({
+  id: c.code,
+  name: `${c.name} (${c.hindiName})`,
+  services: c.services
+}));
 

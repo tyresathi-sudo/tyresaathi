@@ -2337,20 +2337,21 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                     style={{
                       background: "var(--surface)",
                       border: "1px solid var(--border)",
-                      borderRadius: "14px",
-                      padding: "18px 20px",
-                      boxShadow: "0 4px 14px rgba(0,0,0,0.03)"
+                      borderRadius: "10px",
+                      padding: "10px 12px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                      marginBottom: "10px"
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", borderBottom: "1px solid var(--border)", paddingBottom: "10px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ fontSize: "20px" }}>📁</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", borderBottom: "1px solid var(--border)", paddingBottom: "6px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "16px" }}>📁</span>
                         <div>
-                          <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "var(--heading)" }}>
+                          <h3 style={{ margin: 0, fontSize: "13.5px", fontWeight: "800", color: "var(--heading)" }}>
                             {cat}
                           </h3>
-                          <small style={{ color: "var(--text-muted)", fontSize: "12px" }}>
-                            {catItems.length} Services in this Category
+                          <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>
+                            {catItems.length} Services
                           </small>
                         </div>
                       </div>
@@ -2375,59 +2376,59 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                           background: "var(--surface-2)",
                           border: "1px solid var(--border)",
                           color: "#2563eb",
-                          padding: "5px 12px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
+                          padding: "3px 9px",
+                          borderRadius: "5px",
+                          fontSize: "11px",
                           fontWeight: "700",
                           cursor: "pointer"
                         }}
                       >
-                        + Add in {cat}
+                        + Add
                       </button>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: "7px" }}>
                       {catItems.map((srv) => (
                         <div
                           key={srv.id}
                           style={{
                             background: "var(--bg, #f8fafc)",
-                            border: "1.5px solid var(--border, #e2e8f0)",
-                            borderRadius: "10px",
-                            padding: "14px",
+                            border: "1px solid var(--border, #e2e8f0)",
+                            borderRadius: "8px",
+                            padding: "8px 10px",
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
-                            gap: "10px",
+                            gap: "6px",
                             opacity: srv.active === false ? 0.6 : 1,
-                            transition: "all 0.2s ease"
+                            transition: "all 0.18s ease"
                           }}
                         >
                           <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                <span style={{ fontSize: "20px" }}>{srv.icon || "🛠️"}</span>
-                                <span style={{ fontSize: "11px", fontWeight: "700", background: "#e0e7ff", color: "#3730a3", padding: "2px 6px", borderRadius: "4px", textTransform: "uppercase" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "3px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                <span style={{ fontSize: "15px" }}>{srv.icon || "🛠️"}</span>
+                                <span style={{ fontSize: "9.5px", fontWeight: "700", background: "#e0e7ff", color: "#3730a3", padding: "1.5px 5px", borderRadius: "3px", textTransform: "uppercase" }}>
                                   {srv.type || "service"}
                                 </span>
                               </div>
 
-                              <strong style={{ fontSize: "16px", color: "#16a34a", fontWeight: "800" }}>
+                              <strong style={{ fontSize: "13.5px", color: "#16a34a", fontWeight: "800" }}>
                                 ₹{srv.rate}
                               </strong>
                             </div>
 
-                            <h4 style={{ margin: "4px 0 4px", fontSize: "14px", fontWeight: "800", color: "var(--heading)" }}>
+                            <h4 style={{ margin: "2px 0 2px", fontSize: "12.5px", fontWeight: "800", color: "var(--heading)" }}>
                               {srv.name}
                             </h4>
                             {srv.description && (
-                              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+                              <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.3" }}>
                                 {srv.description}
                               </p>
                             )}
                           </div>
 
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--border)", paddingTop: "8px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed var(--border)", paddingTop: "5px" }}>
                             <button
                               type="button"
                               onClick={() => handleToggleServiceStatus(srv.id)}
@@ -2435,17 +2436,17 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                                 background: srv.active !== false ? "#eafaf1" : "#f1f5f9",
                                 color: srv.active !== false ? "#16a34a" : "#64748b",
                                 border: "1px solid " + (srv.active !== false ? "#86efac" : "#cbd5e1"),
-                                padding: "3px 8px",
-                                borderRadius: "6px",
-                                fontSize: "11px",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                fontSize: "10px",
                                 fontWeight: "700",
                                 cursor: "pointer"
                               }}
                             >
-                              {srv.active !== false ? "🟢 Live Active" : "⚪ Inactive"}
+                              {srv.active !== false ? "🟢 Active" : "⚪ Off"}
                             </button>
 
-                            <div style={{ display: "flex", gap: "6px" }}>
+                            <div style={{ display: "flex", gap: "4px" }}>
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditService(srv)}
@@ -2453,17 +2454,17 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                                   background: "#eff6ff",
                                   color: "#2563eb",
                                   border: "1px solid #bfdbfe",
-                                  padding: "4px 8px",
-                                  borderRadius: "6px",
-                                  fontSize: "11.5px",
+                                  padding: "3px 7px",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
                                   fontWeight: "700",
                                   cursor: "pointer",
                                   display: "inline-flex",
                                   alignItems: "center",
-                                  gap: "3px"
+                                  gap: "2px"
                                 }}
                               >
-                                <Edit3 size={13} /> Edit
+                                <Edit3 size={11} /> Edit
                               </button>
 
                               <button
@@ -2473,15 +2474,15 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                                   background: "#fef2f2",
                                   color: "#dc2626",
                                   border: "1px solid #fecaca",
-                                  padding: "4px 8px",
-                                  borderRadius: "6px",
-                                  fontSize: "11.5px",
+                                  padding: "3px 6px",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
                                   fontWeight: "700",
                                   cursor: "pointer"
                                 }}
                                 title="Delete Service"
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={11} />
                               </button>
                             </div>
                           </div>

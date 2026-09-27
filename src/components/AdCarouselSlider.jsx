@@ -547,7 +547,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
 
       <style>{`
         .ad-carousel-section {
-          margin: 28px 0;
+          margin: 32px 0;
           font-family: 'Inter', sans-serif;
         }
 
@@ -555,24 +555,24 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 14px;
         }
 
         .ad-badge-tag {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          font-size: 11px;
+          font-size: 12.5px;
           font-weight: 800;
           color: #ff6b35;
           letter-spacing: 0.8px;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
 
         .ad-section-title {
-          font-size: 19px;
+          font-size: 24px;
           font-weight: 800;
           color: var(--text, #1c1c1e);
           margin: 0;
@@ -582,21 +582,22 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
         .btn-add-ad-top {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: #c0392b;
           color: #ffffff;
           border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 12.5px;
+          padding: 10px 20px;
+          border-radius: 10px;
+          font-size: 14px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.25);
         }
         .btn-add-ad-top:hover {
           background: #a93226;
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(192, 57, 43, 0.35);
         }
 
         /* Viewport & Track */
@@ -619,10 +620,16 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
         }
 
         .ad-banner-card {
-          padding: 24px 28px;
+          padding: 30px 36px;
           border-radius: 20px;
           color: #ffffff;
           position: relative;
+        }
+
+        @media (max-width: 640px) {
+          .ad-banner-card {
+            padding: 20px 16px;
+          }
         }
 
         .banner-top-row {
@@ -630,41 +637,41 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 10px;
-          margin-bottom: 12px;
+          gap: 12px;
+          margin-bottom: 16px;
         }
 
         .banner-partner-info {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
 
         .partner-verified-badge {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          background: rgba(0, 0, 0, 0.35);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.38);
+          border: 1.5px solid rgba(255, 255, 255, 0.25);
           backdrop-filter: blur(8px);
-          padding: 4px 10px;
+          padding: 6px 14px;
           border-radius: 20px;
-          font-size: 11px;
+          font-size: 13px;
           font-weight: 700;
           color: #2ed573;
         }
 
         .banner-city-tag {
-          font-size: 12px;
-          color: rgba(255, 255, 255, 0.85);
-          font-weight: 600;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.9);
+          font-weight: 700;
         }
 
         .banner-offer-pill {
-          font-size: 12px;
+          font-size: 14px;
           font-weight: 800;
-          padding: 5px 14px;
+          padding: 7px 18px;
           border-radius: 20px;
           color: #ffffff;
           box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -675,8 +682,8 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 18px;
+          gap: 24px;
+          margin-bottom: 22px;
         }
 
         .banner-body-content {
@@ -686,12 +693,12 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
 
         .banner-image-container {
           flex-shrink: 0;
-          width: 140px;
-          height: 100px;
-          border-radius: 12px;
+          width: 170px;
+          height: 120px;
+          border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-          border: 2px solid rgba(255, 255, 255, 0.3);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+          border: 2.5px solid rgba(255, 255, 255, 0.35);
           background: rgba(0, 0, 0, 0.2);
         }
 
@@ -706,42 +713,51 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           .banner-main-layout {
             flex-direction: column-reverse;
             align-items: flex-start;
+            gap: 14px;
           }
           .banner-image-container {
             width: 100%;
-            height: 130px;
+            height: 140px;
           }
         }
 
         .banner-shop-title {
-          font-size: 24px;
+          font-size: 30px;
           font-weight: 900;
           color: #ffffff;
-          margin: 0 0 4px 0;
+          margin: 0 0 6px 0;
           letter-spacing: -0.5px;
-          text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+          line-height: 1.2;
+        }
+
+        @media (max-width: 640px) {
+          .banner-shop-title {
+            font-size: 22px;
+          }
         }
 
         .banner-tagline {
-          font-size: 16px;
+          font-size: 18px;
           font-weight: 700;
           color: #ffc145;
-          margin: 0 0 6px 0;
+          margin: 0 0 8px 0;
           text-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
 
         .banner-desc {
-          font-size: 13px;
-          color: rgba(255, 255, 255, 0.9);
+          font-size: 15px;
+          color: rgba(255, 255, 255, 0.95);
           margin: 0;
-          max-width: 780px;
-          line-height: 1.45;
+          max-width: 850px;
+          line-height: 1.55;
         }
 
         .banner-address {
-          font-size: 11px;
-          color: rgba(255, 255, 255, 0.7);
-          margin-top: 6px;
+          font-size: 13.5px;
+          color: rgba(255, 255, 255, 0.85);
+          margin-top: 8px;
+          font-weight: 500;
         }
 
         .banner-bottom-actions {
@@ -749,74 +765,75 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 12px;
-          padding-top: 14px;
-          border-top: 1px solid rgba(255, 255, 255, 0.15);
+          gap: 14px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(255, 255, 255, 0.18);
         }
 
         .banner-contact-group {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
 
         .btn-banner-call {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          background: rgba(255, 255, 255, 0.18);
-          border: 1px solid rgba(255, 255, 255, 0.3);
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.2);
+          border: 1.5px solid rgba(255, 255, 255, 0.35);
           backdrop-filter: blur(6px);
           color: #ffffff;
-          padding: 8px 14px;
-          border-radius: 10px;
-          font-size: 12px;
+          padding: 10px 18px;
+          border-radius: 12px;
+          font-size: 14px;
           font-weight: 700;
           text-decoration: none;
           transition: all 0.2s;
         }
         .btn-banner-call:hover {
-          background: rgba(255, 255, 255, 0.3);
-          transform: translateY(-1px);
+          background: rgba(255, 255, 255, 0.35);
+          transform: translateY(-2px);
         }
 
         .btn-banner-whatsapp {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: #25d366;
           color: #ffffff;
-          padding: 8px 14px;
-          border-radius: 10px;
-          font-size: 12px;
+          padding: 10px 18px;
+          border-radius: 12px;
+          font-size: 14px;
           font-weight: 700;
           text-decoration: none;
-          box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+          box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);
           transition: all 0.2s;
         }
         .btn-banner-whatsapp:hover {
           background: #20ba59;
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(37, 211, 102, 0.5);
         }
 
         .btn-banner-book {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: linear-gradient(135deg, #ffc145 0%, #ff6b35 100%);
           color: #1c1c1e;
-          padding: 8px 18px;
-          border-radius: 10px;
-          font-size: 12px;
+          padding: 10px 22px;
+          border-radius: 12px;
+          font-size: 14px;
           font-weight: 800;
           text-decoration: none;
-          box-shadow: 0 4px 14px rgba(255, 107, 53, 0.4);
+          box-shadow: 0 4px 16px rgba(255, 107, 53, 0.45);
           transition: all 0.2s;
         }
         .btn-banner-book:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(255, 107, 53, 0.55);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(255, 107, 53, 0.6);
         }
 
         /* Arrows */
@@ -824,10 +841,10 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
-          width: 38px;
-          height: 38px;
-          background: rgba(0, 0, 0, 0.55);
-          border: 1px solid rgba(255, 255, 255, 0.2);
+          width: 42px;
+          height: 42px;
+          background: rgba(0, 0, 0, 0.6);
+          border: 1.5px solid rgba(255, 255, 255, 0.25);
           backdrop-filter: blur(6px);
           color: #ffffff;
           border-radius: 50%;
@@ -839,11 +856,11 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           transition: all 0.2s;
         }
         .slider-arrow:hover {
-          background: rgba(0, 0, 0, 0.85);
+          background: rgba(0, 0, 0, 0.9);
           transform: translateY(-50%) scale(1.1);
         }
-        .arrow-left { left: 12px; }
-        .arrow-right { right: 12px; }
+        .arrow-left { left: 14px; }
+        .arrow-right { right: 14px; }
 
         /* Dots */
         .slider-dots-container {

@@ -18,6 +18,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { getRealAnalyticsData } from "../utils/analyticsTracker";
+import { getLiveUserLocation } from "../utils/geoService";
 
 export default function ShopAnalytics() {
   const { profile } = useAuth();
@@ -27,7 +28,7 @@ export default function ShopAnalytics() {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [liveLocation, setLiveLocation] = useState(() => {
-    return profile?.address || profile?.city || "New Delhi, India";
+    return profile?.address || profile?.city || "Raipur, Chhattisgarh";
   });
 
   // 1. Fetch real device GPS location
@@ -37,34 +38,17 @@ export default function ShopAnalytics() {
       return;
     }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const { latitude, longitude } = position.coords;
-            const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
-            );
-            const data = await res.json();
-            const city =
-              data.address?.city ||
-              data.address?.town ||
-              data.address?.state_district ||
-              data.address?.state ||
-              "India";
-            setLiveLocation(`${city}, ${data.address?.state || ""}`.replace(/^,\s*|,\s*$/g, ""));
-          } catch (e) {
-            setLiveLocation(profile?.city || "New Delhi, India");
-          }
-        },
-        () => {
-          setLiveLocation(profile?.city || "New Delhi, India");
-        },
-        { timeout: 5000 }
-      );
-    } else {
-      setLiveLocation(profile?.city || "New Delhi, India");
+    async function loadLocation() {
+      try {
+        const loc = await getLiveUserLocation();
+        if (loc && (loc.city || loc.region)) {
+          setLiveLocation(`${loc.city || ""}${loc.city && loc.region ? ", " : ""}${loc.region || "India"}`);
+        }
+      } catch (e) {
+        setLiveLocation(profile?.city || "Raipur, Chhattisgarh");
+      }
     }
+    loadLocation();
   }, [profile]);
 
   // 2. Fetch real analytics data dynamically from Firestore & Bookings (Filtered strictly for this shop)
@@ -104,10 +88,12 @@ export default function ShopAnalytics() {
   const daysCount = timeframe === "7d" ? 7 : 30;
   const today = new Date();
   const dateLabels = [];
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
+  
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    dateLabels.push(d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }));
+    dateLabels.push(`${d.getDate()} ${monthNames[d.getMonth()]}`);
   }
 
   const currentMetricData = analyticsData[selectedMetric] || analyticsData.views;
@@ -116,14 +102,15 @@ export default function ShopAnalytics() {
   const minVal = 0;
   const range = maxVal - minVal || 1;
 
-  const svgWidth = 600;
-  const svgHeight = 180;
-  const paddingX = 35;
-  const paddingY = 22;
+  const svgWidth = 750;
+  const svgHeight = 220;
+  const paddingX = 40;
+  const paddingY = 30;
+  const bottomAxisY = svgHeight - 40;
 
   const points = chartPoints.map((val, idx) => {
     const x = paddingX + (idx / Math.max(chartPoints.length - 1, 1)) * (svgWidth - paddingX * 2);
-    const y = svgHeight - paddingY - 18 - ((val - minVal) / range) * (svgHeight - paddingY * 2 - 20);
+    const y = bottomAxisY - ((val - minVal) / range) * (bottomAxisY - paddingY - 15);
     return { x, y, val, idx, label: dateLabels[idx] || `Day ${idx + 1}` };
   });
 
@@ -135,7 +122,7 @@ export default function ShopAnalytics() {
   }, "");
 
   const areaD = points.length > 0
-    ? `${pathD} L ${points[points.length - 1].x},${svgHeight - 20} L ${points[0].x},${svgHeight - 20} Z`
+    ? `${pathD} L ${points[points.length - 1].x},${bottomAxisY} L ${points[0].x},${bottomAxisY} Z`
     : "";
 
   return (
@@ -173,17 +160,15 @@ export default function ShopAnalytics() {
       {/* 📈 2. Business Insights & Clean White Chart */}
       <div className="insights-analytics-container">
         <div className="insights-header">
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="sparkle-icon-box">
-                <Sparkles size={20} color="#FFFFFF" />
-              </div>
-              <div>
-                <h2 className="insights-title">Business Insights & Views Analytics</h2>
-                <p className="insights-sub">
-                  100% genuine real-time analytics for your shop profile views, customer inquiries, and bookings.
-                </p>
-              </div>
+          <div className="insights-header-left">
+            <div className="sparkle-icon-box">
+              <Sparkles size={20} color="#FFFFFF" />
+            </div>
+            <div>
+              <h2 className="insights-title">Business Insights & Views Analytics</h2>
+              <p className="insights-sub">
+                100% genuine real-time analytics for your shop profile views, customer inquiries, and bookings.
+              </p>
             </div>
           </div>
 
@@ -207,24 +192,25 @@ export default function ShopAnalytics() {
         <div className="kpi-cards-grid">
           {Object.entries(analyticsData).map(([key, data]) => {
             const isSelected = selectedMetric === key;
+            const themeColor = data.color || "#c0392b";
             return (
               <div
                 key={key}
                 className={`kpi-card ${isSelected ? "kpi-card-selected" : ""}`}
                 style={{
-                  borderColor: isSelected ? data.color : "#e2e8f0",
-                  borderWidth: isSelected ? "2px" : "1.5px",
+                  borderColor: isSelected ? themeColor : "#e2e8f0",
+                  borderWidth: isSelected ? "1.5px" : "1px",
                   background: isSelected
-                    ? `linear-gradient(145deg, #ffffff 0%, ${data.color}0a 100%)`
+                    ? `linear-gradient(145deg, #ffffff 0%, ${themeColor}08 100%)`
                     : "#ffffff",
                   boxShadow: isSelected
-                    ? `0 6px 20px ${data.color}25, 0 0 0 1px ${data.color}30`
-                    : "0 2px 10px rgba(0, 0, 0, 0.03)"
+                    ? `0 4px 16px ${themeColor}20, 0 0 0 1px ${themeColor}25`
+                    : "0 1px 4px rgba(0, 0, 0, 0.02)"
                 }}
                 onClick={() => setSelectedMetric(key)}
               >
                 <div className="kpi-card-top">
-                  <span className="kpi-label" style={{ color: isSelected ? "#0f172a" : "#64748b" }}>
+                  <span className="kpi-label" style={{ color: isSelected ? "#0f172a" : "#475569" }}>
                     {data.label}
                   </span>
                   <span
@@ -242,7 +228,7 @@ export default function ShopAnalytics() {
                   <h3
                     className="kpi-value"
                     style={{
-                      color: isSelected ? data.color : "#0f172a"
+                      color: isSelected ? themeColor : "#0f172a"
                     }}
                   >
                     {data.current}
@@ -250,11 +236,11 @@ export default function ShopAnalytics() {
                   <span
                     className="kpi-tap-hint"
                     style={{
-                      color: isSelected ? data.color : "#94a3b8",
-                      fontWeight: isSelected ? "800" : "600"
+                      color: isSelected ? themeColor : "#94a3b8",
+                      fontWeight: isSelected ? "700" : "500"
                     }}
                   >
-                    {isSelected ? "● Active View" : "Tap to inspect"}
+                    {isSelected ? "- Active View" : "Tap to inspect"}
                   </span>
                 </div>
               </div>
@@ -269,14 +255,14 @@ export default function ShopAnalytics() {
               <span
                 className="legend-dot"
                 style={{
-                  background: currentMetricData.color,
-                  boxShadow: `0 0 8px ${currentMetricData.color}`
+                  background: currentMetricData.color || "#c0392b",
+                  boxShadow: `0 0 8px ${currentMetricData.color || "#c0392b"}`
                 }}
               ></span>
-              <strong style={{ color: currentMetricData.color, fontSize: "14px", fontWeight: 800 }}>
+              <strong style={{ color: currentMetricData.color || "#c0392b", fontSize: "15px", fontWeight: 800 }}>
                 {currentMetricData.label}
               </strong>
-              <span style={{ color: "#64748b", fontSize: "12px" }}>
+              <span style={{ color: "#64748b", fontSize: "13px", fontWeight: 500 }}>
                 ({timeframe === "7d" ? "Past 7 Days Real Daily Activity" : "Monthly 30-Day Real Trend"})
               </span>
             </div>
@@ -285,11 +271,11 @@ export default function ShopAnalytics() {
               <div
                 className="chart-hover-indicator"
                 style={{
-                  borderLeftColor: currentMetricData.color
+                  borderLeftColor: currentMetricData.color || "#c0392b"
                 }}
               >
-                <span>{hoveredPoint.label || `Day ${hoveredPoint.idx + 1}`}: </span>
-                <strong style={{ color: currentMetricData.color, fontSize: "13.5px" }}>
+                <span>{hoveredPoint.label}: </span>
+                <strong style={{ color: currentMetricData.color || "#c0392b", fontSize: "14px" }}>
                   {hoveredPoint.val}
                 </strong>
               </div>
@@ -302,27 +288,28 @@ export default function ShopAnalytics() {
               className="analytics-svg"
             >
               <defs>
-                <linearGradient id={currentMetricData.gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={currentMetricData.color} stopOpacity="0.2" />
-                  <stop offset="100%" stopColor={currentMetricData.color} stopOpacity="0.0" />
+                <linearGradient id="chartGradientFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={currentMetricData.color || "#c0392b"} stopOpacity="0.22" />
+                  <stop offset="50%" stopColor={currentMetricData.color || "#c0392b"} stopOpacity="0.08" />
+                  <stop offset="100%" stopColor={currentMetricData.color || "#c0392b"} stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
-              {/* Horizontal Grid lines */}
-              <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="rgba(148, 163, 184, 0.2)" strokeDasharray="3 3" />
-              <line x1={paddingX} y1={svgHeight / 2 - 5} x2={svgWidth - paddingX} y2={svgHeight / 2 - 5} stroke="rgba(148, 163, 184, 0.2)" strokeDasharray="3 3" />
-              <line x1={paddingX} y1={svgHeight - paddingY - 18} x2={svgWidth - paddingX} y2={svgHeight - paddingY - 18} stroke="rgba(148, 163, 184, 0.25)" />
+              {/* Horizontal Subtle Grid lines */}
+              <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+              <line x1={paddingX} y1={(paddingY + bottomAxisY) / 2} x2={svgWidth - paddingX} y2={(paddingY + bottomAxisY) / 2} stroke="#f1f5f9" strokeDasharray="4 4" strokeWidth="1" />
+              <line x1={paddingX} y1={bottomAxisY} x2={svgWidth - paddingX} y2={bottomAxisY} stroke="#e2e8f0" strokeWidth="1.2" />
 
               {/* Soft Gradient Area */}
-              {areaD && <path d={areaD} fill={`url(#${currentMetricData.gradientId})`} />}
+              {areaD && <path d={areaD} fill="url(#chartGradientFill)" />}
 
-              {/* Thin Sleek Curve Line */}
+              {/* Sleek Smooth Curve Line */}
               {pathD && (
                 <path
                   d={pathD}
                   fill="none"
-                  stroke={currentMetricData.color}
-                  strokeWidth="1.75"
+                  stroke={currentMetricData.color || "#c0392b"}
+                  strokeWidth="2.2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -331,17 +318,17 @@ export default function ShopAnalytics() {
               {/* Points, Labels and Dates */}
               {points.map((p) => {
                 const isHovered = hoveredPoint?.idx === p.idx;
-                // In 7d mode, show all dates. In 30d mode, show evenly spaced milestone dates so they never overlap
                 const shouldShowDate =
                   points.length <= 8 ||
                   p.idx % Math.ceil(points.length / 6) === 0 ||
                   p.idx === points.length - 1;
 
-                // In 30d mode, only show values for non-zero points or when hovered to prevent 0s cluttering
                 const shouldShowValue =
                   isHovered ||
                   points.length <= 8 ||
                   (p.val > 0 && (p.val >= maxVal * 0.25 || points.length <= 14));
+
+                const themeColor = currentMetricData.color || "#c0392b";
 
                 return (
                   <g key={p.idx} className="chart-point-group">
@@ -349,10 +336,10 @@ export default function ShopAnalytics() {
                     <circle
                       cx={p.x}
                       cy={p.y}
-                      r={isHovered ? "5" : p.val > 0 ? "3.5" : "2.5"}
-                      fill={isHovered ? currentMetricData.color : "#FFFFFF"}
-                      stroke={currentMetricData.color}
-                      strokeWidth={isHovered ? "2.5" : "1.75"}
+                      r={isHovered ? "5.5" : "3.5"}
+                      fill={isHovered ? themeColor : "#FFFFFF"}
+                      stroke={themeColor}
+                      strokeWidth={isHovered ? "2.5" : "2"}
                       style={{
                         transition: "all 0.15s ease",
                         cursor: "pointer"
@@ -365,45 +352,35 @@ export default function ShopAnalytics() {
                     {shouldShowValue && (
                       <text
                         x={p.x}
-                        y={p.y - (isHovered ? 10 : 7)}
+                        y={p.y - (isHovered ? 12 : 9)}
                         textAnchor="middle"
-                        fill={isHovered ? currentMetricData.color : "#0f172a"}
-                        fontSize={isHovered ? "11" : "9.5"}
+                        fill={isHovered ? themeColor : "#0f172a"}
+                        fontSize={isHovered ? "12" : "10.5"}
                         fontWeight={isHovered ? "900" : "700"}
                       >
                         {p.val}
                       </text>
                     )}
 
-                    {/* X-Axis Clean Spaced-out Date Label */}
+                    {/* X-Axis Date Label */}
                     {shouldShowDate && (
-                      <>
-                        <line
-                          x1={p.x}
-                          y1={svgHeight - paddingY - 14}
-                          x2={p.x}
-                          y2={svgHeight - paddingY - 9}
-                          stroke="#cbd5e1"
-                          strokeWidth="1"
-                        />
-                        <text
-                          x={p.x}
-                          y={svgHeight - 6}
-                          textAnchor="middle"
-                          fill="#64748b"
-                          fontSize="9.5"
-                          fontWeight="600"
-                        >
-                          {p.label}
-                        </text>
-                      </>
+                      <text
+                        x={p.x}
+                        y={bottomAxisY + 22}
+                        textAnchor="middle"
+                        fill="#64748b"
+                        fontSize="11"
+                        fontWeight="600"
+                      >
+                        {p.label}
+                      </text>
                     )}
 
                     {/* Generous Invisible Hover Target */}
                     <circle
                       cx={p.x}
                       cy={p.y}
-                      r="14"
+                      r="16"
                       fill="transparent"
                       onMouseEnter={() => setHoveredPoint(p)}
                       onMouseLeave={() => setHoveredPoint(null)}
@@ -419,10 +396,10 @@ export default function ShopAnalytics() {
 
       <style>{`
         .analytics-page-container {
-          max-width: 1200px;
+          max-width: 1280px;
           margin: 0 auto;
-          padding: 20px 16px 80px 16px;
-          font-family: 'Inter', sans-serif;
+          padding: 16px 20px 80px 20px;
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
           color: var(--text, #0f172a);
         }
 
@@ -445,18 +422,18 @@ export default function ShopAnalytics() {
           to { transform: rotate(360deg); }
         }
 
-        /* 1. Hub Bar (Clean Light Theme) */
+        /* 1. Hub Bar */
         .hub-identity-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
-          border-left: 5px solid #c0392b;
+          border-left: 6px solid #c0392b;
           border-radius: 16px;
-          padding: 18px 22px;
-          margin-bottom: 22px;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+          padding: 16px 22px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
           flex-wrap: wrap;
           gap: 14px;
         }
@@ -469,27 +446,28 @@ export default function ShopAnalytics() {
 
         .hub-avatar-wrap {
           position: relative;
-          width: 50px;
-          height: 50px;
+          width: 48px;
+          height: 48px;
           background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
-          border-radius: 14px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 26px;
-          box-shadow: 0 4px 12px rgba(255, 75, 43, 0.35);
+          font-size: 24px;
+          box-shadow: 0 4px 12px rgba(255, 75, 43, 0.3);
+          flex-shrink: 0;
         }
 
         .hub-live-dot {
           position: absolute;
           bottom: -2px;
           right: -2px;
-          width: 14px;
-          height: 14px;
+          width: 13px;
+          height: 13px;
           background: #16a34a;
-          border: 2.5px solid #ffffff;
+          border: 2px solid #ffffff;
           border-radius: 50%;
-          box-shadow: 0 0 8px rgba(22, 163, 74, 0.6);
+          box-shadow: 0 0 6px rgba(22, 163, 74, 0.6);
         }
 
         .hub-title-row {
@@ -500,95 +478,101 @@ export default function ShopAnalytics() {
         }
 
         .hub-shop-title {
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 800;
           color: #0f172a;
           margin: 0;
-          letter-spacing: -0.4px;
+          letter-spacing: -0.3px;
         }
 
         .hub-live-badge {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           background: #f0fdf4;
           border: 1px solid #bbf7d0;
           color: #16a34a;
-          font-size: 11px;
+          font-size: 11.5px;
           font-weight: 800;
           padding: 3px 10px;
           border-radius: 20px;
         }
 
         .hub-owner-sub {
-          font-size: 13px;
+          font-size: 13.5px;
           color: #64748b;
-          margin: 3px 0 0 0;
+          margin: 4px 0 0 0;
         }
 
         .hub-owner-sub strong { color: #0f172a; }
         .hub-owner-sub code {
           background: #fef2f2;
           border: 1px solid #fecaca;
-          padding: 2px 6px;
+          padding: 2px 7px;
           border-radius: 4px;
           color: #c0392b;
-          font-size: 11.5px;
+          font-size: 12.5px;
           font-weight: 800;
         }
 
         .btn-refresh-analytics {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          background: #f8fafc;
-          border: 1px solid #cbd5e1;
+          gap: 8px;
+          background: #ffffff;
+          border: 1.5px solid #cbd5e1;
           color: #1e293b;
-          padding: 8px 14px;
-          border-radius: 8px;
-          font-size: 12px;
+          padding: 9px 16px;
+          border-radius: 10px;
+          font-size: 13.5px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
         }
         .btn-refresh-analytics:hover {
-          background: #f1f5f9;
+          background: #f8fafc;
           border-color: #94a3b8;
-          transform: translateY(-1px);
         }
 
-        /* 2. Insights Card (Clean White Theme) */
+        /* 2. Insights Card */
         .insights-analytics-container {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
           border-radius: 18px;
-          padding: 24px;
+          padding: 22px 24px;
           margin-bottom: 24px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
         }
 
         .insights-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 22px;
+          margin-bottom: 20px;
           flex-wrap: wrap;
           gap: 14px;
         }
 
+        .insights-header-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
         .sparkle-icon-box {
-          width: 38px;
-          height: 38px;
-          border-radius: 10px;
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.3);
+          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+          flex-shrink: 0;
         }
 
         .insights-title {
-          font-size: 19px;
+          font-size: 20px;
           font-weight: 800;
           color: #0f172a;
           margin: 0;
@@ -596,7 +580,7 @@ export default function ShopAnalytics() {
         }
 
         .insights-sub {
-          font-size: 12.5px;
+          font-size: 13px;
           color: #64748b;
           margin: 3px 0 0 0;
         }
@@ -614,9 +598,9 @@ export default function ShopAnalytics() {
           background: transparent;
           border: none;
           color: #64748b;
-          padding: 6px 14px;
-          border-radius: 7px;
-          font-size: 12px;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 13px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -624,15 +608,27 @@ export default function ShopAnalytics() {
         .btn-timeframe.active {
           background: #c0392b;
           color: #ffffff;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
         }
 
-        /* 🌟 Clean KPI Cards */
+        /* 🌟 KPI Cards Grid */
         .kpi-cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
           margin-bottom: 22px;
+        }
+
+        @media (max-width: 1024px) {
+          .kpi-cards-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        @media (max-width: 600px) {
+          .kpi-cards-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .kpi-card {
@@ -655,7 +651,7 @@ export default function ShopAnalytics() {
         }
 
         .kpi-label {
-          font-size: 13px;
+          font-size: 13.5px;
           font-weight: 700;
         }
 
@@ -663,8 +659,8 @@ export default function ShopAnalytics() {
           display: inline-flex;
           align-items: center;
           gap: 3px;
-          font-size: 11px;
-          font-weight: 800;
+          font-size: 11.5px;
+          font-weight: 700;
           padding: 2px 7px;
           border-radius: 12px;
         }
@@ -676,14 +672,15 @@ export default function ShopAnalytics() {
         }
 
         .kpi-value {
-          font-size: 26px;
+          font-size: 28px;
           font-weight: 900;
           margin: 0;
           letter-spacing: -0.5px;
         }
 
         .kpi-tap-hint {
-          font-size: 11px;
+          font-size: 12px;
+          font-weight: 600;
         }
 
         /* 🎨 Clean White SVG Chart Card */
@@ -692,7 +689,7 @@ export default function ShopAnalytics() {
           border: 1.5px solid #e2e8f0;
           border-radius: 14px;
           padding: 18px 20px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
         }
 
         .chart-meta-row {
@@ -716,18 +713,19 @@ export default function ShopAnalytics() {
 
         .chart-hover-indicator {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-left: 3.5px solid;
-          padding: 4px 10px;
+          border: 1.5px solid #e2e8f0;
+          border-left: 4px solid;
+          padding: 5px 10px;
           border-radius: 6px;
-          font-size: 12px;
+          font-size: 12.5px;
+          font-weight: 700;
           color: #0f172a;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
         .svg-responsive-box {
           width: 100%;
-          height: 180px;
+          height: 220px;
         }
 
         .analytics-svg {

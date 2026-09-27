@@ -4,6 +4,7 @@ import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { friendlyError } from "./Login.jsx";
 import { logUserActivityToSheet } from "../utils/googleSheets";
 import { MapPin, Navigation, CheckCircle2, AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { getLiveUserLocation } from "../utils/geoService";
 
 export default function Register() {
   const { user, register, loading: authLoading } = useAuth();
@@ -35,62 +36,31 @@ export default function Register() {
 
   // GPS Auto-detect location handler
   async function handleAutoDetectLocation() {
-    if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your device/browser.");
-      return;
-    }
-
     setError("");
     setDetectingLocation(true);
     setLocationSuccess("");
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
-        setLat(latitude);
-        setLng(longitude);
-
-        try {
-          // Reverse geocode to get city and area address
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const detectedCity =
-              data.address?.city ||
-              data.address?.town ||
-              data.address?.village ||
-              data.address?.county ||
-              data.address?.state_district ||
-              "";
-            const detectedAddress = data.display_name || "";
-
-            if (detectedCity && !city) {
-              setCity(detectedCity);
-            }
-            if (detectedAddress && !address) {
-              setAddress(detectedAddress);
-            }
-            setLocationSuccess(`Location detected: ${detectedCity || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`}`);
-          } else {
-            setLocationSuccess(`GPS coordinates captured (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-          }
-        } catch (err) {
-          console.warn("Reverse geocode notice:", err);
-          setLocationSuccess(`GPS coordinates captured (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`);
-        } finally {
-          setDetectingLocation(false);
+    try {
+      const loc = await getLiveUserLocation();
+      if (loc && loc.lat && loc.lng) {
+        setLat(loc.lat);
+        setLng(loc.lng);
+        if (loc.city && !city) {
+          setCity(loc.city);
         }
-      },
-      (err) => {
-        console.warn("GPS detection error:", err);
-        setDetectingLocation(false);
+        if (loc.region && !address) {
+          setAddress(`${loc.city ? loc.city + ", " : ""}${loc.region || "India"}`);
+        }
+        setLocationSuccess(`Location detected: ${loc.city || `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`}`);
+      } else {
         setError("Could not retrieve GPS location. Please enter your City & Address manually.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
+      }
+    } catch (err) {
+      console.warn("Location error:", err);
+      setError("Could not retrieve GPS location. Please enter your City & Address manually.");
+    } finally {
+      setDetectingLocation(false);
+    }
   }
 
   async function handleSubmit(e) {

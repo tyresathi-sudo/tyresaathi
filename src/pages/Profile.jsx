@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { 
-  Moon, 
-  Sun, 
-  LogOut, 
-  Phone, 
-  Mail, 
-  Store, 
-  ShieldCheck, 
-  Edit3, 
-  Camera, 
-  Save, 
-  X, 
-  MapPin, 
-  User, 
-  PlusCircle, 
-  CheckCircle2, 
+import {
+  Moon,
+  Sun,
+  LogOut,
+  Phone,
+  Mail,
+  Store,
+  ShieldCheck,
+  Edit3,
+  Camera,
+  Save,
+  X,
+  MapPin,
+  User,
+  PlusCircle,
+  CheckCircle2,
   Calendar,
   Settings as SettingsIcon
 } from "lucide-react";
@@ -24,6 +24,8 @@ import { storage } from "../firebase";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { compressImage } from "../utils/imageOptimizer";
+import { SHOP_PRIMARY_CATEGORIES, ALL_AVAILABLE_SERVICES, getCategoryByCode } from "../config/tyreCatalog";
+import { getLiveUserLocation, INDIAN_CITIES_COORDS } from "../utils/geoService";
 
 const ROLE_LABEL = {
   [ROLES.CUSTOMER]: "👤 Customer (ग्राहक)",
@@ -48,62 +50,96 @@ export default function Profile() {
     email: "",
     role: ROLES.CUSTOMER,
     shopName: "",
+    shopCategory: "CAT_PUNCTURE_REPAIR",
+    shopType: "Puncture & Service",
+    services: ["Puncher", "Air / Nitrogen Fill", "Tube & Valve Pin", "Roadside Help"],
     address: "",
     city: "",
     openingHours: "09:00 AM - 09:00 PM",
     photoURL: "",
+    lat: null,
+    lng: null,
   });
+
+  const [capturingGps, setCapturingGps] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState("");
 
   // Sync profile data to form
   useEffect(() => {
     if (profile || user) {
+      const catCode = profile?.shopCategory || profile?.categoryCode || "CAT_PUNCTURE_REPAIR";
+      const catObj = getCategoryByCode(catCode);
+      const defaultServices = profile?.services || profile?.servicesOffered || catObj.services;
+
       setFormData({
         name: profile?.name || user?.displayName || "",
         phone: profile?.phone || "",
         email: profile?.email || user?.email || "",
         role: profile?.role || ROLES.CUSTOMER,
         shopName: profile?.shopName || "",
+        shopCategory: catCode,
+        shopType: profile?.shopType || catObj.name,
+        services: Array.isArray(defaultServices) ? defaultServices : catObj.services,
         address: profile?.address || "",
         city: profile?.city || "",
         openingHours: profile?.openingHours || "09:00 AM - 09:00 PM",
         photoURL: profile?.photoURL || user?.photoURL || "",
+        lat: profile?.lat !== undefined ? profile.lat : null,
+        lng: profile?.lng !== undefined ? profile.lng : null,
       });
     }
   }, [profile, user]);
 
-  // Handle Photo Upload with compression
-  const handlePhotoUpload = async (file) => {
-    if (!file || !user) return;
-    setUploadingPhoto(true);
-    try {
-      const { blob, dataUrl } = await compressImage(file, 600, 600, 0.85);
-      
-      // Set immediate local preview and profile update
-      setFormData((prev) => ({ ...prev, photoURL: dataUrl }));
-      await updateUserProfile({ photoURL: dataUrl });
+  // Handle City Name Change with Auto Geolocation Resolution
+  const handleCityChange = (cityName) => {
+    const cleanCity = cityName.trim();
+    const key = cleanCity.toLowerCase();
+    let detectedLat = formData.lat;
+    let detectedLng = formData.lng;
 
-      // Background remote storage upload
-      try {
-        const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}.jpg`);
-        const uploadTask = (async () => {
-          await uploadBytes(storageRef, blob, { contentType: "image/jpeg" });
-          return await getDownloadURL(storageRef);
-        })();
-        const timeoutTask = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Storage timeout")), 5000)
-        );
-        const downloadURL = await Promise.race([uploadTask, timeoutTask]);
-        if (downloadURL) {
-          setFormData((prev) => ({ ...prev, photoURL: downloadURL }));
-          await updateUserProfile({ photoURL: downloadURL });
-        }
-      } catch (uploadErr) {
-        console.warn("Avatar remote storage timed out, kept optimized dataUrl:", uploadErr);
+    if (INDIAN_CITIES_COORDS[key]) {
+      const match = INDIAN_CITIES_COORDS[key];
+      detectedLat = match.lat;
+      detectedLng = match.lng;
+      setGpsStatus(`✅ ${cleanCity} (${match.state}) coordinates mapped!`);
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      city: cityName,
+      lat: detectedLat,
+      lng: detectedLng,
+    }));
+  };
+
+  // Capture Live GPS location of shop
+  const handleCaptureGps = async () => {
+    setCapturingGps(true);
+    setGpsStatus("detecting");
+
+    try {
+      const loc = await getLiveUserLocation();
+      if (loc && loc.lat && loc.lng) {
+        const latitude = Number(loc.lat.toFixed(6));
+        const longitude = Number(loc.lng.toFixed(6));
+        setFormData((prev) => ({
+          ...prev,
+          lat: latitude,
+          lng: longitude,
+          city: prev.city || loc.city || "",
+          address: prev.address || (loc.city ? `${loc.city}, ${loc.region || "India"}` : prev.address),
+        }));
+        setGpsStatus(`success: (${latitude}, ${longitude})`);
+      } else {
+        setGpsStatus("denied");
+        alert("Mobile GPS detect nahi hua. Kripya phone ki Location On karein aur Browser me Location Permission Allow karein.");
       }
     } catch (err) {
-      console.error("Avatar process error:", err);
+      console.warn("GPS error:", err);
+      setGpsStatus("denied");
+      alert("Mobile GPS detect nahi hua. Kripya phone ki Location On karein.");
     } finally {
-      setUploadingPhoto(false);
+      setCapturingGps(false);
     }
   };
 
@@ -114,16 +150,34 @@ export default function Profile() {
     setSaveSuccess(false);
 
     try {
+      const selectedCat = getCategoryByCode(formData.shopCategory);
+      
+      // Auto-resolve coordinates from city if not explicitly provided
+      let finalLat = formData.lat !== null && formData.lat !== undefined ? Number(formData.lat) : null;
+      let finalLng = formData.lng !== null && formData.lng !== undefined ? Number(formData.lng) : null;
+      const cityKey = (formData.city || "").toLowerCase().trim();
+      
+      if ((!finalLat || !finalLng || isNaN(finalLat) || isNaN(finalLng)) && cityKey && INDIAN_CITIES_COORDS[cityKey]) {
+        finalLat = INDIAN_CITIES_COORDS[cityKey].lat;
+        finalLng = INDIAN_CITIES_COORDS[cityKey].lng;
+      }
+
       await updateUserProfile({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),
         role: formData.role,
         shopName: formData.role === ROLES.SHOP_OWNER ? formData.shopName.trim() : "",
+        shopCategory: formData.role === ROLES.SHOP_OWNER ? formData.shopCategory : "",
+        shopType: formData.role === ROLES.SHOP_OWNER ? (selectedCat.name || formData.shopType) : "",
+        services: formData.role === ROLES.SHOP_OWNER ? formData.services : [],
+        servicesOffered: formData.role === ROLES.SHOP_OWNER ? formData.services : [],
         address: formData.address.trim(),
         city: formData.city.trim(),
         openingHours: formData.openingHours.trim(),
         photoURL: formData.photoURL,
+        lat: finalLat,
+        lng: finalLng,
         shopApproved: formData.role === ROLES.SHOP_OWNER ? true : false,
       });
 
@@ -137,12 +191,34 @@ export default function Profile() {
     }
   };
 
+  const handleCategorySelect = (catCode) => {
+    const catObj = getCategoryByCode(catCode);
+    setFormData((prev) => ({
+      ...prev,
+      shopCategory: catCode,
+      shopType: catObj.name,
+      services: catObj.services || [],
+    }));
+  };
+
+  const toggleService = (svc) => {
+    setFormData((prev) => {
+      const exists = prev.services.includes(svc);
+      const updated = exists 
+        ? prev.services.filter((s) => s !== svc)
+        : [...prev.services, svc];
+      return { ...prev, services: updated };
+    });
+  };
+
   async function handleLogout() {
     await logout();
     navigate("/login", { replace: true });
   }
 
   const avatarDisplay = formData.photoURL || profile?.photoURL || user?.photoURL;
+  const activeCategory = getCategoryByCode(profile?.shopCategory || profile?.categoryCode || "CAT_PUNCTURE_REPAIR");
+  const shopServicesList = profile?.services || profile?.servicesOffered || activeCategory.services;
   const initialLetter = formData.name ? formData.name[0].toUpperCase() : (profile?.name ? profile.name[0].toUpperCase() : "U");
 
   return (
@@ -243,6 +319,52 @@ export default function Profile() {
                     <span className="info-value">
                       {profile?.city ? `${profile.city}, ${profile.address || ""}` : "Not added"}
                     </span>
+                  </div>
+
+                  {/* 🏷️ Primary Category Badge */}
+                  <div className="info-item full-width">
+                    <span className="info-label">🏷️ Shop Category (दुकान का प्रकार)</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                      <span style={{
+                        background: activeCategory.badgeBg || "#e0f2fe",
+                        color: activeCategory.badgeColor || "#0284c7",
+                        border: `1px solid ${activeCategory.badgeColor || "#0284c7"}`,
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        fontSize: "12.5px",
+                        fontWeight: "800",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}>
+                        <span>{activeCategory.icon}</span>
+                        <span>{profile?.shopType || activeCategory.name} ({activeCategory.hindiName})</span>
+                      </span>
+                      <small style={{ color: "#64748b", fontSize: "11.5px" }}>Target: {activeCategory.target}</small>
+                    </div>
+                  </div>
+
+                  {/* 🛠️ Offered Services Chips */}
+                  <div className="info-item full-width">
+                    <span className="info-label">🛠️ Services Offered (उपलब्ध सेवाएं)</span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px" }}>
+                      {(shopServicesList || []).map((svc, idx) => (
+                        <span key={idx} style={{
+                          background: "#ecfdf5",
+                          color: "#166534",
+                          border: "1px solid #bbf7d0",
+                          padding: "3px 10px",
+                          borderRadius: "14px",
+                          fontSize: "11.5px",
+                          fontWeight: "700",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}>
+                          <CheckCircle2 size={12} color="#16a34a" /> {svc}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="info-item full-width">
@@ -369,15 +491,106 @@ export default function Profile() {
                   />
                 </div>
 
-                <div className="form-two-col">
+                {/* 🏷️ Primary Shop Category Selection */}
+                <div className="form-input-group" style={{ marginTop: "10px" }}>
+                  <label style={{ fontWeight: "800", color: "var(--text)" }}>
+                    🏷️ Primary Shop Category (दुकान का मुख्य प्रकार चुनें) *
+                  </label>
+                  <small style={{ display: "block", color: "#64748b", marginBottom: "8px", fontSize: "12px" }}>
+                    Aapki dukan kis category me aati hai? Chunne par services automatically select ho jayengi.
+                  </small>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gap: "8px"
+                  }}>
+                    {SHOP_PRIMARY_CATEGORIES.map((cat) => {
+                      const isSelected = formData.shopCategory === cat.code;
+                      return (
+                        <div
+                          key={cat.code}
+                          onClick={() => handleCategorySelect(cat.code)}
+                          style={{
+                            border: isSelected ? `2px solid ${cat.badgeColor}` : "1px solid var(--border)",
+                            background: isSelected ? cat.badgeBg : "var(--surface)",
+                            borderRadius: "10px",
+                            padding: "10px",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            textAlign: "center"
+                          }}
+                        >
+                          <div style={{ fontSize: "20px", marginBottom: "2px" }}>{cat.icon}</div>
+                          <div style={{ fontWeight: "800", fontSize: "12px", color: isSelected ? cat.badgeColor : "var(--text)" }}>
+                            {cat.name}
+                          </div>
+                          <div style={{ fontSize: "10.5px", color: "#64748b", marginTop: "2px" }}>
+                            {cat.hindiName}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 🛠️ Services Offered Checkboxes */}
+                <div className="form-input-group" style={{ marginTop: "14px" }}>
+                  <label style={{ fontWeight: "800", color: "var(--text)" }}>
+                    🛠️ Dukan Par Uplabdh Services (अपनी सेवाएं चुनें):
+                  </label>
+                  <small style={{ display: "block", color: "#64748b", marginBottom: "8px", fontSize: "12px" }}>
+                    Jo jo kaam aapki dukan par hota hai, unhe tick karein:
+                  </small>
+                  <div style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px"
+                  }}>
+                    {ALL_AVAILABLE_SERVICES.map((svc) => {
+                      const isChecked = formData.services?.includes(svc);
+                      return (
+                        <button
+                          key={svc}
+                          type="button"
+                          onClick={() => toggleService(svc)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 12px",
+                            borderRadius: "20px",
+                            border: isChecked ? "1.5px solid #16a34a" : "1px solid var(--border)",
+                            background: isChecked ? "#dcfce7" : "var(--surface)",
+                            color: isChecked ? "#15803d" : "var(--text)",
+                            fontSize: "12px",
+                            fontWeight: isChecked ? "800" : "600",
+                            cursor: "pointer",
+                            transition: "all 0.15s ease"
+                          }}
+                        >
+                          {isChecked ? <CheckCircle2 size={14} color="#16a34a" /> : <span style={{ width: 14, height: 14, borderRadius: "50%", border: "1.5px solid #94a3b8", display: "inline-block" }} />}
+                          <span>{svc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="form-two-col" style={{ marginTop: "10px" }}>
                   <div className="form-input-group">
-                    <label>City / Town</label>
+                    <label>City / Town (शहर का नाम)</label>
                     <input
                       type="text"
+                      list="indian-cities-autocomplete"
                       value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="e.g. Raipur / Delhi / Mumbai / Bilaspur"
+                      onChange={(e) => handleCityChange(e.target.value)}
+                      placeholder="e.g. Hyderabad / Raipur / Bilaspur / Delhi"
                     />
+                    {formData.city && formData.lat && (
+                      <small style={{ color: "#16a34a", fontSize: "11px", fontWeight: "700", marginTop: "3px", display: "block" }}>
+                        ✅ Coordinates Auto-Mapped ({formData.lat?.toFixed(2)}, {formData.lng?.toFixed(2)})
+                      </small>
+                    )}
                   </div>
 
                   <div className="form-input-group">
@@ -392,16 +605,78 @@ export default function Profile() {
                 </div>
 
                 <div className="form-input-group">
-                  <label>Shop / Residential Address</label>
+                  <label>Shop / Business Address (दुकान का पूरा पता)</label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Shop No., Street, Landmark, Area..."
+                    placeholder="Shop No., Landmark, Area, Road..."
                   />
+                </div>
+
+                {/* 📍 Live GPS Coordinates Capture */}
+                <div className="form-input-group" style={{ background: "var(--surface-2, #f8fafc)", padding: "12px", borderRadius: "10px", border: "1px dashed var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px", marginBottom: "6px" }}>
+                    <label style={{ fontWeight: "800", margin: 0 }}>
+                      📍 Real-Time Location (लाइव लोकेशन)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleCaptureGps}
+                      disabled={capturingGps}
+                      style={{
+                        background: "#c0392b",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 14px",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <MapPin size={14} />
+                      {capturingGps ? "Connecting GPS..." : "📍 Connect Mobile GPS"}
+                    </button>
+                  </div>
+                  <small style={{ color: "#64748b", fontSize: "11.5px", display: "block" }}>
+                    {formData.lat && formData.lng
+                      ? `✅ Live Coordinates: ${formData.lat}, ${formData.lng} (Aapke shahar aur aas-paas ke customers ko exact distance dikhegi!)`
+                      : "Shahar ka naam likhein ya button dabakar mobile GPS connect karein."}
+                  </small>
                 </div>
               </>
             )}
+
+            {/* If Customer, allow setting City as well */}
+            {formData.role === ROLES.CUSTOMER && (
+              <div className="form-input-group">
+                <label>Your City / Town (आपका शहर)</label>
+                <input
+                  type="text"
+                  list="indian-cities-autocomplete"
+                  value={formData.city}
+                  onChange={(e) => handleCityChange(e.target.value)}
+                  placeholder="e.g. Hyderabad / Raipur / Bilaspur / Delhi"
+                />
+                {formData.city && formData.lat && (
+                  <small style={{ color: "#16a34a", fontSize: "11px", fontWeight: "700", marginTop: "3px", display: "block" }}>
+                    ✅ Nearest shops will be sorted for your city ({formData.city})!
+                  </small>
+                )}
+              </div>
+            )}
+
+            <datalist id="indian-cities-autocomplete">
+              {Object.keys(INDIAN_CITIES_COORDS).map((c) => (
+                <option key={c} value={c.charAt(0).toUpperCase() + c.slice(1)}>
+                  {INDIAN_CITIES_COORDS[c].state}
+                </option>
+              ))}
+            </datalist>
 
             <div className="form-input-group">
               <label>Email Address</label>

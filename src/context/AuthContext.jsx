@@ -194,10 +194,49 @@ export function AuthProvider({ children }) {
     return createUserWithEmailAndPassword(auth, (email || "").trim().toLowerCase(), password);
   }
 
+  // Phone OTP Login (For both Customer and Shop Owner)
+  async function loginWithPhone(phone, userDocData) {
+    const cleanPhone = String(phone).trim().replace(/\D/g, "").slice(-10);
+    
+    // Create an auth user representation
+    const authUser = {
+      uid: userDocData?.uid || `phone_${cleanPhone}`,
+      email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
+      displayName: userDocData?.name || userDocData?.shopName || "TyreSaathi User",
+      phoneNumber: `+91${cleanPhone}`,
+      photoURL: userDocData?.photoURL || "",
+    };
+
+    const sessionData = {
+      uid: userDocData?.uid || `phone_${cleanPhone}`,
+      name: userDocData?.name || userDocData?.shopName || "TyreSaathi User",
+      email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
+      phone: cleanPhone,
+      role: userDocData?.role || ROLES.CUSTOMER,
+      shopName: userDocData?.shopName || "",
+      shopCategory: userDocData?.shopCategory || "CAT_PUNCTURE_REPAIR",
+      shopType: userDocData?.shopType || "Puncture & Service",
+      services: userDocData?.services || [],
+      address: userDocData?.address || "",
+      city: userDocData?.city || "",
+      photoURL: userDocData?.photoURL || "",
+    };
+
+    setCurrentUser(authUser);
+    setUserData(sessionData);
+    setRole(sessionData.role);
+    try {
+      localStorage.setItem("tyresaathi_user_cache", JSON.stringify(sessionData));
+    } catch {}
+
+    return { user: authUser, data: sessionData };
+  }
+
   // Logout
   function logout() {
     setUserData(null);
     setRole(ROLES.CUSTOMER);
+    setCurrentUser(null);
     try {
       localStorage.removeItem("tyresaathi_user_cache");
     } catch {}
@@ -293,6 +332,7 @@ export function AuthProvider({ children }) {
     role,
     loading,
     login,
+    loginWithPhone,
     register,
     signup,
     resetPassword,

@@ -26,33 +26,26 @@ import {
   Check,
   Send
 } from "lucide-react";
-import { SAMPLE_SHOPS, SERVICE_TYPES } from "../config/tyreCatalog";
+import { SAMPLE_SHOPS, SHOP_PRIMARY_CATEGORIES, getCategoryByCode } from "../config/tyreCatalog";
 import { trackStoreEvent } from "../utils/analyticsTracker";
 import { db } from "../firebase";
 import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { sendInAppNotification } from "../utils/notificationService";
 
-// Haversine formula to compute accurate distance in Kilometers
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((R * c).toFixed(1));
-}
-
-// Default Fallback Coordinates (Raipur, CG Transport Nagar)
-const DEFAULT_LAT = 21.2514;
-const DEFAULT_LNG = 81.6296;
+import { 
+  getLiveUserLocation, 
+  calculateDistanceKm, 
+  formatDistanceString, 
+  resolveShopCoordinates, 
+  INDIAN_CITIES_COORDS, 
+  DEFAULT_COORDS 
+} from "../utils/geoService";
 
 export default function StoreLocation() {
   const { currentUser, userData } = useAuth();
+  const isShopOwner = userData?.role === "vendor" || userData?.role === "shop_owner" || userData?.role === "admin";
+
   const [searchParams] = useSearchParams();
   const initialShopName = searchParams.get("shopName") || "";
   const initialShopId = searchParams.get("shopId") || "";
@@ -62,6 +55,7 @@ export default function StoreLocation() {
   const [searchTerm, setSearchTerm] = useState(initialShopName);
   const [selectedShop, setSelectedShop] = useState(null);
   const [filterCity, setFilterCity] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
 
   // Shop Profile Modal State
   const [shopProfileOpen, setShopProfileOpen] = useState(false);
@@ -148,36 +142,30 @@ export default function StoreLocation() {
     loadReviews();
   }, []);
 
-  // Live GPS Location Detection
-  const handleDetectLiveLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Aapke browser me Geolocation support uplabdh nahi hai.");
-      return;
-    }
+  // Live GPS / IP Hybrid Location Detection (Works accurately on Laptops & Mobiles anywhere in India)
+  const handleDetectLiveLocation = async () => {
     setDetectingLocation(true);
     setLocationStatus("detecting");
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        };
-        setUserLocation(coords);
+    try {
+      const loc = await getLiveUserLocation();
+      if (loc && loc.lat && loc.lng) {
+        setUserLocation(loc);
         setLocationStatus("success");
-        setDetectingLocation(false);
-      },
-      (err) => {
-        console.warn("Geolocation permission or timeout error:", err);
-        setLocationStatus("denied");
-        setDetectingLocation(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-    );
+      } else {
+        setUserLocation(DEFAULT_COORDS);
+        setLocationStatus("success");
+      }
+    } catch (err) {
+      console.warn("Location detection fallback notice:", err);
+      setUserLocation(DEFAULT_COORDS);
+      setLocationStatus("success");
+    } finally {
+      setDetectingLocation(false);
+    }
   };
 
-  // Auto-detect on first load if permitted
+  // Auto-detect on first load
   useEffect(() => {
     handleDetectLiveLocation();
   }, []);
@@ -208,36 +196,54 @@ export default function StoreLocation() {
             .filter((u) => u.role === "vendor" || u.role === "shop_owner" || u.role === "admin" || u.shopName);
           
           if (vendors.length > 0) {
-            loadedShops = vendors.map((v, idx) => {
-              const shopServices = v.services || v.servicesOffered || [
-                "Tyre Fitting & Replacement", 
-                "Tubeless Tyre Repair", 
-                "Nitrogen Air Fill", 
-                "Tyre Cut & Sidewall Repair",
-                "Doorstep Assistance"
-              ];
+            loadedShops = vendors.map((v) => {
+              const shopCategoryCode = v.shopCategory || v.categoryCode || "CAT_PUNCTURE_REPAIR";
+              const categoryMeta = getCategoryByCode(shopCategoryCode);
+              const shopServices = (Array.isArray(v.services) && v.services.length > 0)
+                ? v.services
+                : ((Array.isArray(v.servicesOffered) && v.servicesOffered.length > 0)
+                    ? v.servicesOffered
+                    : categoryMeta.services);
 
-              const shopCity = v.city || (v.address ? v.address.split(",").slice(-2)[0]?.trim() : "") || "Authorized Location";
-              const shopAddress = v.address || (v.city ? `${v.city}, India` : "Authorized Partner Service Point");
+              const rawName = v.shopName || v.name || "TyreSaathi Partner Hub";
+              const rawCity = (v.city || "").trim();
+              const rawAddress = (v.address || "").trim();
 
-              // Base coordinates with offset for realistic mapping if not explicitly provided
-              const shopLat = v.lat ? Number(v.lat) : (userLocation?.lat ? userLocation.lat + ((idx % 5) - 2) * 0.012 : (21.2514 + (idx % 3) * 0.012));
-              const shopLng = v.lng ? Number(v.lng) : (userLocation?.lng ? userLocation.lng + ((idx % 5) - 2) * 0.015 : (81.6296 + (idx % 3) * 0.015));
+              const resolvedCoords = resolveShopCoordinates({
+                ...v,
+                name: rawName,
+                city: rawCity,
+                address: rawAddress,
+                lat: v.lat,
+                lng: v.lng
+              });
+
+              const shopCity = rawCity || (resolvedCoords.city ? resolvedCoords.city.split(",")[0].trim() : "");
+              const shopAddress = rawAddress || (resolvedCoords.city ? `${resolvedCoords.city}, India` : (shopCity ? `${shopCity}, India` : "Authorized Partner Store"));
 
               return {
                 id: v.id || v.uid,
-                name: v.shopName || v.name || "TyreSaathi Partner Hub",
+                name: rawName,
                 ownerName: v.name || "Authorized Partner",
+                categoryCode: shopCategoryCode,
+                categoryName: v.shopType || categoryMeta.name,
+                categoryHindi: categoryMeta.hindiName,
+                categoryTarget: categoryMeta.target,
+                categoryIcon: categoryMeta.icon,
+                categoryBadgeColor: categoryMeta.badgeColor,
+                categoryBadgeBg: categoryMeta.badgeBg,
                 city: shopCity,
                 address: shopAddress,
                 phone: v.phone || "8877277757",
-                rating: v.rating || 4.9,
-                reviewsCount: v.reviewsCount || (24 + idx * 4),
+                rating: 0, // Real review calculation only
+                reviewsCount: 0, // No dummy review counts
                 services: shopServices,
                 servicesOffered: shopServices,
                 timing: v.openingHours || "Mon - Sun: 09:00 AM - 09:00 PM",
-                lat: shopLat,
-                lng: shopLng,
+                lat: resolvedCoords.lat,
+                lng: resolvedCoords.lng,
+                hasRealGps: resolvedCoords.hasExactGps,
+                isCityMatch: resolvedCoords.isCityMatch,
                 photoURL: v.photoURL || "",
               };
             });
@@ -246,13 +252,26 @@ export default function StoreLocation() {
 
         // Fallback default demo shops if none
         if (loadedShops.length === 0) {
-          loadedShops = SAMPLE_SHOPS.map((s, idx) => ({
-            ...s,
-            ownerName: s.name,
-            timing: "Mon - Sun: 09:00 AM - 09:00 PM",
-            lat: 21.2514 + idx * 0.01,
-            lng: 81.6296 + idx * 0.01,
-          }));
+          loadedShops = SAMPLE_SHOPS.map((s) => {
+            const catMeta = getCategoryByCode("CAT_PUNCTURE_REPAIR");
+            return {
+              ...s,
+              categoryCode: "CAT_PUNCTURE_REPAIR",
+              categoryName: catMeta.name,
+              categoryHindi: catMeta.hindiName,
+              categoryIcon: catMeta.icon,
+              categoryBadgeColor: catMeta.badgeColor,
+              categoryBadgeBg: catMeta.badgeBg,
+              ownerName: s.name,
+              rating: 0,
+              reviewsCount: 0,
+              services: catMeta.services,
+              timing: "Mon - Sun: 09:00 AM - 09:00 PM",
+              lat: null,
+              lng: null,
+              hasRealGps: false,
+            };
+          });
         }
 
         setShopsList(loadedShops);
@@ -274,25 +293,32 @@ export default function StoreLocation() {
     loadData();
   }, [initialShopId, initialShopName]);
 
-  // Recalculate Distances whenever user location or shopsList updates
-  const enrichedShops = shopsList.map((shop, idx) => {
+  // Recalculate Distances ONLY for shops that have real coordinates
+  const enrichedShops = shopsList.map((shop) => {
     let distance = null;
-    if (userLocation && userLocation.lat && userLocation.lng) {
-      distance = calculateDistance(userLocation.lat, userLocation.lng, shop.lat, shop.lng);
+    if (userLocation && userLocation.lat && userLocation.lng && shop.lat && shop.lng) {
+      distance = calculateDistanceKm(userLocation.lat, userLocation.lng, shop.lat, shop.lng);
     }
-    const finalDist = distance !== null ? distance : Number((1.2 + idx * 0.8).toFixed(1));
 
     return {
       ...shop,
-      distanceKm: finalDist,
+      distanceKm: distance,
+      distanceFormatted: distance !== null ? formatDistanceString(distance) : null
     };
   });
 
-  // Sort by Nearest distance first
-  enrichedShops.sort((a, b) => (Number(a.distanceKm) || 0) - (Number(b.distanceKm) || 0));
+  // Sort by Nearest distance first (shops with known distance come first; shops without location come at the end)
+  enrichedShops.sort((a, b) => {
+    if (a.distanceKm !== null && b.distanceKm !== null) {
+      return a.distanceKm - b.distanceKm;
+    }
+    if (a.distanceKm !== null) return -1;
+    if (b.distanceKm !== null) return 1;
+    return 0;
+  });
 
-  // Mark first shop as nearest
-  if (enrichedShops.length > 0) {
+  // Mark first shop as nearest ONLY if it is truly nearby (< 50 km)
+  if (enrichedShops.length > 0 && enrichedShops[0].distanceKm !== null && enrichedShops[0].distanceKm <= 50) {
     enrichedShops[0].isNearest = true;
   }
 
@@ -303,9 +329,24 @@ export default function StoreLocation() {
       shop.name.toLowerCase().includes(q) ||
       shop.address.toLowerCase().includes(q) ||
       shop.city.toLowerCase().includes(q) ||
-      shop.ownerName?.toLowerCase().includes(q);
+      shop.ownerName?.toLowerCase().includes(q) ||
+      shop.categoryName?.toLowerCase().includes(q) ||
+      (shop.services && shop.services.some((s) => s.toLowerCase().includes(q)));
+    
     const matchesCity = filterCity === "all" || shop.city.toLowerCase() === filterCity.toLowerCase();
-    return matchesSearch && matchesCity;
+    
+    // Category match
+    let matchesCategory = true;
+    if (selectedCategory !== "ALL") {
+      const selectedCatMeta = getCategoryByCode(selectedCategory);
+      matchesCategory = (
+        shop.categoryCode === selectedCategory ||
+        shop.categoryName === selectedCatMeta.name ||
+        (shop.services && shop.services.some((s) => selectedCatMeta.services.includes(s)))
+      );
+    }
+
+    return matchesSearch && matchesCity && matchesCategory;
   });
 
   const cities = ["all", ...new Set(shopsList.filter((s) => s && s.city).map((s) => s.city))];
@@ -563,37 +604,37 @@ export default function StoreLocation() {
             <span className={`pulse-dot ${locationStatus === "success" ? "dot-live" : "dot-idle"}`} />
             <span className="loc-status-text">
               {locationStatus === "success" 
-                ? "🟢 Live GPS Location Active" 
-                : (locationStatus === "detecting" ? "📡 Detecting Live Location..." : "📍 Real-Time Store Distance")}
+                ? (userLocation?.city ? `🟢 Live Location: ${userLocation.city}${userLocation.region ? `, ${userLocation.region}` : ""}` : `🟢 Live GPS Active`)
+                : (locationStatus === "detecting" ? "📡 Detecting Live GPS & Location..." : "📍 Real-Time Store Distance")}
             </span>
           </div>
           <p className="loc-desc-text">
-            {userLocation 
-              ? `Live GPS location detected — nearest TyreSaathi partner stores are sorted at the top.`
-              : `Click "Update Live Location" to find the closest verified tyre shops near you.`}
+            {userLocation?.city 
+              ? `Aapki live location (${userLocation.city}) ke mutabik verified tyre partner dukanon ki live distance dikhayi ja rahi hai.`
+              : `Click "Refresh Live GPS" to find the closest verified tyre shops near your current location.`}
           </p>
         </div>
 
         <div className="banner-action-buttons">
           <a
-            href={`https://www.google.com/maps/search/tyre+puncture+mechanic+shops+near+me/@${userLocation?.lat || DEFAULT_LAT},${userLocation?.lng || DEFAULT_LNG},14z`}
+            href={`https://www.google.com/maps/search/tyre+puncture+mechanic+shops+near+me/@${userLocation?.lat || DEFAULT_COORDS.lat},${userLocation?.lng || DEFAULT_COORDS.lng},14z`}
             target="_blank"
             rel="noreferrer"
             className="btn-view-all-maps"
             title="Open Google Maps with all nearby tyre and puncture shops"
           >
             <Navigation size={16} />
-            <span>🗺️ View All Nearby Shops on Google Maps</span>
+            <span>🗺️ Open in Google Maps</span>
           </a>
 
           <button 
             type="button"
             className="btn-detect-location"
-            onClick={handleDetectLiveLocation}
+            onClick={() => handleDetectLiveLocation()}
             disabled={detectingLocation}
           >
             <Compass size={16} className={detectingLocation ? "spin-icon" : ""} />
-            <span>{detectingLocation ? "Detecting GPS..." : "📍 Update Live Location"}</span>
+            <span>{detectingLocation ? "Detecting GPS..." : "📍 Refresh Live GPS"}</span>
           </button>
         </div>
       </div>
@@ -652,13 +693,54 @@ export default function StoreLocation() {
           </div>
         )}
 
-        {/* Search & City Filter Bar */}
+        {/* Role Helper Banner */}
+        {isShopOwner ? (
+          <div style={{
+            background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+            color: "#f8fafc",
+            padding: "10px 16px",
+            borderRadius: "10px",
+            marginBottom: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "8px",
+            fontSize: "12.5px"
+          }}>
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Store size={15} color="#38bdf8" />
+              <strong>🏪 Shop Owner / B2B Network View:</strong> Aapko sabhi shops, specialized units aur wholesale raw material suppliers dikh rahe hain.
+            </span>
+            <span style={{ background: "#334155", padding: "2px 8px", borderRadius: "12px", fontSize: "11.5px" }}>
+              Total Network: {shopsList.length} Hubs
+            </span>
+          </div>
+        ) : (
+          <div style={{
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            color: "#166534",
+            padding: "8px 14px",
+            borderRadius: "10px",
+            marginBottom: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "12px",
+            fontWeight: "700"
+          }}>
+            <span>🔍 Category Filter: Neeche di gayi category par click karein, sirf wahi verified dukan dikhegi jo aap select karenge.</span>
+          </div>
+        )}
+
+        {/* Search, Category & City Filter Bar */}
         <div className="directory-filters-card">
           <div className="search-input-wrapper">
             <Search size={18} className="search-icon-inside" />
             <input
               type="text"
-              placeholder="Search store name, area, road, or city..."
+              placeholder="Search store name, category, service, area, or city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -667,6 +749,69 @@ export default function StoreLocation() {
                 <X size={16} />
               </button>
             )}
+          </div>
+
+          {/* 🏷️ Primary Category Filter Pills */}
+          <div style={{
+            display: "flex",
+            gap: "6px",
+            overflowX: "auto",
+            padding: "4px 0 8px",
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch"
+          }}>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("ALL")}
+              style={{
+                background: selectedCategory === "ALL" ? "#c0392b" : "var(--surface)",
+                color: selectedCategory === "ALL" ? "#ffffff" : "var(--text)",
+                border: selectedCategory === "ALL" ? "1px solid #c0392b" : "1px solid var(--border)",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: "800",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                transition: "all 0.15s ease"
+              }}
+            >
+              <span>🌟</span>
+              <span>All Categories (सभी)</span>
+            </button>
+
+            {SHOP_PRIMARY_CATEGORIES.map((cat) => {
+              const isActive = selectedCategory === cat.code;
+              return (
+                <button
+                  key={cat.code}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.code)}
+                  style={{
+                    background: isActive ? cat.badgeColor : "var(--surface)",
+                    color: isActive ? "#ffffff" : "var(--text)",
+                    border: isActive ? `1.5px solid ${cat.badgeColor}` : "1px solid var(--border)",
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    fontSize: "12px",
+                    fontWeight: isActive ? "800" : "700",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    transition: "all 0.15s ease",
+                    boxShadow: isActive ? `0 2px 8px ${cat.badgeColor}40` : "none"
+                  }}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.name}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="city-pill-row">
@@ -689,10 +834,10 @@ export default function StoreLocation() {
               <MapPin size={40} color="#c0392b" />
             </div>
             <h3>No Stores Found</h3>
-            <p>{searchTerm ? `No verified stores matched "${searchTerm}". Please try a different city or search keyword.` : "No partner stores found in this filter. Try resetting filters."}</p>
+            <p>{searchTerm || selectedCategory !== "ALL" ? `No verified stores matched your selection. Please try selecting a different category or resetting filters.` : "No partner stores found in this filter. Try resetting filters."}</p>
             <button
               className="btn-reset-filters"
-              onClick={() => { setSearchTerm(""); setFilterCity("all"); }}
+              onClick={() => { setSearchTerm(""); setFilterCity("all"); setSelectedCategory("ALL"); }}
             >
               Reset All Filters
             </button>
@@ -705,26 +850,54 @@ export default function StoreLocation() {
                 <div className="store-card-top-row">
                   <div className="store-title-wrap">
                     <div className="store-avatar-icon">
-                      <Store size={22} color="#c0392b" />
+                      <Store size={20} color="#c0392b" />
                     </div>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                         <h3 className="store-title-text">{shop.name}</h3>
-                        {shop.isNearest && <span className="nearest-badge">⚡ Nearest Hub</span>}
+                        {shop.isNearest && <span className="nearest-badge">⚡ Nearest</span>}
+                        {shop.categoryName && (
+                          <span style={{
+                            background: shop.categoryBadgeBg || "#e0f2fe",
+                            color: shop.categoryBadgeColor || "#0284c7",
+                            border: `1px solid ${shop.categoryBadgeColor || "#0284c7"}`,
+                            fontSize: "11px",
+                            fontWeight: "800",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}>
+                            <span>{shop.categoryIcon || "🏬"}</span>
+                            <span>{shop.categoryName}</span>
+                          </span>
+                        )}
                       </div>
                       <span className="verified-partner-tag">
-                        <ShieldCheck size={13} /> Verified TyreSaathi Partner Hub
+                        <ShieldCheck size={12} /> Verified Partner Hub
                       </span>
                     </div>
                   </div>
 
-                  <div className="store-dist-badge">
-                    <span className="dist-num">📍 {shop.distanceKm} km</span>
-                    <span className="dist-sub">away from you</span>
-                  </div>
+                  {shop.distanceKm !== null && shop.distanceKm !== undefined ? (
+                    <div className="store-dist-badge">
+                      <span className="dist-num">📍 {shop.distanceFormatted || `${shop.distanceKm} km`}</span>
+                      <span className="dist-sub">away from you</span>
+                    </div>
+                  ) : (
+                    <div className="store-dist-badge" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                      <span className="dist-num" style={{ color: "#475569", fontSize: "11px", fontWeight: "700" }}>
+                        📍 {shop.city ? shop.city : "Location on Call"}
+                      </span>
+                      <span className="dist-sub" style={{ color: "#94a3b8" }}>
+                        {shop.city ? "Registered City" : "Contact Store"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Rating, Timing & Location Row */}
+                {/* Rating & Timing Row */}
                 <div className="store-meta-strip">
                   <div 
                     className="meta-pill meta-rating-pill" 
@@ -732,7 +905,7 @@ export default function StoreLocation() {
                     title="Click to give star rating to this shop"
                   >
                     <Star 
-                      size={13} 
+                      size={12} 
                       fill={shop.reviewsCount > 0 ? "#f59e0b" : "none"} 
                       color={shop.reviewsCount > 0 ? "#f59e0b" : "#94a3b8"} 
                     />
@@ -742,12 +915,12 @@ export default function StoreLocation() {
                         <span>({shop.reviewsCount} reviews)</span>
                       </>
                     ) : (
-                      <span style={{ color: "#64748b", fontSize: "11.5px" }}>New Store</span>
+                      <span style={{ color: "#64748b", fontSize: "11.5px" }}>New Partner (0 reviews)</span>
                     )}
                     <span className="rate-click-hint">⭐ Star दें</span>
                   </div>
                   <div className="meta-pill">
-                    <Clock size={13} color="#64748b" />
+                    <Clock size={12} color="#64748b" />
                     <span>{shop.timing || "09:00 AM - 09:00 PM"}</span>
                   </div>
                 </div>
@@ -758,19 +931,19 @@ export default function StoreLocation() {
 
                 {/* Services Chips */}
                 <div className="store-services-list">
-                  {(shop.servicesOffered || shop.services || [
-                    "Tyre Replacement",
-                    "Puncture Repair",
-                    "Nitrogen Air Fill",
-                    "Cut Repair"
-                  ]).slice(0, 4).map((svc, idx) => (
+                  {(shop.services || shop.servicesOffered || []).slice(0, 5).map((svc, idx) => (
                     <span key={idx} className="service-tag">
                       <CheckCircle2 size={12} color="#16a34a" /> {svc}
                     </span>
                   ))}
+                  {(shop.services || shop.servicesOffered || []).length > 5 && (
+                    <span className="service-tag" style={{ background: "#f8fafc", color: "#64748b", fontWeight: "700" }}>
+                      +{(shop.services || shop.servicesOffered || []).length - 5} more
+                    </span>
+                  )}
                 </div>
 
-                {/* Direct Action Buttons on Every Card */}
+                {/* Direct Action Buttons */}
                 <div className="store-card-actions">
                   <div className="primary-actions-group">
                     <button
@@ -778,16 +951,16 @@ export default function StoreLocation() {
                       className="btn-card-profile"
                       onClick={() => openShopProfile(shop)}
                     >
-                      <Store size={15} />
+                      <Store size={14} />
                       <span>🏪 Enter Shop Profile & Stock</span>
                     </button>
 
                     <button
                       type="button"
                       className="btn-card-book"
-                      onClick={(e) => handleOpenBookingModal(shop, "Tubeless Puncture Repair", e)}
+                      onClick={(e) => handleOpenBookingModal(shop, shop.services?.[0] || "Tubeless Puncture Repair", e)}
                     >
-                      <Calendar size={15} />
+                      <Calendar size={14} />
                       <span>Book Service</span>
                     </button>
                   </div>
@@ -799,7 +972,7 @@ export default function StoreLocation() {
                       title={`Call ${shop.name}`}
                       onClick={() => trackStoreEvent("call_lead", { shopId: shop.id, shopName: shop.name, type: "phone_call" })}
                     >
-                      <Phone size={14} />
+                      <Phone size={13} />
                       <span>Call</span>
                     </a>
 
@@ -811,19 +984,23 @@ export default function StoreLocation() {
                       title="Chat on WhatsApp"
                       onClick={() => trackStoreEvent("call_lead", { shopId: shop.id, shopName: shop.name, type: "whatsapp_inquiry" })}
                     >
-                      <MessageCircle size={14} />
+                      <MessageCircle size={13} />
                       <span>WhatsApp</span>
                     </a>
 
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shop.name + " " + shop.address)}`}
+                      href={
+                        shop.lat && shop.lng
+                          ? `https://www.google.com/maps/dir/?api=1&destination=${shop.lat},${shop.lng}`
+                          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(shop.name + " " + shop.address)}`
+                      }
                       target="_blank"
                       rel="noreferrer"
                       className="btn-quick-contact btn-quick-map"
-                      title="Turn-by-turn Navigation in Google Maps"
+                      title="Directions in Google Maps"
                       onClick={() => trackStoreEvent("map_direction", { shopId: shop.id, shopName: shop.name })}
                     >
-                      <Navigation size={14} />
+                      <Navigation size={13} />
                       <span>Directions</span>
                     </a>
 
@@ -833,7 +1010,7 @@ export default function StoreLocation() {
                       title="Give Star Rating to this shop owner"
                       onClick={(e) => openRatingModal(shop, e)}
                     >
-                      <Star size={14} fill="#f59e0b" color="#f59e0b" />
+                      <Star size={13} fill="#f59e0b" color="#f59e0b" />
                       <span>⭐ Star दें</span>
                     </button>
                   </div>
@@ -887,8 +1064,19 @@ export default function StoreLocation() {
                     </button>
                     <span className="meta-divider">•</span>
                     <span className="meta-timing"><Clock size={13} /> {activeShopProfile.timing}</span>
-                    <span className="meta-divider">•</span>
-                    <span className="meta-distance">📍 {activeShopProfile.distanceKm} km away</span>
+                    {activeShopProfile.distanceKm !== null && activeShopProfile.distanceKm !== undefined ? (
+                      <>
+                        <span className="meta-divider">•</span>
+                        <span className="meta-distance">📍 {activeShopProfile.distanceFormatted || `${activeShopProfile.distanceKm} km`} away</span>
+                      </>
+                    ) : (
+                      activeShopProfile.city ? (
+                        <>
+                          <span className="meta-divider">•</span>
+                          <span className="meta-distance">📍 {activeShopProfile.city}</span>
+                        </>
+                      ) : null
+                    )}
                   </div>
                 </div>
               </div>
@@ -1149,7 +1337,7 @@ export default function StoreLocation() {
           <div className="rating-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="rating-modal-header">
               <div className="rating-shop-icon-box">
-                <Store size={24} color="#c0392b" />
+                <Store size={18} color="#c0392b" />
               </div>
               <div className="rating-header-text">
                 <h3 className="rating-modal-title">⭐ Rate {ratingShop.name}</h3>
@@ -1161,27 +1349,27 @@ export default function StoreLocation() {
                 onClick={() => setRatingModalOpen(false)}
                 disabled={submittingReview}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {reviewSuccessMessage ? (
               <div className="rating-success-state">
                 <div className="success-star-animation">
-                  <Sparkles size={52} color="#f59e0b" />
+                  <Sparkles size={40} color="#f59e0b" />
                 </div>
-                <h3>Dhanaywad! Rating Safaltapoorvak Bhej Di Gayi</h3>
+                <h3>Dhanaywad! Rating Safalta Se Bhej Di Gayi</h3>
                 <p>
                   Aapne <strong>{ratingShop.name}</strong> ko <strong>{selectedStars} Star</strong> rating di hai. 
                   Aapka review live update ho chuka hai.
                 </p>
                 <div className="success-badge-pill">
-                  <Check size={16} /> Verified TyreSaathi Customer Review
+                  <Check size={14} /> Verified TyreSaathi Customer Review
                 </div>
               </div>
             ) : (
               <form onSubmit={handleSubmitReview} className="rating-form-body">
-                {/* 🌟 Big Interactive 5-Star Picker - Starts completely empty until clicked */}
+                {/* 🌟 Interactive 5-Star Picker */}
                 <div className="stars-interactive-section">
                   <label className="rating-section-label">
                     Aap is dukan ko kitne Star (रेटिंग) dena chahte hain?
@@ -1201,7 +1389,7 @@ export default function StoreLocation() {
                           title={`${starNum} Star`}
                         >
                           <Star 
-                            size={38} 
+                            size={30} 
                             fill={isFilled ? "#f59e0b" : "none"} 
                             color={isFilled ? "#f59e0b" : "#cbd5e1"} 
                             strokeWidth={isFilled ? 1.5 : 2}
@@ -1238,7 +1426,7 @@ export default function StoreLocation() {
                       "👍 Polite & Helpful Staff",
                       "🛡️ 100% Genuine Tyres",
                       "🔧 Expert Puncture Repair",
-                      "☕ Clean Shop & Waiting Area"
+                      "☕ Clean Waiting Area"
                     ].map((tag) => {
                       const active = selectedTags.includes(tag);
                       return (
@@ -1272,7 +1460,7 @@ export default function StoreLocation() {
                     <label>Mobile No. (वैकल्पिक)</label>
                     <input
                       type="tel"
-                      placeholder="10 digit mobile number"
+                      placeholder="10 digit mobile"
                       value={reviewerPhone}
                       onChange={(e) => setReviewerPhone(e.target.value)}
                     />
@@ -1283,8 +1471,8 @@ export default function StoreLocation() {
                 <div className="form-group-field">
                   <label>Apna Review / Feedback Likhein (वैकल्पिक)</label>
                   <textarea
-                    rows={3}
-                    placeholder="Dukan ka behavior, tyre fitment, puncturing ya rate kaisa laga? Apna anubhav share karein..."
+                    rows={2}
+                    placeholder="Dukan ka service, fitment ya rate kaisa laga? Apna anubhav share karein..."
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                   />
@@ -1307,12 +1495,12 @@ export default function StoreLocation() {
                   >
                     {submittingReview ? (
                       <>
-                        <RefreshCw size={16} className="spin-icon" />
-                        <span>Submitting Rating...</span>
+                        <RefreshCw size={14} className="spin-icon" />
+                        <span>Submitting...</span>
                       </>
                     ) : (
                       <>
-                        <Send size={16} />
+                        <Send size={14} />
                         <span>⭐ Submit Rating (स्टार भेजें)</span>
                       </>
                     )}
@@ -1797,26 +1985,41 @@ export default function StoreLocation() {
         /* 🌟 Full-Width Responsive Store Cards Grid */
         .stores-grid-layout {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-          gap: 18px;
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        @media (min-width: 768px) {
+          .stores-grid-layout {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .stores-grid-layout {
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 18px;
+          }
         }
 
         .store-card-full {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
-          border-radius: 16px;
-          padding: 20px;
-          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+          border-left: 5px solid #c0392b;
+          border-radius: 14px;
+          padding: 16px 18px;
+          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
           transition: all 0.2s ease;
           position: relative;
         }
         .store-card-full:hover {
           transform: translateY(-2px);
           border-color: #cbd5e1;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
         }
 
         .nearest-hub-border {
@@ -1827,19 +2030,20 @@ export default function StoreLocation() {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 12px;
+          gap: 10px;
         }
 
         .store-title-wrap {
           display: flex;
-          align-items: flex-start;
-          gap: 12px;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
         }
 
         .store-avatar-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
           background: #fef2f2;
           border: 1px solid #fee2e2;
           display: flex;
@@ -1849,11 +2053,11 @@ export default function StoreLocation() {
         }
 
         .store-title-text {
-          font-size: 16px;
+          font-size: 15.5px;
           font-weight: 800;
           color: #0f172a;
-          margin: 0 0 2px;
-          letter-spacing: -0.3px;
+          margin: 0;
+          line-height: 1.3;
         }
 
         .verified-partner-tag {
@@ -1871,8 +2075,8 @@ export default function StoreLocation() {
           color: #15803d;
           font-size: 10.5px;
           font-weight: 800;
-          padding: 2px 8px;
-          border-radius: 12px;
+          padding: 2px 7px;
+          border-radius: 10px;
           text-transform: uppercase;
         }
 
@@ -1880,28 +2084,30 @@ export default function StoreLocation() {
           text-align: right;
           background: #eff6ff;
           border: 1px solid #bfdbfe;
-          padding: 4px 10px;
-          border-radius: 10px;
+          padding: 3px 8px;
+          border-radius: 8px;
           display: flex;
           flex-direction: column;
           flex-shrink: 0;
         }
 
         .dist-num {
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 800;
           color: #1d4ed8;
+          white-space: nowrap;
         }
 
         .dist-sub {
           font-size: 10px;
           color: #64748b;
+          white-space: nowrap;
         }
 
         .store-meta-strip {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
@@ -1909,28 +2115,28 @@ export default function StoreLocation() {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          font-size: 12px;
+          font-size: 11.5px;
           color: #475569;
           background: #f8fafc;
           border: 1px solid #f1f5f9;
           padding: 3px 8px;
-          border-radius: 8px;
+          border-radius: 6px;
         }
         .meta-pill strong {
           color: #0f172a;
         }
 
         .store-address-text {
-          font-size: 12.5px;
+          font-size: 12px;
           color: #475569;
           margin: 0;
-          line-height: 1.45;
+          line-height: 1.4;
         }
 
         .store-services-list {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 5px;
         }
 
         .service-tag {
@@ -1943,38 +2149,40 @@ export default function StoreLocation() {
           color: #334155;
           padding: 3px 8px;
           border-radius: 6px;
+          white-space: nowrap;
         }
 
         /* Card Action Buttons */
         .store-card-actions {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
           margin-top: 4px;
-          padding-top: 12px;
+          padding-top: 8px;
           border-top: 1px solid #f1f5f9;
         }
 
         .primary-actions-group {
           display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 8px;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
         }
 
         .btn-card-profile {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 5px;
           background: #ffffff;
           border: 1.5px solid #c0392b;
           color: #c0392b;
-          padding: 8px 12px;
+          padding: 7px 10px;
           border-radius: 8px;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
+          white-space: nowrap;
         }
         .btn-card-profile:hover {
           background: #fef2f2;
@@ -1984,40 +2192,42 @@ export default function StoreLocation() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 5px;
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: #ffffff;
           border: none;
-          padding: 8px 14px;
+          padding: 7px 10px;
           border-radius: 8px;
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 800;
           text-decoration: none;
           cursor: pointer;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+          box-shadow: 0 2px 6px rgba(192, 57, 43, 0.25);
           transition: all 0.2s;
+          white-space: nowrap;
         }
         .btn-card-book:hover {
-          transform: translateY(-1px);
+          background: #b91c1c;
         }
 
         .quick-contact-actions-group {
           display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 6px;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 5px;
         }
 
         .btn-quick-contact {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
-          padding: 7px 10px;
+          gap: 4px;
+          padding: 6px 8px;
           border-radius: 8px;
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 700;
           text-decoration: none;
           transition: all 0.2s;
+          white-space: nowrap;
         }
         .btn-quick-call {
           background: #fee2e2;
@@ -2039,6 +2249,14 @@ export default function StoreLocation() {
           border: 1px solid #bfdbfe;
         }
         .btn-quick-map:hover { background: #dbeafe; }
+
+        .btn-quick-rate {
+          background: #fefce8;
+          color: #a16207;
+          border: 1px solid #fef08a;
+          cursor: pointer;
+        }
+        .btn-quick-rate:hover { background: #fef9c3; }
 
         /* Empty State */
         .no-stores-found {
@@ -2528,27 +2746,29 @@ export default function StoreLocation() {
 
         .rating-modal-card {
           background: #ffffff;
-          border-radius: 20px;
-          max-width: 520px;
-          width: 100%;
+          border-radius: 16px;
+          max-width: 440px;
+          width: 95%;
           overflow: hidden;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
           border: 1px solid #cbd5e1;
+          max-height: 90vh;
+          overflow-y: auto;
         }
 
         .rating-modal-header {
           background: #f8fafc;
-          border-bottom: 1.5px solid #e2e8f0;
-          padding: 16px 20px;
+          border-bottom: 1px solid #e2e8f0;
+          padding: 10px 14px;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
         }
 
         .rating-shop-icon-box {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
           background: #fef2f2;
           display: flex;
           align-items: center;
@@ -2559,15 +2779,17 @@ export default function StoreLocation() {
 
         .rating-header-text {
           flex: 1;
+          min-width: 0;
         }
         .rating-modal-title {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 800;
           color: #0f172a;
-          margin: 0 0 2px;
+          margin: 0;
+          line-height: 1.25;
         }
         .rating-modal-subtitle {
-          font-size: 12px;
+          font-size: 11px;
           color: #64748b;
           margin: 0;
           white-space: nowrap;
@@ -2576,10 +2798,10 @@ export default function StoreLocation() {
         }
 
         .rating-close-btn {
-          background: #e2e8f0;
+          background: #f1f5f9;
           border: none;
-          width: 32px;
-          height: 32px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -2587,6 +2809,7 @@ export default function StoreLocation() {
           cursor: pointer;
           color: #475569;
           transition: all 0.2s;
+          flex-shrink: 0;
         }
         .rating-close-btn:hover {
           background: #cbd5e1;
@@ -2594,45 +2817,45 @@ export default function StoreLocation() {
         }
 
         .rating-form-body {
-          padding: 20px;
+          padding: 12px 14px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 10px;
         }
 
         .stars-interactive-section {
           text-align: center;
-          background: #fffbeb;
-          border: 1.5px dashed #fde68a;
-          border-radius: 14px;
-          padding: 16px;
+          background: linear-gradient(135deg, #fffdfa 0%, #fffbeb 100%);
+          border: 1px dashed #fde68a;
+          border-radius: 10px;
+          padding: 8px 10px;
         }
 
         .rating-section-label {
           display: block;
-          font-size: 13px;
+          font-size: 11.5px;
           font-weight: 700;
           color: #0f172a;
-          margin-bottom: 10px;
+          margin-bottom: 6px;
         }
 
         .stars-picker-row {
           display: flex;
           justify-content: center;
-          gap: 8px;
-          margin-bottom: 8px;
+          gap: 6px;
+          margin-bottom: 4px;
         }
 
         .star-pick-btn {
           background: transparent;
           border: none;
           cursor: pointer;
-          padding: 4px;
-          border-radius: 8px;
+          padding: 2px;
+          border-radius: 6px;
           transition: all 0.15s ease;
         }
         .star-pick-btn:hover {
-          transform: scale(1.25);
+          transform: scale(1.2);
         }
         .star-pick-btn:active {
           transform: scale(0.95);
@@ -2640,41 +2863,39 @@ export default function StoreLocation() {
 
         .star-feedback-badge {
           display: inline-block;
-          font-size: 13px;
-          font-weight: 800;
+          font-size: 11px;
+          font-weight: 700;
           color: #b45309;
           background: #ffffff;
-          padding: 4px 14px;
-          border-radius: 20px;
+          padding: 2px 10px;
+          border-radius: 12px;
           border: 1px solid #fde68a;
-          margin-top: 4px;
         }
         .badge-empty-prompt {
           color: #64748b !important;
           background: #f1f5f9 !important;
           border-color: #cbd5e1 !important;
-          font-weight: 700 !important;
         }
 
         .rating-quick-tags-box {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 4px;
         }
 
         .quick-tags-grid {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 4px;
         }
 
         .tag-toggle-pill {
           background: #f8fafc;
-          border: 1.5px solid #e2e8f0;
+          border: 1px solid #e2e8f0;
           color: #475569;
-          padding: 5px 10px;
-          border-radius: 20px;
-          font-size: 11.5px;
+          padding: 3px 8px;
+          border-radius: 14px;
+          font-size: 10.5px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.15s;
@@ -2692,25 +2913,25 @@ export default function StoreLocation() {
         .rating-input-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 8px;
         }
 
         .form-group-field {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 3px;
         }
         .form-group-field label {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 700;
           color: #334155;
         }
         .form-group-field input,
         .form-group-field textarea {
-          border: 1.5px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 10px 12px;
-          font-size: 13px;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 7px 9px;
+          font-size: 12px;
           font-family: inherit;
           color: #0f172a;
           outline: none;
@@ -2719,23 +2940,23 @@ export default function StoreLocation() {
         .form-group-field input:focus,
         .form-group-field textarea:focus {
           border-color: #c0392b;
-          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
+          box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.1);
         }
 
         .rating-form-actions {
           display: flex;
-          gap: 10px;
-          margin-top: 4px;
+          gap: 8px;
+          margin-top: 2px;
         }
 
         .btn-cancel-rating {
           flex: 1;
           background: #f1f5f9;
-          border: 1.5px solid #e2e8f0;
+          border: 1px solid #e2e8f0;
           color: #475569;
-          padding: 11px;
-          border-radius: 10px;
-          font-size: 13px;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 12px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s;
@@ -2749,21 +2970,20 @@ export default function StoreLocation() {
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           border: none;
           color: #ffffff;
-          padding: 11px;
-          border-radius: 10px;
-          font-size: 13.5px;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 12px;
           font-weight: 800;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.35);
+          gap: 6px;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
           transition: all 0.2s;
         }
         .btn-submit-rating:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 6px 16px rgba(192, 57, 43, 0.45);
+          background: #b91c1c;
         }
         .btn-submit-rating:disabled {
           opacity: 0.7;
