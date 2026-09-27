@@ -148,32 +148,37 @@ export function exportTicketsToExcel(tickets) {
 
 export function exportMasterLinksToExcel() {
   const masterLinksData = [
-    { category: "Official App Download", name: "GitHub Latest Release APK (Direct)", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/latest/download/TyreSaathi.apk", status: "Active (Recommended)", desc: "Direct APK download for Android users & WhatsApp sharing" },
-    { category: "App Store Listing", name: "Uptodown Developer Portal", url: "https://developers.uptodown.com/", status: "In Review (v1.1)", desc: "Official Uptodown release console for TyreSaathi APK" },
-    { category: "Source Code", name: "GitHub Main Repository", url: "https://github.com/tyresathi-sudo/tyresaathi", status: "Active", desc: "Complete source code, Android Capacitor app and React codebase" },
-    { category: "CI/CD & APK Build", name: "GitHub Actions Workflow", url: "https://github.com/tyresathi-sudo/tyresaathi/actions", status: "Automated", desc: "Auto-compiles release & debug signed APKs on every git push" },
-    { category: "Live Web Application", name: "Firebase Web App", url: "https://tyresaathi-sudo.web.app", status: "Live PWA", desc: "Production Web & Mobile Web App accessible on any browser" },
-    { category: "Secondary Web Mirror", name: "Firebase App Domain", url: "https://tyresaathi-sudo.firebaseapp.com", status: "Live", desc: "Alternative production domain hosted on Google Cloud" },
-    { category: "Cloud Database & Auth", name: "Firebase Cloud Console", url: "https://console.firebase.google.com/project/tyresaathi-sudo/overview", status: "Connected", desc: "Firestore database, user authentication & cloud storage" },
-    { category: "Firestore Collections", name: "Firestore Live Database", url: "https://console.firebase.google.com/project/tyresaathi-sudo/firestore", status: "Cloud Sync", desc: "Real-time collections: users, bookings, invoices, tickets, ads" },
-    { category: "App Core Screen", name: "Home Dashboard", url: "https://tyresaathi-sudo.web.app/", status: "Production", desc: "Quick services, SOS roadside help, tyre brands & actions" },
-    { category: "GPS & Maps", name: "Nearby Tyre Shops Locator", url: "https://tyresaathi-sudo.web.app/shops", status: "Production", desc: "Real-time GPS shop search, puncture hubs, alignments" },
-    { category: "Catalogue & Search", name: "Tyre Search & Compatibility", url: "https://tyresaathi-sudo.web.app/search", status: "Production", desc: "Search tyres by vehicle type (Car, Bike, Truck, Tractor, EV)" },
-    { category: "Camera AI Tool", name: "Tyre Health Inspection", url: "https://tyresaathi-sudo.web.app/inspection", status: "Production", desc: "Camera tyre condition scanner, tread depth & wear report" },
-    { category: "Service Management", name: "Bookings & Appointments", url: "https://tyresaathi-sudo.web.app/bookings", status: "Production", desc: "Tyre change, puncture, wheel alignment appointment scheduling" },
-    { category: "B2B Shop Billing", name: "Digital Invoicing & GST Bill", url: "https://tyresaathi-sudo.web.app/billing", status: "Production", desc: "Generate tax bills, calculate discounts, share via WhatsApp/PDF" },
-    { category: "Monetization", name: "Subscription & Plans", url: "https://tyresaathi-sudo.web.app/subscription", status: "Production", desc: "Free, Silver & Gold dealer partner subscription plans" },
-    { category: "Master Control", name: "Admin Super Dashboard", url: "https://tyresaathi-sudo.web.app/admin", status: "Protected", desc: "Manage all shops, users, billing records, tickets & Excel export" },
-    { category: "Customer Helpdesk", name: "Support Tickets", url: "https://tyresaathi-sudo.web.app/support", status: "Production", desc: "Raise grievance tickets, track ticket status & admin replies" },
-    { category: "Legal & Compliance", name: "Terms of Service & Privacy", url: "https://tyresaathi-sudo.web.app/terms", status: "Production", desc: "Store compliance policies, privacy policy & user terms" }
+    { category: "Indus Appstore Store Listing", name: "Privacy Policy URL (Mandatory)", url: "https://tyresathi-93306.web.app/privacy-policy", status: "Live & Compliant", desc: "Mandatory store listing link for user privacy and permissions disclosure" },
+    { category: "Indus Appstore Store Listing", name: "User Data Deletion URL (Mandatory)", url: "https://tyresathi-93306.web.app/privacy-policy#data-deletion", status: "Live & Compliant", desc: "Mandatory requirement for account deletion & data wipe request" },
+    { category: "Indus Appstore Store Listing", name: "Official Website / Homepage", url: "https://tyresathi-93306.web.app/", status: "Live Production", desc: "Official company landing page & web portal" },
+    { category: "Indus Appstore Store Listing", name: "Terms of Service URL", url: "https://tyresathi-93306.web.app/terms-of-service", status: "Live Production", desc: "User terms, disclaimer & platform rules" },
+    { category: "Indus Appstore Store Listing", name: "Trademark & IP Disclaimer", url: "https://tyresathi-93306.web.app/trademark-disclaimer", status: "Live Production", desc: "Brand trademarks disclaimer (MRF, Apollo, CEAT, etc.)" },
+    { category: "Indus Appstore Store Listing", name: "Developer / Support Email", url: "tyresathi@gmail.com", status: "Active", desc: "Primary developer contact email for app store console" },
+    { category: "Indus Appstore Store Listing", name: "Support Helpline & WhatsApp", url: "+91 88772 77757", status: "Active", desc: "Direct helpline number for customer & store verification" },
+    { category: "Indus Appstore Store Listing", name: "Support & Helpdesk Portal", url: "https://tyresathi-93306.web.app/support", status: "Live Production", desc: "Customer ticketing & grievance redressal portal" },
+    { category: "Official App Package", name: "Release Signed APK Download (v1.2.4)", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.4/TyreSaathi.apk", status: "Active (Direct Download)", desc: "Direct signed release APK ready to upload on Indus Appstore" },
+    { category: "Official App Package", name: "Latest Release Hub", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/latest", status: "Active", desc: "Official GitHub releases portal with release notes & tags" },
+    { category: "CI/CD & Cloud Build", name: "Automated APK Build Workflow", url: "https://github.com/tyresathi-sudo/tyresaathi/actions", status: "Automated", desc: "GitHub Actions CI/CD building signed APKs automatically" },
+    { category: "Source Code Repository", name: "GitHub Main Repository", url: "https://github.com/tyresathi-sudo/tyresaathi", status: "Active", desc: "Complete source code, React PWA & Android Capacitor code" },
+    { category: "App Store Console", name: "Indus Appstore Developer Portal", url: "https://developer.indusappstore.com/", status: "Target Console", desc: "PhonePe Indus Appstore developer console for publishing" },
+    { category: "Cloud Infrastructure", name: "Firebase Project Console", url: "https://console.firebase.google.com/project/tyresathi-93306/overview", status: "Connected", desc: "Backend cloud configuration, Firestore DB, Auth & Storage" },
+    { category: "Live Web Application", name: "Primary Firebase Domain", url: "https://tyresathi-93306.web.app", status: "Live Production", desc: "High-speed Google Cloud hosted PWA domain" },
+    { category: "Live Web Application", name: "Secondary Firebase Domain", url: "https://tyresaathi-sudo.web.app", status: "Live Production", desc: "Alternative production domain mirror" },
+    { category: "App Navigation", name: "Store Directory & Maps", url: "https://tyresathi-93306.web.app/store-location", status: "Live Production", desc: "Verified tyre stores, puncture hubs & GPS navigation" },
+    { category: "App Navigation", name: "Tyre Catalog & Search", url: "https://tyresathi-93306.web.app/search", status: "Live Production", desc: "Car, Bike, Truck, Tractor tyre catalogue search" },
+    { category: "App Navigation", name: "Service Bookings", url: "https://tyresathi-93306.web.app/bookings", status: "Live Production", desc: "Tyre fitting, alignment & puncture appointment bookings" },
+    { category: "App Navigation", name: "GST & Digital Invoicing", url: "https://tyresathi-93306.web.app/billing", status: "Live Production", desc: "Tax invoices, instant PDF generation & WhatsApp bill sharing" },
+    { category: "App Navigation", name: "Shop Analytics & Insights", url: "https://tyresathi-93306.web.app/analytics", status: "Live Production", desc: "Live shop performance, store views & customer booking graphs" },
+    { category: "App Navigation", name: "Membership & Pricing Plans", url: "https://tyresathi-93306.web.app/subscription", status: "Live Production", desc: "Free trial, Silver partner & Gold dealer subscriptions" },
+    { category: "Master Control", name: "Master Admin Portal", url: "https://tyresathi-93306.web.app/admin", status: "Protected (Admin)", desc: "Super admin management dashboard (tyresathi@gmail.com only)" }
   ];
 
   const headers = {
     category: "Category / Area",
-    name: "Service / Page Name",
+    name: "Service / Field Name",
     url: "Official URL / Link",
     status: "Status",
-    desc: "Purpose & Description"
+    desc: "Purpose & Indus Appstore Requirement"
   };
 
   exportToCSV(masterLinksData, `TyreSaathi_Master_Links_and_Portals_${new Date().toISOString().split("T")[0]}.csv`, headers);
