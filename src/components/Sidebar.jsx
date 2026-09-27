@@ -106,7 +106,7 @@ export default function Sidebar({ open, onClose }) {
           {/* 1. MANAGE BUSINESS (Shop Owners & Admin Only) */}
           {(isVendor || isAdmin) && (
             <>
-              <div className="nav-section-label" style={{ marginTop: "12px" }}>MANAGE BUSINESS</div>
+              <div className="nav-section-label" style={{ marginTop: "6px" }}>MANAGE BUSINESS</div>
               {BUSINESS_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
                 <NavLink
                   key={to}
@@ -127,7 +127,7 @@ export default function Sidebar({ open, onClose }) {
           {/* 2. GROWTH & INSIGHTS (Shop Owners & Admin Only) */}
           {(isVendor || isAdmin) && (
             <>
-              <div className="nav-section-label" style={{ marginTop: "14px" }}>GROWTH & INSIGHTS</div>
+              <div className="nav-section-label" style={{ marginTop: "8px" }}>GROWTH & INSIGHTS</div>
               {GROWTH_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
                 <NavLink
                   key={to}
@@ -146,7 +146,7 @@ export default function Sidebar({ open, onClose }) {
           )}
 
           {/* 3. CUSTOMER SERVICES */}
-          <div className="nav-section-label" style={{ marginTop: "14px" }}>
+          <div className="nav-section-label" style={{ marginTop: "6px" }}>
             {isVendor || isAdmin ? "CUSTOMER SERVICES" : "SERVICES & DIRECTORY"}
           </div>
           {SERVICE_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
@@ -165,7 +165,7 @@ export default function Sidebar({ open, onClose }) {
           ))}
 
           {/* 4. ACCOUNT & SUPPORT */}
-          <div className="nav-section-label" style={{ marginTop: "14px" }}>ACCOUNT & SUPPORT</div>
+          <div className="nav-section-label" style={{ marginTop: "8px" }}>ACCOUNT & SUPPORT</div>
           {ACCOUNT_NAV_ITEMS.map(({ to, label, icon: Icon, color, bg }) => (
             <NavLink
               key={to}
@@ -217,7 +217,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="sidebar-footer">
           <span className="footer-small-brand">TyreSaathi Hub</span>
           <span className="sidebar-version-pill">
-            <span className="version-status-dot" /> v1.2.3
+            <span className="version-status-dot" /> v1.2.4
           </span>
         </div>
       </aside>
@@ -396,32 +396,32 @@ export default function Sidebar({ open, onClose }) {
 
         .sidebar-nav { 
           flex: 1; 
-          padding: 10px 12px; 
+          padding: 6px 10px; 
           display: flex; 
           flex-direction: column; 
-          gap: 4px;
+          gap: 2px;
           overflow-y: auto;
         }
 
         .nav-section-label {
-          font-size: 0.76rem;
+          font-size: 0.72rem;
           font-weight: 800;
           color: #64748b;
           text-transform: uppercase;
           letter-spacing: 0.8px;
-          padding: 10px 10px 4px;
+          padding: 6px 8px 2px;
         }
 
         .sidebar-link-modern {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 9px 12px;
-          border-radius: 12px;
+          gap: 10px;
+          padding: 7px 10px;
+          border-radius: 10px;
           color: #334155;
           text-decoration: none;
           font-weight: 700;
-          font-size: 0.92rem;
+          font-size: 0.88rem;
           transition: all 0.15s ease;
           border: none;
           background: transparent;
@@ -434,9 +434,9 @@ export default function Sidebar({ open, onClose }) {
           color: #0f172a;
         }
         .nav-icon-badge {
-          width: 32px;
-          height: 32px;
-          border-radius: 10px;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -457,7 +457,7 @@ export default function Sidebar({ open, onClose }) {
           color: #0f172a;
         }
         .btn-sidebar-logout {
-          margin-top: 12px;
+          margin-top: 4px;
         }
         .btn-sidebar-logout:hover {
           background: #fff1f2;

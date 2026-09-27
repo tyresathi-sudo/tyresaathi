@@ -24,7 +24,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdCarouselSlider({ initialAds, onAdAdded }) {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [ads, setAds] = useState(Array.isArray(initialAds) ? initialAds : []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -194,15 +194,17 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
           </h2>
         </div>
 
-        <div className="header-right-actions">
-          <button
-            type="button"
-            className="btn-add-ad-top"
-            onClick={() => setModalOpen(true)}
-          >
-            <Plus size={15} /> + Add Your Shop Offer (ऐड लगाएं)
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="header-right-actions">
+            <button
+              type="button"
+              className="btn-add-ad-top"
+              onClick={() => setModalOpen(true)}
+            >
+              <Plus size={15} /> + Add Your Shop Offer (ऐड लगाएं)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main Sliding Banner Frame */}
@@ -330,8 +332,8 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
         )}
       </div>
 
-      {/* 🌟 Add New Offer Modal */}
-      {modalOpen && (
+      {/* 🌟 Add New Offer Modal (Admin Only) */}
+      {isAdmin && modalOpen && (
         <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
