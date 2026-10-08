@@ -244,12 +244,44 @@ export function resolveShopCoordinates(shop) {
 }
 
 /**
+ * Verify if coordinates are legitimately within Indian geographical boundaries
+ * Latitude: 6.0° N to 38.5° N
+ * Longitude: 67.0° E to 98.5° E
+ */
+export function isWithinIndia(lat, lng) {
+  if (lat === null || lat === undefined || lng === null || lng === undefined) return false;
+  const nLat = Number(lat);
+  const nLng = Number(lng);
+  if (isNaN(nLat) || isNaN(nLng)) return false;
+  return nLat >= 6.0 && nLat <= 38.5 && nLng >= 67.0 && nLng <= 98.5;
+}
+
+/**
+ * Resolve coordinate object by Indian City/Town name
+ */
+export function resolveCoordsByCityName(cityName) {
+  if (!cityName) return DEFAULT_COORDS;
+  const key = String(cityName).toLowerCase().trim();
+  if (INDIAN_CITIES_COORDS[key]) {
+    const c = INDIAN_CITIES_COORDS[key];
+    return {
+      lat: c.lat,
+      lng: c.lng,
+      city: cityName.charAt(0).toUpperCase() + cityName.slice(1),
+      region: c.state,
+      country: "India",
+      source: "manual_city"
+    };
+  }
+  return DEFAULT_COORDS;
+}
+
+/**
  * Multi-layer Live Location Detection:
- * 1. HTML5 Geolocation (High accuracy GPS / Wi-Fi)
- * 2. ipwho.is IP Geolocation
- * 3. ipapi.co IP Geolocation
- * 4. freeipapi.com fallback
- * 5. Cached location from localStorage
+ * 1. HTML5 Geolocation (Verified inside India)
+ * 2. IP-based Geolocation (ipwho.is, ipapi.co, freeipapi.com for real Indian ISP location)
+ * 3. Cached Indian location from localStorage
+ * 4. Default Indian coordinates
  */
 export async function getLiveUserLocation() {
   // Step A: Try HTML5 Browser Geolocation first
@@ -281,8 +313,8 @@ export async function getLiveUserLocation() {
     );
   });
 
-  if (gpsLocation) {
-    // Attempt reverse geocode to get city name
+  // Check if GPS location is valid AND within India (filters out Android Studio Emulator default USA coordinates)
+  if (gpsLocation && isWithinIndia(gpsLocation.lat, gpsLocation.lng)) {
     try {
       const revRes = await fetch(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${gpsLocation.lat}&longitude=${gpsLocation.lng}&localityLanguage=en`
@@ -304,25 +336,32 @@ export async function getLiveUserLocation() {
     return gpsLocation;
   }
 
-  // Step B: Try ipwho.is (Reliable HTTPS API with generous free tier)
+  // If GPS is outside India (e.g. Android Emulator US coordinates: 37.42, -122.08), log and use real Indian IP
+  if (gpsLocation && !isWithinIndia(gpsLocation.lat, gpsLocation.lng)) {
+    console.info("GPS returned simulated foreign coordinates (Android Emulator US default). Falling back to real Indian IP Geolocation...");
+  }
+
+  // Step B: Try ipwho.is (Reliable HTTPS API with real ISP location)
   try {
     const ipRes = await fetch("https://ipwho.is/");
     if (ipRes.ok) {
       const ipData = await ipRes.json();
       if (ipData && ipData.success && ipData.latitude && ipData.longitude) {
-        const ipLocation = {
-          lat: Number(ipData.latitude),
-          lng: Number(ipData.longitude),
-          city: ipData.city || "",
-          region: ipData.region || "",
-          country: ipData.country || "India",
-          source: "ip_ipwhois",
-          timestamp: Date.now()
-        };
-        try {
-          localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(ipLocation));
-        } catch (e) {}
-        return ipLocation;
+        if (isWithinIndia(ipData.latitude, ipData.longitude)) {
+          const ipLocation = {
+            lat: Number(ipData.latitude),
+            lng: Number(ipData.longitude),
+            city: ipData.city || "",
+            region: ipData.region || "",
+            country: ipData.country || "India",
+            source: "ip_ipwhois",
+            timestamp: Date.now()
+          };
+          try {
+            localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(ipLocation));
+          } catch (e) {}
+          return ipLocation;
+        }
       }
     }
   } catch (e) {
@@ -335,19 +374,21 @@ export async function getLiveUserLocation() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.latitude && data.longitude) {
-        const loc = {
-          lat: Number(data.latitude),
-          lng: Number(data.longitude),
-          city: data.city || "",
-          region: data.region || "",
-          country: data.country_name || "India",
-          source: "ip_ipapi",
-          timestamp: Date.now()
-        };
-        try {
-          localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(loc));
-        } catch (e) {}
-        return loc;
+        if (isWithinIndia(data.latitude, data.longitude)) {
+          const loc = {
+            lat: Number(data.latitude),
+            lng: Number(data.longitude),
+            city: data.city || "",
+            region: data.region || "",
+            country: data.country_name || "India",
+            source: "ip_ipapi",
+            timestamp: Date.now()
+          };
+          try {
+            localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(loc));
+          } catch (e) {}
+          return loc;
+        }
       }
     }
   } catch (e) {
@@ -360,36 +401,38 @@ export async function getLiveUserLocation() {
     if (res.ok) {
       const data = await res.json();
       if (data && data.latitude && data.longitude) {
-        const loc = {
-          lat: Number(data.latitude),
-          lng: Number(data.longitude),
-          city: data.cityName || "",
-          region: data.regionName || "",
-          country: data.countryName || "India",
-          source: "ip_freeipapi",
-          timestamp: Date.now()
-        };
-        try {
-          localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(loc));
-        } catch (e) {}
-        return loc;
+        if (isWithinIndia(data.latitude, data.longitude)) {
+          const loc = {
+            lat: Number(data.latitude),
+            lng: Number(data.longitude),
+            city: data.cityName || "",
+            region: data.regionName || "",
+            country: data.countryName || "India",
+            source: "ip_freeipapi",
+            timestamp: Date.now()
+          };
+          try {
+            localStorage.setItem("tyresaathi_last_known_location", JSON.stringify(loc));
+          } catch (e) {}
+          return loc;
+        }
       }
     }
   } catch (e) {
     console.warn("freeipapi notice:", e.message);
   }
 
-  // Step E: Check cached localStorage
+  // Step E: Check cached localStorage (verify within India)
   try {
     const cached = localStorage.getItem("tyresaathi_last_known_location");
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed && parsed.lat && parsed.lng) {
+      if (parsed && parsed.lat && parsed.lng && isWithinIndia(parsed.lat, parsed.lng)) {
         return parsed;
       }
     }
   } catch (e) {}
 
-  // Step F: Default fallback
+  // Step F: Default Indian fallback (Raipur, India)
   return DEFAULT_COORDS;
 }

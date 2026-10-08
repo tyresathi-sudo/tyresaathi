@@ -67,26 +67,58 @@ export async function sendInAppNotification({
 }
 
 /**
- * Real-time listener for current user's notifications
+ * Real-time listener for current user's notifications (Strict Privacy & Target Filter)
  */
-export function listenUserNotifications(userId, userRole, onUpdate) {
+export function listenUserNotifications(userId, userRole, onUpdate, profile = null) {
   try {
     const notifRef = collection(db, "notifications");
     
-    // Listen to recent notifications (limit 30)
+    // Listen to recent notifications (limit 40)
     const q = query(notifRef, limit(40));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
+          const userShopName = (profile?.shopName || "").toLowerCase().trim();
+          const userPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
+          const isAdmin = userRole === "admin";
+
           const list = snapshot.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((n) => {
-              // Match user id, 'all', or matching role
-              if (n.recipientId === "all") return true;
-              if (userId && (n.recipientId === userId || n.data?.shopId === userId || n.data?.customerId === userId)) return true;
-              if (userRole && n.recipientRole === userRole) return true;
+              // 1. Master Admin sees everything
+              if (isAdmin) return true;
+
+              // 2. Broadcast alerts for all
+              if (n.recipientId === "all" && (n.recipientRole === "all" || n.recipientRole === userRole)) {
+                return true;
+              }
+
+              // 3. Specific targeted notifications
+              const notifShopId = n.data?.shopId || n.recipientId;
+              const notifShopName = (n.data?.shopName || "").toLowerCase().trim();
+              const notifShopPhone = (n.data?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
+              const notifCustId = n.data?.customerId || n.recipientId;
+              const notifCustPhone = (n.data?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+
+              // Shop Owner matches
+              if (userRole === "vendor" || userRole === "shop_owner" || profile?.shopName) {
+                const isForMyShop = 
+                  (userId && notifShopId === userId) ||
+                  (userShopName && notifShopName && (notifShopName === userShopName || notifShopName.includes(userShopName) || userShopName.includes(notifShopName))) ||
+                  (userPhone && notifShopPhone && userPhone === notifShopPhone);
+
+                if (isForMyShop) return true;
+              }
+
+              // Customer matches
+              const isForMeAsCustomer = 
+                (userId && notifCustId === userId) ||
+                (userPhone && notifCustPhone && userPhone === notifCustPhone);
+
+              if (isForMeAsCustomer) return true;
+
               return false;
             });
 

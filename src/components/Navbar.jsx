@@ -376,7 +376,7 @@ export default function Navbar({ onMenuClick }) {
         .main-site-header {
           position: sticky;
           top: 0;
-          z-index: 50;
+          z-index: 1000;
           box-shadow: 0 2px 10px rgba(0,0,0,0.06);
           background: var(--surface);
           padding-top: env(safe-area-inset-top, 0px);

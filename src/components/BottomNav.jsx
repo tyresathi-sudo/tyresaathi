@@ -1,31 +1,19 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Home, Search, Store, Receipt, Calendar, User } from "lucide-react";
-import { useAuth } from "../context/AuthContext.jsx";
+import { Home, Search, Store, Calendar, Menu } from "lucide-react";
 import { triggerHaptic } from "../utils/nativeBridge.js";
 
-export default function BottomNav() {
-  const { isVendor, isAdmin } = useAuth();
-
-  const navItems = isVendor || isAdmin
-    ? [
-        { to: "/", label: "Home", icon: Home, end: true },
-        { to: "/search", label: "Search", icon: Search },
-        { to: "/store-location", label: "Stores", icon: Store },
-        { to: "/billing", label: "Invoices", icon: Receipt },
-        { to: "/bookings", label: "Bookings", icon: Calendar },
-      ]
-    : [
-        { to: "/", label: "Home", icon: Home, end: true },
-        { to: "/search", label: "Search", icon: Search },
-        { to: "/store-location", label: "Stores", icon: Store },
-        { to: "/bookings", label: "Bookings", icon: Calendar },
-        { to: "/profile", label: "Profile", icon: User },
-      ];
+export default function BottomNav({ onMenuClick }) {
+  const navLinks = [
+    { to: "/", label: "Home", icon: Home, end: true },
+    { to: "/search", label: "Search", icon: Search },
+    { to: "/store-location", label: "Stores", icon: Store },
+    { to: "/bookings", label: "Bookings", icon: Calendar },
+  ];
 
   return (
     <nav className="bottom-nav">
-      {navItems.map((item, idx) => {
+      {navLinks.map((item, idx) => {
         const { to, label, icon: Icon, end } = item;
 
         return (
@@ -43,6 +31,22 @@ export default function BottomNav() {
           </NavLink>
         );
       })}
+
+      {/* ☰ Menu Trigger Button */}
+      <button
+        type="button"
+        onClick={() => {
+          triggerHaptic("medium");
+          if (onMenuClick) onMenuClick();
+        }}
+        className="bottom-nav-btn"
+        aria-label="Open Navigation Menu"
+      >
+        <div className="icon-wrapper">
+          <Menu size={18} />
+        </div>
+        <span className="btn-label">Menu</span>
+      </button>
 
       <style>{`
         .bottom-nav {

@@ -28,10 +28,13 @@ import { INITIAL_SHOP_ADS } from "../config/shopAdsData";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import AdCarouselSlider from "../components/AdCarouselSlider";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Home() {
+  const { isVendor, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchSize, setSearchSize] = useState("");
+  const [selectedVehicleType, setSelectedVehicleType] = useState("Car");
   const [searchBrand, setSearchBrand] = useState("all");
   const [shopAds, setShopAds] = useState(() => {
     try {
@@ -119,6 +122,7 @@ export default function Home() {
     e.preventDefault();
     let url = "/search?";
     if (searchSize.trim()) url += `q=${encodeURIComponent(searchSize.trim())}&`;
+    if (selectedVehicleType) url += `vehicle=${encodeURIComponent(selectedVehicleType)}&`;
     if (searchBrand !== "all") url += `brand=${encodeURIComponent(searchBrand)}&`;
     navigate(url);
   };
@@ -136,36 +140,62 @@ export default function Home() {
       {/* 🌟 1. Hero Section with Tyre Finder */}
       <section className="hero-banner-section">
         <div className="hero-content">
+          {/* Quick Dashboard Widget for Logged-in Shop Owner */}
+          {isVendor && (
+            <div className="quick-dash-widget-box">
+              <span className="quick-dash-title-tooltip">Quick Dashboard Widget</span>
+              <div className="quick-dash-content-pill">
+                <span className="live-pulse-green" />
+                <span>Today: <strong>3 Bookings</strong> | <strong>₹4500</strong></span>
+              </div>
+            </div>
+          )}
+
           <span className="hero-badge">⚡ India's #1 Tyre & Auto Service Network</span>
           <h1 className="hero-heading">
             Find the Perfect Tyre for Your <span className="highlight-text">Car & Bike</span>
           </h1>
           <p className="hero-description">
-            Compare prices across nearest authorized tyre shops, get genuine brand warranty, and book 15-minute doorstep puncture repair or instant tyre fitment.
+            Compare prices, verify warranty, and book instant fitment at verified local shops.
           </p>
 
           {/* Quick Search Widget */}
           <form className="hero-search-card" onSubmit={handleHeroSearch}>
             <div className="search-field-unit">
-              <label>Tyre Size / Vehicle</label>
+              <label>TYRE SIZE / VEHICLE</label>
               <input
                 type="text"
-                placeholder="e.g. 185/65 R15, Swift, Activa..."
+                placeholder="e.g. 195/55 R16, SUV, KA 01 0622"
                 value={searchSize}
                 onChange={(e) => setSearchSize(e.target.value)}
               />
             </div>
 
             <div className="search-field-unit">
-              <label>Brand</label>
-              <select value={searchBrand} onChange={(e) => setSearchBrand(e.target.value)}>
-                <option value="all">All Brands</option>
-                {MEGA_MENU_BRANDS.slice(0, 15).map((b, i) => (
-                  <option key={i} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+              <label>BRAND / VEHICLE TYPE</label>
+              <div className="vehicle-pills-selector">
+                <button
+                  type="button"
+                  className={`veh-type-pill ${selectedVehicleType === "Car" ? "veh-type-pill-active" : ""}`}
+                  onClick={() => setSelectedVehicleType("Car")}
+                >
+                  🚗 Car
+                </button>
+                <button
+                  type="button"
+                  className={`veh-type-pill ${selectedVehicleType === "Bike" ? "veh-type-pill-active" : ""}`}
+                  onClick={() => setSelectedVehicleType("Bike")}
+                >
+                  🏍️ Bike
+                </button>
+                <button
+                  type="button"
+                  className={`veh-type-pill ${selectedVehicleType === "Commercial" ? "veh-type-pill-active" : ""}`}
+                  onClick={() => setSelectedVehicleType("Commercial")}
+                >
+                  🚚 Commercial
+                </button>
+              </div>
             </div>
 
             <button type="submit" className="hero-search-btn">
@@ -383,15 +413,52 @@ export default function Home() {
           .hero-banner-section {
             padding: 36px 28px;
             border-radius: 16px;
-            margin-top: 10px;
           }
         }
-        .hero-content {
-          max-width: 860px;
+
+        /* Quick Dashboard Widget for Logged-in Shop Owner */
+        .quick-dash-widget-box {
+          display: inline-flex;
+          flex-direction: column;
+          align-items: center;
+          margin-bottom: 12px;
+          position: relative;
         }
+        .quick-dash-title-tooltip {
+          background: rgba(255, 255, 255, 0.95);
+          color: #0f172a;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 4px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          margin-bottom: 3px;
+        }
+        .quick-dash-content-pill {
+          background: rgba(15, 23, 42, 0.85);
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          backdrop-filter: blur(8px);
+          color: #f8fafc;
+          font-size: 11.5px;
+          padding: 4px 12px;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .live-pulse-green {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #22c55e;
+          box-shadow: 0 0 8px #22c55e;
+          display: inline-block;
+        }
+
         .hero-badge {
           display: inline-block;
-          background: rgba(255, 107, 53, 0.2);
+          background: rgba(255, 107, 53, 0.15);
           border: 1px solid #ff6b35;
           color: #ff6b35;
           font-size: 0.82rem;
@@ -461,6 +528,38 @@ export default function Home() {
           color: #1e293b;
           background: white;
           font-weight: 500;
+        }
+        .vehicle-pills-selector {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .veh-type-pill {
+          flex: 1;
+          background: #f1f5f9;
+          border: 1.5px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 9px 10px;
+          font-size: 0.84rem;
+          font-weight: 700;
+          color: #334155;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+        .veh-type-pill:hover {
+          border-color: #c0392b;
+          background: #fff;
+        }
+        .veh-type-pill-active {
+          background: #c0392b !important;
+          border-color: #c0392b !important;
+          color: #ffffff !important;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
         }
         .hero-search-btn {
           background: #c0392b;
@@ -552,7 +651,7 @@ export default function Home() {
         .categories-card-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
+          gap: 8px;
         }
         @media (min-width: 640px) {
           .categories-card-grid {
@@ -563,48 +662,76 @@ export default function Home() {
         .cat-box-card {
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 16px;
-          padding: 22px 24px;
+          border-radius: 12px;
+          padding: 12px 10px;
           text-decoration: none;
           color: var(--text);
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 4px;
           transition: all 0.2s ease;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.03);
-          min-height: 140px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          min-height: 98px;
           justify-content: space-between;
+        }
+        @media (min-width: 640px) {
+          .cat-box-card {
+            border-radius: 16px;
+            padding: 22px 24px;
+            gap: 8px;
+            min-height: 140px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+          }
         }
         .cat-box-card:hover {
           border-color: #c0392b;
-          transform: translateY(-4px);
-          box-shadow: 0 10px 28px rgba(0,0,0,0.09);
+          transform: translateY(-3px);
+          box-shadow: 0 8px 22px rgba(0,0,0,0.08);
         }
         .cat-box-emoji {
-          font-size: 42px;
+          font-size: 26px;
           line-height: 1;
         }
+        @media (min-width: 640px) {
+          .cat-box-emoji {
+            font-size: 42px;
+          }
+        }
         .cat-box-name {
-          font-size: 17.5px;
+          font-size: 13px;
           font-weight: 800;
-          margin: 2px 0 0;
-          line-height: 1.3;
+          margin: 1px 0 0;
+          line-height: 1.25;
+        }
+        @media (min-width: 640px) {
+          .cat-box-name {
+            font-size: 17.5px;
+            margin: 2px 0 0;
+            line-height: 1.3;
+          }
         }
         .cat-browse-link {
-          font-size: 14px;
+          font-size: 11.5px;
           color: #c0392b;
           font-weight: 800;
           display: flex;
           align-items: center;
-          gap: 4px;
-          margin-top: 4px;
+          gap: 3px;
+          margin-top: 1px;
+        }
+        @media (min-width: 640px) {
+          .cat-browse-link {
+            font-size: 14px;
+            gap: 4px;
+            margin-top: 4px;
+          }
         }
 
         /* Brands Logo Row */
         .brands-logo-row {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
+          gap: 8px;
         }
         @media (min-width: 640px) {
           .brands-logo-row {
@@ -615,31 +742,49 @@ export default function Home() {
         .brand-pill-box {
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 14px;
-          padding: 18px 22px;
+          border-radius: 10px;
+          padding: 10px 12px;
           text-decoration: none;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 2px;
           transition: all 0.2s ease;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.03);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+        @media (min-width: 640px) {
+          .brand-pill-box {
+            border-radius: 14px;
+            padding: 18px 22px;
+            gap: 4px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.03);
+          }
         }
         .brand-pill-box:hover {
           border-color: #c0392b;
           background: var(--surface-2);
-          transform: translateY(-3px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.07);
         }
         .brand-name-bold {
-          font-size: 18px;
+          font-size: 13.5px;
           font-weight: 800;
           color: var(--text);
           line-height: 1.2;
         }
+        @media (min-width: 640px) {
+          .brand-name-bold {
+            font-size: 18px;
+          }
+        }
         .brand-count-sub {
-          font-size: 13.5px;
+          font-size: 11px;
           color: var(--text-muted);
           font-weight: 600;
+        }
+        @media (min-width: 640px) {
+          .brand-count-sub {
+            font-size: 13.5px;
+          }
         }
 
         /* Products Grid */

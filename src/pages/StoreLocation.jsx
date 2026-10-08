@@ -38,6 +38,8 @@ import {
   calculateDistanceKm, 
   formatDistanceString, 
   resolveShopCoordinates, 
+  resolveCoordsByCityName,
+  isWithinIndia,
   INDIAN_CITIES_COORDS, 
   DEFAULT_COORDS 
 } from "../utils/geoService";
@@ -819,7 +821,18 @@ export default function StoreLocation() {
               <button
                 key={city}
                 className={`city-pill ${filterCity === city ? "city-pill-active" : ""}`}
-                onClick={() => setFilterCity(city)}
+                onClick={() => {
+                  setFilterCity(city);
+                  if (city !== "all") {
+                    const coords = resolveCoordsByCityName(city);
+                    if (coords) {
+                      setUserLocation(coords);
+                      setLocationStatus("success");
+                    }
+                  } else {
+                    handleDetectLiveLocation();
+                  }
+                }}
               >
                 {city === "all" ? "All Locations" : city}
               </button>

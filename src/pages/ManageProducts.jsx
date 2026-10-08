@@ -1453,11 +1453,118 @@ export default function ManageProducts() {
 
         @media (max-width: 768px) {
           .manage-header-card {
-            padding: 20px;
+            padding: 14px 16px;
+            gap: 12px;
+            margin-bottom: 14px;
+            border-radius: 14px;
           }
-          .header-title { font-size: 20px; }
-          .header-actions { width: 100%; justify-content: space-between; }
-          .inventory-cards-grid { grid-template-columns: 1fr; }
+          .badge-pill {
+            font-size: 10.5px;
+            padding: 3px 8px;
+            margin-bottom: 6px;
+          }
+          .header-title {
+            font-size: 17px;
+            margin-bottom: 4px;
+            line-height: 1.3;
+          }
+          .header-desc {
+            font-size: 11.5px;
+            line-height: 1.4;
+          }
+          .header-actions {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+          }
+          .refresh-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+          }
+          .add-new-btn {
+            padding: 8px 14px;
+            font-size: 12px;
+            border-radius: 8px;
+            flex: 1;
+            justify-content: center;
+          }
+
+          /* 📊 2x2 Compact Grid for Mobile Stats instead of 4 giant full-width cards */
+          .stats-overview-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+          }
+          .stat-card {
+            padding: 10px 10px;
+            gap: 10px;
+            border-radius: 10px;
+          }
+          .stat-icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+          }
+          .stat-icon-wrap svg {
+            width: 18px;
+            height: 18px;
+          }
+          .stat-number {
+            font-size: 17px;
+          }
+          .stat-label {
+            font-size: 10.5px;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          /* 🔍 Search & Filters Bar Compact on Mobile */
+          .filter-controls-card {
+            padding: 12px;
+            gap: 10px;
+            margin-bottom: 14px;
+          }
+          .search-input-box {
+            min-width: 100%;
+          }
+          .filter-search-field {
+            font-size: 12.5px;
+            padding: 8px 32px 8px 36px;
+          }
+          .filter-tabs-row {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .filter-group {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+          }
+          .filter-label {
+            font-size: 11px;
+          }
+          .filter-select {
+            width: 100%;
+            padding: 7px 8px;
+            font-size: 11.5px;
+          }
+
+          /* Products List on Mobile */
+          .inventory-cards-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .inventory-product-card {
+            padding: 14px;
+            border-radius: 12px;
+            gap: 12px;
+          }
         }
       `}</style>
     </div>

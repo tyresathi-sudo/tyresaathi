@@ -35,29 +35,34 @@ export default function NotificationBell() {
   const userRole = profile?.role || (profile?.shopName ? "shop_owner" : "customer");
 
   useEffect(() => {
-    const unsubscribe = listenUserNotifications(userId, userRole, (list) => {
-      setNotifications(list);
+    const unsubscribe = listenUserNotifications(
+      userId, 
+      userRole, 
+      (list) => {
+        setNotifications(list);
 
-      // Check if a new unread notification arrived in real-time
-      const unreadList = list.filter((n) => !n.read);
-      if (unreadList.length > prevCountRef.current && unreadList[0]) {
-        const newest = unreadList[0];
-        // 🔔 Play notification sound & trigger vibration
-        playNotificationSound();
-        triggerNotificationVibration("medium");
+        // Check if a new unread notification arrived in real-time
+        const unreadList = list.filter((n) => !n.read);
+        if (unreadList.length > prevCountRef.current && unreadList[0]) {
+          const newest = unreadList[0];
+          // 🔔 Play notification sound & trigger vibration
+          playNotificationSound();
+          triggerNotificationVibration("medium");
 
-        // Show in-app live toast
-        setLatestToast(newest);
-        const timer = setTimeout(() => {
-          setLatestToast(null);
-        }, 5000);
-        return () => clearTimeout(timer);
-      }
-      prevCountRef.current = unreadList.length;
-    });
+          // Show in-app live toast
+          setLatestToast(newest);
+          const timer = setTimeout(() => {
+            setLatestToast(null);
+          }, 5000);
+          return () => clearTimeout(timer);
+        }
+        prevCountRef.current = unreadList.length;
+      },
+      profile
+    );
 
     return () => unsubscribe();
-  }, [userId, userRole]);
+  }, [userId, userRole, profile]);
 
   // Close dropdown on outside click
   useEffect(() => {

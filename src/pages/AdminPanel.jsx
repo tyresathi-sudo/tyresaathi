@@ -2826,6 +2826,9 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                   </div>
                 </div>
 
+                <div className="table-scroll-hint">
+                  <span>👉 Swipe horizontally to view full stats & actions (बाएं-दाएं स्क्रॉल करें)</span>
+                </div>
                 <div className="table-responsive">
                   <table className="admin-table traffic-table">
                     <thead>
@@ -3157,6 +3160,9 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                   </div>
                 </div>
 
+                <div className="table-scroll-hint">
+                  <span>👉 Swipe horizontally to view full customer history & actions (बाएं-दाएं स्क्रॉल करें)</span>
+                </div>
                 <div className="table-responsive">
                   <table className="admin-table traffic-table">
                     <thead>
@@ -7915,13 +7921,105 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         .dot-calls { background: #d97706; }
         .dot-bookings { background: #dc2626; }
 
-        /* Leaderboard Table */
+        /* Leaderboard Table & Responsive Containers */
         .traffic-leaderboard-card {
           background: var(--surface, #ffffff);
           border: 1px solid var(--border, #e2e8f0);
           border-radius: 16px;
           padding: 20px;
           box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+          overflow: hidden;
+        }
+
+        @media (max-width: 640px) {
+          .traffic-leaderboard-card {
+            padding: 14px 12px;
+            border-radius: 12px;
+          }
+        }
+
+        .table-scroll-hint {
+          display: none;
+          align-items: center;
+          gap: 6px;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #d35400;
+          background: rgba(230, 126, 34, 0.08);
+          border: 1px solid rgba(230, 126, 34, 0.2);
+          border-radius: 8px;
+          padding: 6px 10px;
+          margin-bottom: 12px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 850px) {
+          .table-scroll-hint {
+            display: flex;
+          }
+        }
+
+        .table-responsive {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          display: block;
+          box-sizing: border-box;
+          margin-bottom: 8px;
+          border-radius: 8px;
+          border: 1px solid var(--border, #e2e8f0);
+        }
+
+        .table-responsive::-webkit-scrollbar {
+          height: 6px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+          background: var(--bg, #f1f5f9);
+          border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+
+        .admin-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.82rem;
+          margin: 0;
+          box-sizing: border-box;
+        }
+
+        .traffic-table {
+          min-width: 760px;
+          width: 100%;
+        }
+
+        .traffic-table th,
+        .traffic-table td {
+          padding: 10px 12px;
+          text-align: left;
+          border-bottom: 1px solid var(--border, #e2e8f0);
+          vertical-align: middle;
+          white-space: nowrap;
+          box-sizing: border-box;
+        }
+
+        .traffic-table th {
+          background: var(--surface-2, #f8fafc);
+          color: var(--text-muted, #64748b);
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          position: sticky;
+          top: 0;
+          z-index: 1;
         }
 
         .leaderboard-header {
@@ -7930,7 +8028,9 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           justify-content: space-between;
           flex-wrap: wrap;
           gap: 12px;
-          margin-bottom: 16px;
+          margin-bottom: 14px;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .leaderboard-title {
@@ -7950,6 +8050,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           position: relative;
           display: flex;
           align-items: center;
+          max-width: 100%;
         }
         .leaderboard-search-box svg {
           position: absolute;
@@ -7964,12 +8065,14 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           color: var(--text, #0f172a);
           font-size: 12.5px;
           outline: none;
+          max-width: 100%;
+          box-sizing: border-box;
         }
-
-        .traffic-table th {
-          font-size: 11.5px;
-          text-transform: uppercase;
-          letter-spacing: 0.4px;
+        @media (max-width: 640px) {
+          .leaderboard-search-box,
+          .leaderboard-search-box input {
+            width: 100%;
+          }
         }
 
         .leaderboard-row-top {

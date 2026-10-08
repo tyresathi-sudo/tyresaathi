@@ -57,12 +57,15 @@ export default function Bookings() {
 
     const myUid = user?.uid;
     const myShopName = (profile?.shopName || "").toLowerCase().trim();
+    const myPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
     const bShopId = b?.shopId;
     const bShopName = (b?.shopName || "").toLowerCase().trim();
+    const bShopPhone = (b?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
 
     return (
-      (bShopId && bShopId === myUid) ||
-      (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)))
+      (bShopId && myUid && bShopId === myUid) ||
+      (myShopName && bShopName && (bShopName === myShopName || bShopName.includes(myShopName) || myShopName.includes(bShopName))) ||
+      (myPhone && bShopPhone && myPhone === bShopPhone)
     );
   };
 
@@ -327,23 +330,31 @@ export default function Bookings() {
   };
 
   // Filter bookings based on role:
-  // - Admin: All bookings
-  // - Shop Owner: Bookings for their shop + their own bookings
-  // - Customer: Only their own bookings
+  // - Admin: Master view (all bookings)
+  // - Shop Owner: STRICTLY bookings for their own registered shop
+  // - Customer: STRICTLY their own bookings
   const visibleBookings = bookings.filter((b) => {
     if (isAdmin) return true;
     if (isVendor || isShopOwner) {
       const myUid = user?.uid;
       const myShopName = (profile?.shopName || "").toLowerCase().trim();
+      const myPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
       const bShopId = b?.shopId;
       const bShopName = (b?.shopName || "").toLowerCase().trim();
-      const isForMyShop = (bShopId && bShopId === myUid) ||
-        (myShopName && bShopName && (bShopName.includes(myShopName) || myShopName.includes(bShopName)));
+      const bShopPhone = (b?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
+
+      const isForMyShop = 
+        (bShopId && myUid && bShopId === myUid) ||
+        (myShopName && bShopName && (bShopName === myShopName || bShopName.includes(myShopName) || myShopName.includes(bShopName))) ||
+        (myPhone && bShopPhone && myPhone === bShopPhone);
+
       const isMyCustomerBooking = b.customerId === user?.uid || b.customerEmail === user?.email;
       return isForMyShop || isMyCustomerBooking;
     }
     // Regular customer
-    return b.customerId === user?.uid || b.customerEmail === user?.email || (profile?.phone && b.customerPhone === profile?.phone);
+    const myPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
+    const bCustPhone = (b?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+    return b.customerId === user?.uid || b.customerEmail === user?.email || (myPhone && bCustPhone && myPhone === bCustPhone);
   });
 
   const filteredBookings = visibleBookings.filter((b) => {
@@ -365,12 +376,12 @@ export default function Bookings() {
     <div className="bookings-page-container">
       {/* 📅 Top Page Header */}
       <div className="bookings-header-row">
-        <div>
+        <div className="bookings-header-text">
           <h1 className="page-heading">
             {isVendor || isAdmin ? "📅 Customer Service Bookings" : "📅 My Service Appointments"}
           </h1>
           <p className="page-sub">
-            {isVendor || isAdmin ? "Manage, accept or complete appointment tickets" : "View and track your tyre service bookings"}
+            {isVendor || isAdmin ? "Manage, accept or complete appointment tickets" : "Track your tyre service appointments"}
           </p>
         </div>
 
@@ -379,36 +390,36 @@ export default function Bookings() {
             <>
               <Link
                 to="/analytics"
-                className="btn-header-insights"
-                title="View Business Insights & Views Analytics"
+                className="btn-header-action-compact btn-insights"
+                title="Shop Insights"
               >
-                <BarChart3 size={15} /> 📊 Shop Insights
+                <BarChart3 size={14} /> Insights
               </Link>
 
               <button
                 type="button"
-                className="btn-header-excel"
+                className="btn-header-action-compact btn-excel"
                 onClick={() => exportBookingsToExcel(filteredBookings)}
-                title="Download Bookings as Excel Sheet (.csv)"
+                title="Export Bookings to Excel (.csv)"
               >
-                <Download size={15} /> 📥 Export to Excel
+                <Download size={14} /> Excel
               </button>
             </>
           )}
 
           <button className="btn-header-new-booking" onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> Book New Service (नई बुकिंग)
+            <Plus size={15} /> New Booking (नई बुकिंग)
           </button>
         </div>
       </div>
 
-      {/* 🏷️ Filter Tabs (As in Image 2) */}
+      {/* 🏷️ Filter Tabs (Horizontal Scrollable Chips) */}
       <div className="booking-filter-tabs">
         <button
           className={`filter-tab ${activeTab === "all" ? "tab-active" : ""}`}
           onClick={() => setActiveTab("all")}
         >
-          All Bookings ({counts.all})
+          All ({counts.all})
         </button>
         <button
           className={`filter-tab ${activeTab === "pending" ? "tab-active tab-pending" : ""}`}
@@ -432,7 +443,7 @@ export default function Bookings() {
           className={`filter-tab ${activeTab === "completed" ? "tab-active tab-completed" : ""}`}
           onClick={() => setActiveTab("completed")}
         >
-          🎉 Completed ({counts.completed})
+          🎉 Done ({counts.completed})
         </button>
         <button
           className={`filter-tab ${activeTab === "rejected" ? "tab-active tab-rejected" : ""}`}
@@ -442,54 +453,54 @@ export default function Bookings() {
         </button>
       </div>
 
-      {/* 📋 Bookings List Grid */}
+      {/* 📋 Dynamic Responsive Bookings List Grid */}
       <div className="bookings-list-grid">
         {filteredBookings.length === 0 ? (
           <div className="no-bookings-card">
             <div style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "16px",
+              width: "52px",
+              height: "52px",
+              borderRadius: "14px",
               background: "#fef2f2",
               border: "1px solid #fee2e2",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#c0392b",
-              boxShadow: "0 4px 12px rgba(192, 57, 43, 0.1)"
+              boxShadow: "0 4px 12px rgba(192, 57, 43, 0.08)"
             }}>
-              <Calendar size={28} />
+              <Calendar size={26} />
             </div>
             <h3>No Bookings in this status</h3>
-            <p>Abhi is filter me koi booking nahi hai. Aap "Book New Service" button dabakar direct nayi booking bana sakte hain.</p>
+            <p>Abhi is filter me koi booking nahi hai. Aap "New Booking" button dabakar direct booking bana sakte hain.</p>
             <button
               className="btn-header-new-booking"
-              style={{ marginTop: "6px" }}
+              style={{ marginTop: "4px" }}
               onClick={() => setModalOpen(true)}
             >
-              <Plus size={15} /> Book New Service (नई बुकिंग)
+              <Plus size={15} /> New Booking (नई बुकिंग)
             </button>
           </div>
         ) : (
           filteredBookings.map((b) => (
             <div key={b.id} className={`booking-item-card status-border-${b.status}`}>
-              {/* Top Row: Service Title & Status Badge */}
+              {/* Top Row: Service Title, Vehicle Tag & Status Badge */}
               <div className="booking-card-top">
                 <div className="service-info-group">
                   <span className="service-icon-circle">
-                    <Wrench size={18} />
+                    <Wrench size={16} />
                   </span>
-                  <div>
+                  <div className="service-title-wrap">
                     <h3 className="booking-service-title">{b.serviceName}</h3>
                     <span className="booking-vehicle-tag">
-                      <Car size={13} /> {b.vehicleType} • <strong>{b.vehicleNumber}</strong>
+                      <Car size={12} /> {b.vehicleType} • <strong style={{ whiteSpace: "nowrap" }}>{b.vehicleNumber}</strong>
                     </span>
                   </div>
                 </div>
 
                 <div className="booking-status-badge-wrap">
                   {b.status === "pending" && (
-                    <span className="status-badge badge-pending">⏳ Awaiting Response</span>
+                    <span className="status-badge badge-pending">⏳ Pending</span>
                   )}
                   {b.status === "accepted" && (
                     <span className="status-badge badge-accepted">✅ Accepted</span>
@@ -503,160 +514,203 @@ export default function Bookings() {
                   {b.status === "completed" && (
                     <span className="status-badge badge-completed">🎉 Completed</span>
                   )}
+                  <span className="booking-id-tag">#{b.id.slice(-6)}</span>
                 </div>
               </div>
 
-              {/* Middle Row: Customer Details & Shop Location */}
-              <div className="booking-meta-grid">
-                <div className="meta-block">
-                  <span className="meta-label">👤 Customer Details:</span>
-                  <span className="meta-value">{b.customerName}</span>
-                  {b.customerPhone && (
-                    <a href={`tel:${b.customerPhone}`} className="meta-phone-link">
-                      <Phone size={12} /> {b.customerPhone}
-                    </a>
+              {/* Middle Dynamic Info Box */}
+              <div className="booking-meta-box">
+                {/* 2-Column Details: Customer vs Shop */}
+                <div className="booking-meta-2col">
+                  <div className="meta-block">
+                    <span className="meta-label">👤 CUSTOMER:</span>
+                    <span className="meta-value">{b.customerName}</span>
+                    {b.customerPhone && (
+                      <a href={`tel:${b.customerPhone}`} className="meta-phone-link">
+                        <Phone size={11} /> {b.customerPhone}
+                      </a>
+                    )}
+                  </div>
+
+                  <div className="meta-block">
+                    <span className="meta-label">🏪 SERVICE SHOP:</span>
+                    <span className="meta-value">{b.shopName}</span>
+                    <span className="meta-subtext">{b.shopPhone ? `📞 ${b.shopPhone}` : "✓ Verified Hub"}</span>
+                  </div>
+                </div>
+
+                {/* Date & Slot Strip */}
+                <div className="booking-slot-strip">
+                  <span className="slot-date-item">
+                    <Calendar size={12} /> {b.date}
+                  </span>
+                  <span className="slot-divider">•</span>
+                  <span className="slot-time-item">
+                    ⏰ {b.timeSlot}
+                  </span>
+                </div>
+
+                {/* Direct Action Contact Pills (Full Width Row - No Clipping!) */}
+                <div className="quick-contact-pills-row">
+                  {isShopManager(b) ? (
+                    b.customerPhone && (
+                      <>
+                        <a
+                          href={`tel:${b.customerPhone}`}
+                          className="btn-action-call-pill"
+                          title={`Call Customer (${b.customerName})`}
+                        >
+                          <Phone size={12} /> Call Customer
+                        </a>
+                        <a
+                          href={`https://wa.me/91${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.customerName}, TyreSaathi par aapki booking (${b.serviceName}) ke regarding...`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-action-whatsapp-pill"
+                          title="Chat on WhatsApp"
+                        >
+                          💬 WhatsApp
+                        </a>
+                      </>
+                    )
+                  ) : (
+                    b.shopPhone && (
+                      <>
+                        <a
+                          href={`tel:${b.shopPhone}`}
+                          className="btn-action-call-pill"
+                          title={`Call Shop (${b.shopName})`}
+                        >
+                          <Phone size={12} /> Call Shop
+                        </a>
+                        <a
+                          href={`https://wa.me/91${b.shopPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.shopName}, TyreSaathi par meri service booking (#${b.id.slice(-6)}) ke regarding...`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-action-whatsapp-pill"
+                          title="Chat with Shop on WhatsApp"
+                        >
+                          💬 WhatsApp
+                        </a>
+                      </>
+                    )
                   )}
-                </div>
-
-                <div className="meta-block">
-                  <span className="meta-label">🏪 Service Shop:</span>
-                  <span className="meta-value">{b.shopName}</span>
-                  <span className="meta-subtext">{b.shopPhone ? `📞 ${b.shopPhone}` : "✓ Verified TyreSaathi Hub"}</span>
-                </div>
-
-                <div className="meta-block">
-                  <span className="meta-label">⏰ Date & Time Slot:</span>
-                  <span className="meta-value">{b.date}</span>
-                  <span className="meta-subtext">{b.timeSlot}</span>
                 </div>
               </div>
 
               {b.notes && (
                 <div className="booking-notes-box">
-                  <strong>Customer Note:</strong> "{b.notes}"
+                  <strong>Note:</strong> "{b.notes}"
                 </div>
               )}
 
-              {/* Bottom Row: Action Buttons */}
+              {/* Bottom Row: Work & Invoice Actions (Responsive 2-Button Grid for All States) */}
               <div className="booking-card-actions">
-                <div className="action-left-info">
-                  <span className="time-ago-text">Booking ID: #{b.id.slice(-6)}</span>
-                  {!isShopManager(b) && (
-                    <span style={{ fontSize: "11px", color: "#64748b", marginLeft: "6px", fontWeight: "600" }}>
-                      (Aapki Booking)
-                    </span>
-                  )}
-                </div>
+                {isShopManager(b) ? (
+                  <div className="shop-bottom-cta-grid">
+                    {b.status === "pending" && (
+                      <>
+                        <button
+                          className="btn-action-reject"
+                          onClick={() => handleUpdateStatus(b.id, "rejected")}
+                        >
+                          <XCircle size={13} /> Reject
+                        </button>
+                        <button
+                          className="btn-action-accept"
+                          onClick={() => handleUpdateStatus(b.id, "accepted")}
+                        >
+                          <CheckCircle2 size={13} /> Accept
+                        </button>
+                      </>
+                    )}
 
-                <div className="action-buttons-group">
-                  {isShopManager(b) ? (
-                    // =================== 🏪 SHOP OWNER / ADMIN ACTIONS ===================
-                    <>
-                      {b.status === "pending" && (
-                        <>
-                          <button
-                            className="btn-action-reject"
-                            onClick={() => handleUpdateStatus(b.id, "rejected")}
-                          >
-                            <XCircle size={13} /> Reject
-                          </button>
-                          <button
-                            className="btn-action-accept"
-                            onClick={() => handleUpdateStatus(b.id, "accepted")}
-                          >
-                            <CheckCircle2 size={13} /> Accept
-                          </button>
-                        </>
-                      )}
-
-                      {b.status === "accepted" && (
+                    {b.status === "accepted" && (
+                      <>
                         <button
                           className="btn-action-progress"
                           onClick={() => handleUpdateStatus(b.id, "in_progress")}
                         >
                           <Wrench size={13} /> Start Service
                         </button>
-                      )}
+                        <Link
+                          to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
+                          className="btn-action-bill-shortcut"
+                          title="Generate Bill for this Service"
+                        >
+                          <Receipt size={13} /> 🧾 Bill Banayein
+                        </Link>
+                      </>
+                    )}
 
-                      {b.status === "in_progress" && (
+                    {b.status === "in_progress" && (
+                      <>
                         <button
                           className="btn-action-complete"
                           onClick={() => handleUpdateStatus(b.id, "completed")}
                         >
-                          <CheckCircle2 size={13} /> Mark Completed
+                          <CheckCircle2 size={13} /> Mark Done
                         </button>
-                      )}
+                        <Link
+                          to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
+                          className="btn-action-bill-shortcut"
+                          title="Generate Bill for this Service"
+                        >
+                          <Receipt size={13} /> 🧾 Bill Banayein
+                        </Link>
+                      </>
+                    )}
 
-                      {b.customerPhone && (
-                        <>
+                    {b.status === "completed" && (
+                      <>
+                        <span className="btn-action-done-badge">
+                          <CheckCircle2 size={13} /> Completed ✓
+                        </span>
+                        <Link
+                          to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
+                          className="btn-action-bill-shortcut"
+                          title="Generate Bill for this Service"
+                        >
+                          <Receipt size={13} /> 🧾 Bill Banayein
+                        </Link>
+                      </>
+                    )}
+
+                    {(b.status === "rejected" || b.status === "cancelled") && (
+                      <>
+                        <span className="btn-action-rejected-badge">
+                          <XCircle size={13} /> Cancelled
+                        </span>
+                        {b.customerPhone ? (
                           <a
                             href={`tel:${b.customerPhone}`}
-                            className="btn-action-call"
-                            title={`Call Customer (${b.customerName})`}
+                            className="btn-action-call-pill"
+                            style={{ height: "34px" }}
                           >
-                            <Phone size={12} /> Call ({b.customerPhone})
+                            <Phone size={12} /> Call Customer
                           </a>
-
-                          <a
-                            href={`https://wa.me/91${b.customerPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.customerName}, TyreSaathi par aapki booking (${b.serviceName}) ke regarding...`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn-action-whatsapp"
-                            title="Chat on WhatsApp"
-                          >
-                            💬 WhatsApp
-                          </a>
-                        </>
-                      )}
-
-                      <Link
-                        to={`/billing?customer=${encodeURIComponent(b.customerName)}&phone=${encodeURIComponent(b.customerPhone)}&vehicle=${encodeURIComponent(b.vehicleType)}&vehicleNo=${encodeURIComponent(b.vehicleNumber)}&service=${encodeURIComponent(b.serviceName)}`}
-                        className="btn-action-bill-shortcut"
-                        title="Generate Bill for this Service"
-                      >
-                        <Receipt size={13} /> 🧾 Bill Banayein
-                      </Link>
-                    </>
-                  ) : (
-                    // =================== 👤 CUSTOMER ACTIONS ===================
-                    <>
-                      {b.status === "pending" && (
-                        <button
-                          className="btn-action-reject"
-                          onClick={() => {
-                            if (window.confirm("Kya aap sach me ye booking cancel karna chahte hain?")) {
-                              handleUpdateStatus(b.id, "cancelled");
-                            }
-                          }}
-                        >
-                          <XCircle size={13} /> Cancel Booking
-                        </button>
-                      )}
-
-                      {b.shopPhone && (
-                        <>
-                          <a
-                            href={`tel:${b.shopPhone}`}
-                            className="btn-action-call"
-                            title={`Call Shop (${b.shopName})`}
-                          >
-                            <Phone size={12} /> Call Shop ({b.shopPhone})
-                          </a>
-
-                          <a
-                            href={`https://wa.me/91${b.shopPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hello ${b.shopName}, TyreSaathi par meri service booking (#${b.id.slice(-6)} - ${b.serviceName}) ke regarding...`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn-action-whatsapp"
-                            title="Chat with Shop on WhatsApp"
-                          >
-                            💬 WhatsApp
-                          </a>
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
+                        ) : (
+                          <span className="btn-action-done-badge" style={{ background: "#f1f5f9", color: "#64748b", borderColor: "#cbd5e1" }}>
+                            Closed
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  b.status === "pending" && (
+                    <button
+                      className="btn-action-reject full-width"
+                      onClick={() => {
+                        if (window.confirm("Kya aap sach me ye booking cancel karna chahte hain?")) {
+                          handleUpdateStatus(b.id, "cancelled");
+                        }
+                      }}
+                    >
+                      <XCircle size={13} /> Cancel Booking
+                    </button>
+                  )
+                )}
               </div>
             </div>
           ))
@@ -821,82 +875,95 @@ export default function Bookings() {
         </div>
       )}
 
-      {/* Styling */}
+      {/* Dynamic Responsive Styling */}
       <style>{`
         .bookings-page-container {
-          max-width: 1200px;
+          width: 100%;
+          max-width: 1440px;
           margin: 0 auto;
-          padding: 24px 16px 80px 16px;
+          padding: 14px 12px 80px 12px;
           font-family: 'Inter', sans-serif;
           color: #0f172a;
+          box-sizing: border-box;
+        }
+
+        @media (min-width: 768px) {
+          .bookings-page-container {
+            padding: 24px 28px 90px 28px;
+          }
+        }
+
+        @media (min-width: 1200px) {
+          .bookings-page-container {
+            padding: 28px 36px 100px 36px;
+          }
         }
 
         .bookings-header-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 24px;
+          margin-bottom: 16px;
           flex-wrap: wrap;
-          gap: 16px;
+          gap: 12px;
+        }
+
+        .bookings-header-text {
+          min-width: 0;
+          flex: 1;
         }
 
         .page-heading {
-          font-size: 24px;
+          font-size: clamp(18px, 4vw, 26px);
           font-weight: 800;
           color: #0f172a;
           margin: 0;
-          letter-spacing: -0.5px;
+          letter-spacing: -0.4px;
         }
 
         .page-sub {
-          font-size: 13.5px;
+          font-size: clamp(12px, 2.5vw, 14px);
           color: #64748b;
-          margin: 4px 0 0 0;
+          margin: 3px 0 0 0;
         }
 
         .header-actions-group {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           flex-wrap: wrap;
         }
 
-        .btn-header-insights {
+        .btn-header-action-compact {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          background: #eff6ff;
-          border: 1.5px solid #bfdbfe;
-          color: #1d4ed8;
-          padding: 9px 15px;
-          border-radius: 10px;
-          font-size: 13px;
+          gap: 5px;
+          padding: 8px 12px;
+          border-radius: 9px;
+          font-size: clamp(12px, 2.5vw, 13px);
           font-weight: 700;
           text-decoration: none;
           transition: all 0.2s;
+          cursor: pointer;
+          white-space: nowrap;
         }
-        .btn-header-insights:hover {
+        .btn-insights {
+          background: #eff6ff;
+          border: 1.2px solid #bfdbfe;
+          color: #1d4ed8;
+        }
+        .btn-insights:hover {
           background: #dbeafe;
           transform: translateY(-1px);
         }
 
-        .btn-header-excel {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: #059669;
-          color: #ffffff;
-          border: none;
-          padding: 9px 15px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
-          transition: all 0.2s;
+        .btn-excel {
+          background: #ecfdf5;
+          border: 1.2px solid #a7f3d0;
+          color: #047857;
         }
-        .btn-header-excel:hover {
-          background: #047857;
+        .btn-excel:hover {
+          background: #d1fae5;
           transform: translateY(-1px);
         }
 
@@ -907,40 +974,47 @@ export default function Bookings() {
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: #ffffff;
           border: none;
-          padding: 9px 18px;
-          border-radius: 10px;
-          font-size: 13px;
+          padding: 8px 15px;
+          border-radius: 9px;
+          font-size: clamp(12px, 2.5vw, 13.5px);
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
+          box-shadow: 0 3px 12px rgba(192, 57, 43, 0.28);
           transition: all 0.2s;
+          white-space: nowrap;
         }
         .btn-header-new-booking:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.45);
+          box-shadow: 0 5px 16px rgba(192, 57, 43, 0.38);
         }
 
-        /* 🏷️ Clean Filter Tabs */
+        /* 🏷️ Clean Horizontal Filter Chips */
         .booking-filter-tabs {
           display: flex;
-          gap: 9px;
+          gap: 8px;
           overflow-x: auto;
-          padding: 4px 2px 12px 2px;
-          margin-bottom: 22px;
+          padding: 2px 2px 12px 2px;
+          margin-bottom: 18px;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        .booking-filter-tabs::-webkit-scrollbar {
+          display: none;
         }
 
         .filter-tab {
           background: #ffffff;
-          border: 1.5px solid #e2e8f0;
+          border: 1.2px solid #e2e8f0;
           color: #64748b;
-          padding: 8px 18px;
-          border-radius: 24px;
-          font-size: 13px;
+          padding: 7px 14px;
+          border-radius: 20px;
+          font-size: clamp(12px, 2.5vw, 13px);
           font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-          transition: all 0.2s ease;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+          transition: all 0.15s ease;
+          flex-shrink: 0;
         }
         .filter-tab:hover {
           background: #f8fafc;
@@ -951,125 +1025,99 @@ export default function Bookings() {
           background: #0f172a !important;
           color: #ffffff !important;
           border-color: #0f172a !important;
-          box-shadow: 0 3px 10px rgba(15, 23, 42, 0.25) !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2) !important;
         }
         .tab-pending.tab-active {
           background: #d97706 !important;
           color: #ffffff !important;
           border-color: #d97706 !important;
-          box-shadow: 0 3px 10px rgba(217, 119, 6, 0.3) !important;
         }
         .tab-accepted.tab-active {
           background: #16a34a !important;
           color: #ffffff !important;
           border-color: #16a34a !important;
-          box-shadow: 0 3px 10px rgba(22, 163, 74, 0.3) !important;
         }
         .tab-inprogress.tab-active {
           background: #7c3aed !important;
           color: #ffffff !important;
           border-color: #7c3aed !important;
-          box-shadow: 0 3px 10px rgba(124, 58, 237, 0.3) !important;
         }
         .tab-completed.tab-active {
           background: #0284c7 !important;
           color: #ffffff !important;
           border-color: #0284c7 !important;
-          box-shadow: 0 3px 10px rgba(2, 132, 199, 0.3) !important;
         }
         .tab-rejected.tab-active {
           background: #dc2626 !important;
           color: #ffffff !important;
           border-color: #dc2626 !important;
-          box-shadow: 0 3px 10px rgba(220, 38, 38, 0.3) !important;
         }
 
-        /* Bookings List Grid (Responsive: 2 comfortable columns on Desktop/Tablet, 1 column on Mobile) */
+        /* 📋 Dynamic Responsive Grid (Auto-fits comfortably on all devices) */
         .bookings-list-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 16px;
+          gap: 14px;
+          width: 100%;
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 680px) {
           .bookings-list-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 18px;
           }
-          .bookings-page-container {
-            max-width: 1280px;
-            margin: 0 auto;
-            padding: 20px 24px;
-          }
-          .page-heading {
-            font-size: 24px;
-          }
         }
 
-        @media (max-width: 767px) {
-          .bookings-page-container {
-            padding: 12px 14px;
-          }
-          .bookings-header-row {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 12px;
-          }
-          .header-actions-group {
-            width: 100%;
-            display: flex;
-            justify-content: flex-start;
-            gap: 6px;
-          }
-          .page-heading {
-            font-size: 18px;
-          }
-          .page-sub {
-            font-size: 12px;
+        @media (min-width: 1200px) {
+          .bookings-list-grid {
+            grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+            gap: 22px;
           }
         }
 
         .no-bookings-card {
           grid-column: 1 / -1;
           text-align: center;
-          padding: 36px 20px;
+          padding: 36px 18px;
           background: #ffffff;
           border: 1.5px dashed #cbd5e1;
-          border-radius: 14px;
+          border-radius: 16px;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 10px;
         }
         .no-bookings-card h3 {
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 800;
           color: #0f172a;
           margin: 0;
         }
         .no-bookings-card p {
-          font-size: 13.5px;
+          font-size: 13px;
           color: #64748b;
           margin: 0;
-          max-width: 440px;
+          max-width: 420px;
         }
 
+        /* 📦 Dynamic Fluid Booking Card */
         .booking-item-card {
           background: #ffffff;
-          border: 1.5px solid #e2e8f0;
-          border-left: 5px solid #c0392b;
+          border: 1.2px solid #e2e8f0;
+          border-left: 4.5px solid #c0392b;
           border-radius: 14px;
-          padding: 18px 20px;
-          box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+          padding: clamp(12px, 2.5vw, 18px);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
           transition: all 0.2s ease;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .booking-item-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
           border-color: #cbd5e1;
         }
 
@@ -1079,62 +1127,76 @@ export default function Bookings() {
         .status-border-completed { border-left-color: #0284c7; }
         .status-border-rejected { border-left-color: #ef4444; }
 
+        /* Card Top Header */
         .booking-card-top {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: space-between;
-          gap: 10px;
-          flex-wrap: wrap;
+          gap: 8px;
         }
 
         .service-info-group {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 9px;
           min-width: 0;
+          flex: 1;
         }
 
         .service-icon-circle {
-          width: 40px;
-          height: 40px;
+          width: 34px;
+          height: 34px;
           background: #fef2f2;
           color: #c0392b;
           border: 1px solid #fee2e2;
-          border-radius: 10px;
+          border-radius: 9px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
 
+        .service-title-wrap {
+          min-width: 0;
+          flex: 1;
+        }
+
         .booking-service-title {
-          font-size: 16px;
+          font-size: clamp(13.5px, 2.8vw, 16px);
           font-weight: 800;
           color: #0f172a;
           margin: 0;
-          line-height: 1.3;
+          line-height: 1.25;
+          word-break: break-word;
         }
 
         .booking-vehicle-tag {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          font-size: 12.5px;
+          gap: 4px;
+          font-size: clamp(10.5px, 2vw, 12px);
           color: #64748b;
           margin-top: 2px;
+          word-break: break-word;
         }
-
         .booking-vehicle-tag strong {
           color: #0f172a;
         }
 
-        .status-badge {
-          font-size: 12px;
-          font-weight: 800;
-          padding: 4px 12px;
-          border-radius: 16px;
-          white-space: nowrap;
+        .booking-status-badge-wrap {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 3px;
           flex-shrink: 0;
+        }
+
+        .status-badge {
+          font-size: clamp(10px, 2vw, 11.5px);
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 12px;
+          white-space: nowrap;
         }
         .badge-pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
         .badge-accepted { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
@@ -1142,43 +1204,53 @@ export default function Bookings() {
         .badge-completed { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
         .badge-rejected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
-        .booking-meta-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
+        .booking-id-tag {
+          font-size: 9.5px;
+          color: #94a3b8;
+          font-weight: 700;
           background: #f8fafc;
-          border: 1px solid #f1f5f9;
-          padding: 12px 14px;
-          border-radius: 10px;
+          padding: 1px 5px;
+          border-radius: 4px;
+          border: 1px solid #e2e8f0;
         }
 
-        @media (max-width: 640px) {
-          .booking-meta-grid {
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 10px 12px;
-          }
+        /* 📋 Meta Details Box (Clean & Dynamic) */
+        .booking-meta-box {
+          background: #f8fafc;
+          border: 1px solid #f1f5f9;
+          padding: clamp(8px, 2vw, 12px);
+          border-radius: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .booking-meta-2col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
         }
 
         .meta-block {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 1px;
           min-width: 0;
         }
 
         .meta-label {
-          font-size: 10.5px;
+          font-size: 9.5px;
           color: #64748b;
-          font-weight: 700;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.25px;
         }
 
         .meta-value {
-          font-size: 13px;
+          font-size: clamp(11.5px, 2.5vw, 13px);
           font-weight: 800;
           color: #0f172a;
+          word-break: break-word;
         }
 
         .meta-phone-link {
@@ -1186,173 +1258,229 @@ export default function Bookings() {
           align-items: center;
           gap: 4px;
           color: #0284c7;
-          font-size: 12px;
+          font-size: clamp(11px, 2.2vw, 12px);
           font-weight: 700;
           text-decoration: none;
+          margin-top: 1px;
         }
         .meta-phone-link:hover { text-decoration: underline; }
 
         .meta-subtext {
-          font-size: 12px;
+          font-size: clamp(10.5px, 2.2vw, 12px);
           color: #64748b;
+          margin-top: 1px;
+        }
+
+        /* Slot Strip */
+        .booking-slot-strip {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          padding: 5px 9px;
+          border-radius: 6px;
+          font-size: clamp(11px, 2.2vw, 12px);
+          font-weight: 700;
+          color: #334155;
+          flex-wrap: wrap;
+        }
+
+        .slot-date-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          color: #0f172a;
+        }
+
+        .slot-divider {
+          color: #cbd5e1;
+        }
+
+        .slot-time-item {
+          color: #475569;
+        }
+
+        /* Full Width Quick Contact Row (50% - 50% split, never clips!) */
+        .quick-contact-pills-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+        }
+
+        .btn-action-call-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1.2px solid #bbf7d0;
+          padding: 6px 10px;
+          border-radius: 7px;
+          font-size: clamp(11px, 2.2vw, 12px);
+          font-weight: 700;
+          text-decoration: none;
+          flex: 1;
+          text-align: center;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-action-call-pill:hover {
+          background: #dcfce7;
+        }
+
+        .btn-action-whatsapp-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          background: #f0fdf4;
+          color: #16a34a;
+          border: 1.2px solid #bbf7d0;
+          padding: 6px 10px;
+          border-radius: 7px;
+          font-size: clamp(11px, 2.2vw, 12px);
+          font-weight: 700;
+          text-decoration: none;
+          flex: 1;
+          text-align: center;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-action-whatsapp-pill:hover {
+          background: #dcfce7;
         }
 
         .booking-notes-box {
           background: #fffbeb;
           border: 1px solid #fef3c7;
-          padding: 8px 12px;
-          border-radius: 8px;
-          font-size: 12.5px;
+          padding: 6px 10px;
+          border-radius: 7px;
+          font-size: 11.5px;
           color: #92400e;
         }
 
+        /* Bottom Action Buttons (Responsive & Full visibility) */
         .booking-card-actions {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding-top: 10px;
+          padding-top: 8px;
           border-top: 1px solid #f1f5f9;
-          flex-wrap: wrap;
-          gap: 8px;
         }
 
-        .time-ago-text {
-          font-size: 11.5px;
-          color: #64748b;
-          font-family: monospace;
-          background: #f1f5f9;
-          padding: 3px 8px;
-          border-radius: 6px;
-          font-weight: 600;
-        }
-
-        .action-buttons-group {
+        .shop-bottom-cta-grid {
           display: flex;
           align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
         }
 
-        .btn-action-accept {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          background: #16a34a;
-          color: #fff;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12.5px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-        .btn-action-accept:hover {
-          background: #15803d;
-        }
-
-        .btn-action-reject {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          background: #fee2e2;
-          border: 1px solid #fecaca;
-          color: #b91c1c;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12.5px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-        .btn-action-reject:hover {
-          background: #fecaca;
-        }
-
-        .btn-action-progress {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          background: #7c3aed;
-          color: #fff;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12.5px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-        .btn-action-progress:hover {
-          background: #6d28d9;
-        }
-
-        .btn-action-complete {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-          background: #0284c7;
-          color: #fff;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 12.5px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-        .btn-action-complete:hover {
-          background: #0369a1;
-        }
-
-        .btn-action-call {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: #f0fdf4;
-          color: #15803d;
-          border: 1px solid #bbf7d0;
-          padding: 5px 11px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 700;
-          text-decoration: none;
-        }
-        .btn-action-call:hover {
-          background: #dcfce7;
-        }
-
-        .btn-action-whatsapp {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: #f0fdf4;
-          color: #16a34a;
-          border: 1px solid #bbf7d0;
-          padding: 5px 11px;
-          border-radius: 8px;
-          font-size: 12px;
-          font-weight: 700;
-          text-decoration: none;
-        }
-        .btn-action-whatsapp:hover {
-          background: #dcfce7;
-        }
-
+        .btn-action-accept,
+        .btn-action-reject,
+        .btn-action-progress,
+        .btn-action-complete,
         .btn-action-bill-shortcut {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          justify-content: center;
+          gap: 5px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: clamp(11.5px, 2.5vw, 13px);
+          font-weight: 800;
+          flex: 1;
+          min-width: 0;
+          text-align: center;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.15s;
+          box-sizing: border-box;
+        }
+
+        .btn-action-accept {
+          background: #16a34a;
+          color: #ffffff;
+          border: none;
+        }
+        .btn-action-accept:hover { background: #15803d; }
+
+        .btn-action-reject {
+          background: #fee2e2;
+          border: 1.2px solid #fecaca;
+          color: #b91c1c;
+        }
+        .btn-action-reject:hover { background: #fecaca; }
+
+        .btn-action-reject.full-width {
+          width: 100%;
+          flex: 1;
+        }
+
+        .btn-action-progress {
+          background: #7c3aed;
+          color: #ffffff;
+          border: none;
+        }
+        .btn-action-progress:hover { background: #6d28d9; }
+
+        .btn-action-complete {
+          background: #0284c7;
+          color: #ffffff;
+          border: none;
+        }
+        .btn-action-complete:hover { background: #0369a1; }
+
+        .btn-action-bill-shortcut {
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: #ffffff;
-          padding: 6px 13px;
-          border-radius: 8px;
-          font-size: 12.5px;
-          font-weight: 800;
           text-decoration: none;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+          border: none;
+          box-shadow: 0 2px 6px rgba(192, 57, 43, 0.25);
         }
         .btn-action-bill-shortcut:hover {
           background: #b91c1c;
+          transform: translateY(-1px);
         }
 
-        /* 🪟 Clean White Modal Styles */
+        .btn-action-done-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: clamp(11.5px, 2.5vw, 13px);
+          font-weight: 800;
+          flex: 1;
+          min-width: 0;
+          text-align: center;
+          background: #dcfce7;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+          box-sizing: border-box;
+          white-space: nowrap;
+        }
+
+        .btn-action-rejected-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          font-size: clamp(11.5px, 2.5vw, 13px);
+          font-weight: 800;
+          flex: 1;
+          min-width: 0;
+          text-align: center;
+          background: #fee2e2;
+          color: #b91c1c;
+          border: 1px solid #fecaca;
+          box-sizing: border-box;
+          white-space: nowrap;
+        }
+
+        /* 🪟 Clean Modal Styles */
         .modal-backdrop {
           position: fixed;
           inset: 0;
@@ -1368,10 +1496,10 @@ export default function Bookings() {
         .modal-card {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
-          border-radius: 20px;
+          border-radius: 18px;
           max-width: 540px;
           width: 100%;
-          padding: 24px;
+          padding: clamp(16px, 4vw, 24px);
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
           max-height: 90vh;
           overflow-y: auto;
@@ -1381,13 +1509,13 @@ export default function Bookings() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 18px;
-          padding-bottom: 12px;
+          margin-bottom: 14px;
+          padding-bottom: 10px;
           border-bottom: 1px solid #f1f5f9;
         }
 
         .modal-title {
-          font-size: 18px;
+          font-size: clamp(15px, 3.5vw, 18px);
           font-weight: 800;
           color: #0f172a;
           margin: 0;
@@ -1397,8 +1525,8 @@ export default function Bookings() {
           background: #f1f5f9;
           border: none;
           color: #64748b;
-          width: 32px;
-          height: 32px;
+          width: 30px;
+          height: 30px;
           border-radius: 8px;
           display: flex;
           align-items: center;
@@ -1414,28 +1542,28 @@ export default function Bookings() {
         .modal-form {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 12px;
         }
 
         .modal-field {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 4px;
         }
 
         .modal-field label {
-          font-size: 12.5px;
+          font-size: 12px;
           font-weight: 700;
           color: #334155;
         }
 
         .modal-field input, .modal-field select, .modal-field textarea {
           background: #f8fafc;
-          border: 1.5px solid #e2e8f0;
-          border-radius: 10px;
-          padding: 10px 14px;
+          border: 1.2px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 9px 12px;
           color: #0f172a;
-          font-size: 13.5px;
+          font-size: 13px;
           outline: none;
           transition: all 0.2s;
         }
@@ -1448,15 +1576,15 @@ export default function Bookings() {
         .modal-grid-2 {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 10px;
         }
 
         .modal-actions {
           display: flex;
           justify-content: flex-end;
-          gap: 10px;
-          margin-top: 14px;
-          padding-top: 14px;
+          gap: 8px;
+          margin-top: 12px;
+          padding-top: 12px;
           border-top: 1px solid #f1f5f9;
         }
 
@@ -1464,9 +1592,9 @@ export default function Bookings() {
           background: #f1f5f9;
           border: 1px solid #e2e8f0;
           color: #475569;
-          padding: 10px 18px;
-          border-radius: 10px;
-          font-size: 13px;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
         }
@@ -1479,27 +1607,19 @@ export default function Bookings() {
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: #ffffff;
           border: none;
-          padding: 10px 20px;
-          border-radius: 10px;
-          font-size: 13px;
+          padding: 8px 18px;
+          border-radius: 8px;
+          font-size: 12.5px;
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
+          box-shadow: 0 3px 12px rgba(192, 57, 43, 0.28);
         }
         .btn-submit-booking:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.4);
+          box-shadow: 0 5px 16px rgba(192, 57, 43, 0.38);
         }
 
-        @media (max-width: 768px) {
-          .bookings-header-row {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .header-actions-group {
-            width: 100%;
-            justify-content: space-between;
-          }
+        @media (max-width: 640px) {
           .modal-grid-2 {
             grid-template-columns: 1fr;
           }

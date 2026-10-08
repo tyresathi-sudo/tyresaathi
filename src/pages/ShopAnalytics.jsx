@@ -102,9 +102,9 @@ export default function ShopAnalytics() {
   const minVal = 0;
   const range = maxVal - minVal || 1;
 
-  const svgWidth = 750;
-  const svgHeight = 220;
-  const paddingX = 40;
+  const svgWidth = 1000;
+  const svgHeight = 240;
+  const paddingX = 35;
   const paddingY = 30;
   const bottomAxisY = svgHeight - 40;
 
@@ -612,6 +612,7 @@ export default function ShopAnalytics() {
         }
 
         /* 🌟 KPI Cards Grid */
+        /* 🌟 KPI Cards Grid */
         .kpi-cards-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -622,12 +623,6 @@ export default function ShopAnalytics() {
         @media (max-width: 1024px) {
           .kpi-cards-grid {
             grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 600px) {
-          .kpi-cards-grid {
-            grid-template-columns: 1fr;
           }
         }
 
@@ -683,12 +678,12 @@ export default function ShopAnalytics() {
           font-weight: 600;
         }
 
-        /* 🎨 Clean White SVG Chart Card */
+        /* 🎨 Clean White SVG Chart Card (Spacious on PC, Balanced on Mobile) */
         .chart-wrapper-card {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
           border-radius: 14px;
-          padding: 18px 20px;
+          padding: 20px 24px;
           box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
         }
 
@@ -696,7 +691,7 @@ export default function ShopAnalytics() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
         }
 
         .chart-active-legend {
@@ -725,13 +720,146 @@ export default function ShopAnalytics() {
 
         .svg-responsive-box {
           width: 100%;
-          height: 220px;
+          height: 260px;
         }
 
         .analytics-svg {
           width: 100%;
           height: 100%;
           overflow: visible;
+        }
+
+        /* 📱 Mobile Specific Optimization */
+        @media (max-width: 640px) {
+          .analytics-page-container {
+            padding: 8px 8px 80px 8px;
+          }
+
+          .hub-identity-bar {
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            gap: 10px;
+            border-radius: 12px;
+            border-left-width: 4px;
+          }
+
+          .hub-avatar-wrap {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            font-size: 20px;
+          }
+
+          .hub-shop-title {
+            font-size: 16px;
+          }
+
+          .hub-live-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+          }
+
+          .hub-owner-sub {
+            font-size: 11.5px;
+          }
+
+          .btn-refresh-analytics {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            width: 100%;
+            justify-content: center;
+          }
+
+          .insights-analytics-container {
+            padding: 14px 12px;
+            margin-bottom: 14px;
+            border-radius: 14px;
+          }
+
+          .insights-header {
+            margin-bottom: 14px;
+            gap: 10px;
+          }
+
+          .sparkle-icon-box {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+          }
+
+          .insights-title {
+            font-size: 16px;
+          }
+
+          .insights-sub {
+            font-size: 11.5px;
+          }
+
+          .timeframe-toggle-wrap {
+            width: 100%;
+            display: flex;
+          }
+
+          .btn-timeframe {
+            flex: 1;
+            text-align: center;
+            font-size: 11.5px;
+            padding: 6px 8px;
+          }
+
+          /* 2x2 Grid on Mobile for KPI Cards */
+          .kpi-cards-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+          }
+
+          .kpi-card {
+            padding: 10px 10px;
+            border-radius: 10px;
+          }
+
+          .kpi-label {
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .kpi-growth-badge {
+            font-size: 9.5px;
+            padding: 1px 5px;
+          }
+
+          .kpi-value {
+            font-size: 20px;
+          }
+
+          .kpi-tap-hint {
+            font-size: 10px;
+          }
+
+          .chart-wrapper-card {
+            padding: 12px 10px;
+            border-radius: 12px;
+          }
+
+          .chart-meta-row {
+            margin-bottom: 10px;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+          }
+
+          .chart-active-legend {
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+
+          .svg-responsive-box {
+            height: 190px;
+          }
         }
       `}</style>
     </div>

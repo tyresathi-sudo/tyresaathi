@@ -37,16 +37,76 @@ import { triggerHaptic, showNativeToast, shareNativeContent } from "../utils/nat
 const INITIAL_DEMO_INVOICES = [];
 
 const PRESET_SERVICES = [
-  { name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 200, type: "service" },
-  { name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 3000, type: "service" },
-  { name: "New Tyre Fitting (टायर फिटिंग)", rate: 150, type: "service" },
-  { name: "Doorstep Emergency Assistance (घर/रास्ते पर)", rate: 499, type: "service" },
-  { name: "Tube Replacement / Valve Pin (ट्यूब/वॉल्व)", rate: 90, type: "service" },
-  { name: "Tyre Rotation & Inspection (रोटेशन)", rate: 200, type: "service" },
+  { id: "srv_puncture", name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 200, type: "service", icon: "🛠️" },
+  { id: "srv_cut", name: "Tyre Cut & Sidewall Repair (कट रिपेयर)", rate: 3000, type: "service", icon: "✂️" },
+  { id: "srv_fitting", name: "New Tyre Fitting (टायर फिटिंग)", rate: 150, type: "service", icon: "🔧" },
+  { id: "srv_retreading", name: "Tyre Cold/Hot Retreading (टायर रीट्रेडिंग)", rate: 1500, type: "service", icon: "🔄" },
+  { id: "srv_alignment", name: "Wheel Alignment & Balancing (अलाइनमेंट & बैलेंसिंग)", rate: 500, type: "service", icon: "⚖️" },
+  { id: "srv_tube", name: "Tube Replacement / Valve Pin (ट्यूब/वॉल्व)", rate: 90, type: "service", icon: "⭕" },
+  { id: "srv_nitrogen", name: "Nitrogen Air Filling (नाइट्रोजन एयर)", rate: 100, type: "service", icon: "💨" },
+  { id: "srv_doorstep", name: "Doorstep Emergency Assistance (घर/रास्ते पर)", rate: 499, type: "service", icon: "🚗" },
 ];
 
-// Helper to generate sequential invoice numbers starting from 01 (e.g. TS-INV-01, TS-INV-02) per shop
-export const generateNextInvoiceNo = (existingList = [], prefix = "TS-INV-") => {
+export const STANDARD_TYRE_BRANDS = [
+  "MRF",
+  "Apollo",
+  "CEAT",
+  "Goodyear",
+  "Bridgestone",
+  "Michelin",
+  "JK Tyre"
+];
+
+export const STANDARD_TYRE_SIZES = [
+  { size: "145/80 R12", label: "145/80 R12 (Alto, Kwid, etc.)" },
+  { size: "165/80 R14", label: "165/80 R14 (Swift, Dzire, etc.)" },
+  { size: "185/65 R15", label: "185/65 R15 (i20, Baleno, etc.)" },
+  { size: "205/60 R16", label: "205/60 R16 (Brezza, Creta, etc.)" },
+  { size: "215/60 R17", label: "215/60 R17 (Creta, Seltos, etc.)" },
+  { size: "10.00-20", label: "9.00-20 / 10.00-20 (Truck / Commercial)" },
+];
+
+// Helper to get active registered shop name
+export const getActiveShopName = (profile, user) => {
+  if (profile?.shopName && profile.shopName.trim() && profile.shopName !== "TyreSaathi Partner Hub") {
+    return profile.shopName.trim();
+  }
+  if (profile?.businessName && profile.businessName.trim()) {
+    return profile.businessName.trim();
+  }
+  if (profile?.name && profile.name.trim() && profile.name.toLowerCase() !== "user") {
+    return `${profile.name.trim()} Tyres`;
+  }
+  if (user?.displayName && user.displayName.trim() && user.displayName.toLowerCase() !== "user") {
+    return `${user.displayName.trim()} Tyres`;
+  }
+  return "Tyre Saathi";
+};
+
+// Helper to generate dynamic invoice prefix based on Shop Name (e.g. "Tyre Saathi" -> "TS-INV-", "Ahamad Tyres" -> "AT-INV-", "Ahamad" -> "AH-INV-")
+export const getShopInvoicePrefix = (shopName = "") => {
+  const clean = (shopName || "").trim();
+  if (!clean || clean.toLowerCase() === "tyresaathi partner hub" || clean.toLowerCase() === "tyre saathi" || clean.toLowerCase() === "tyresaathi") {
+    return "TS-INV-";
+  }
+  // Remove special symbols, split into words
+  const words = clean.split(/[\s,_\-&]+/).filter(w => Boolean(w) && !['and', '&', 'the'].includes(w.toLowerCase()));
+  if (words.length >= 2) {
+    const initials = words.map(w => w[0].toUpperCase()).slice(0, 4).join("");
+    return `${initials}-INV-`;
+  } else if (words.length === 1) {
+    const single = words[0].replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    if (single.length >= 2) {
+      return `${single.slice(0, 2)}-INV-`;
+    }
+    return `${single || "TS"}-INV-`;
+  }
+  return "TS-INV-";
+};
+
+// Helper to generate sequential invoice numbers starting from 01 per shop
+export const generateNextInvoiceNo = (existingList = [], shopName = "Tyre Saathi") => {
+  const prefix = getShopInvoicePrefix(shopName);
   let highest = 0;
   if (Array.isArray(existingList)) {
     existingList.forEach((inv) => {
@@ -69,8 +129,9 @@ export const generateNextInvoiceNo = (existingList = [], prefix = "TS-INV-") => 
 // Helper to determine the dedicated storage key per shop/vendor
 export const getShopInvoiceStorageKey = (user, profile) => {
   if (user?.uid) return `tyresaathi_invoices_vendor_${user.uid}`;
-  if (profile?.shopName && profile.shopName.trim() && profile.shopName !== "TyreSaathi Partner Hub") {
-    return `tyresaathi_invoices_shop_${profile.shopName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  const sName = profile?.shopName || profile?.businessName || profile?.name;
+  if (sName && sName.trim() && sName !== "TyreSaathi Partner Hub") {
+    return `tyresaathi_invoices_shop_${sName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
   }
   return "tyresaathi_invoices_default";
 };
@@ -129,10 +190,11 @@ export default function Billing() {
     }
 
     // Auto-update active form invoice number and shop details for the current shop
+    const activeShopName = getActiveShopName(profile, user);
     setInvoice((prev) => ({
       ...prev,
-      invoiceNo: generateNextInvoiceNo(currentShopList),
-      shopName: profile?.shopName || prev.shopName || "TyreSaathi Partner Hub",
+      invoiceNo: generateNextInvoiceNo(currentShopList, activeShopName),
+      shopName: activeShopName || prev.shopName || "Tyre Saathi",
       shopPhone: profile?.phone || prev.shopPhone || "",
       shopAddress: profile?.address || prev.shopAddress || "Verified TyreSaathi Network",
     }));
@@ -155,7 +217,7 @@ export default function Billing() {
           } catch {}
           setInvoice((prev) => ({
             ...prev,
-            invoiceNo: generateNextInvoiceNo(cloudList),
+            invoiceNo: generateNextInvoiceNo(cloudList, activeShopName),
           }));
         }
       } catch (err) {
@@ -219,7 +281,7 @@ export default function Billing() {
     }
   }, [invoices, user?.uid, profile?.shopName]);
 
-  // Active Invoice Form State - starts cleanly with TS-INV-01 for this specific shop
+  // Active Invoice Form State - starts cleanly with shop-branded prefix (e.g. AT-INV-01)
   const [invoice, setInvoice] = useState(() => {
     let savedList = [];
     try {
@@ -230,14 +292,16 @@ export default function Billing() {
       savedList = [];
     }
 
+    const initialShop = getActiveShopName(profile, user);
+
     return {
-      invoiceNo: generateNextInvoiceNo(savedList),
+      invoiceNo: generateNextInvoiceNo(savedList, initialShop),
       date: new Date().toISOString().split("T")[0],
       customerName: searchParams.get("customer") || "",
       customerPhone: searchParams.get("phone") || "",
       vehicleName: searchParams.get("vehicle") || "",
       vehicleNumber: searchParams.get("vehicleNo") || "",
-      shopName: profile?.shopName || "TyreSaathi Partner Hub",
+      shopName: initialShop,
       shopPhone: profile?.phone || "",
       shopAddress: profile?.address || "Verified TyreSaathi Network",
       items: [
@@ -262,6 +326,27 @@ export default function Billing() {
       notes: "Warranty as per company terms. Free checkup on next visit.",
     };
   });
+
+  // Handle dynamic shop name modification & auto-update invoice number prefix
+  const handleShopNameChange = (newShopName) => {
+    setInvoice((prev) => {
+      const oldPrefix = getShopInvoicePrefix(prev.shopName);
+      const newPrefix = getShopInvoicePrefix(newShopName);
+      let nextNo = prev.invoiceNo || "";
+      if (nextNo.startsWith(oldPrefix)) {
+        nextNo = nextNo.replace(oldPrefix, newPrefix);
+      } else {
+        const match = nextNo.match(/(\d+)$/);
+        const num = match ? match[1] : "01";
+        nextNo = `${newPrefix}${num}`;
+      }
+      return {
+        ...prev,
+        shopName: newShopName,
+        invoiceNo: nextNo,
+      };
+    });
+  };
 
   // Modal State for Full Page Printable Receipt
   const [printModalInvoice, setPrintModalInvoice] = useState(null);
@@ -407,14 +492,15 @@ export default function Billing() {
 
   // Reset Form for Next Bill
   const handleResetForm = () => {
+    const activeShop = getActiveShopName(profile, user);
     setInvoice({
-      invoiceNo: generateNextInvoiceNo(invoices),
+      invoiceNo: generateNextInvoiceNo(invoices, activeShop),
       date: new Date().toISOString().split("T")[0],
       customerName: "",
       customerPhone: "",
       vehicleName: "",
       vehicleNumber: "",
-      shopName: profile?.shopName || "TyreSaathi Partner Hub",
+      shopName: activeShop,
       shopPhone: profile?.phone || "",
       shopAddress: profile?.address || "Verified TyreSaathi Network",
       items: [
@@ -500,7 +586,7 @@ export default function Billing() {
               color: "#1d4ed8",
               border: "1px solid #bfdbfe"
             }}>
-              🏪 {profile?.shopName || "Individual Shop"} • 🆔 Series: #TS-INV-01 se shuru
+              🏪 {invoice.shopName || getActiveShopName(profile, user)} • 🆔 Series: #{getShopInvoicePrefix(invoice.shopName || getActiveShopName(profile, user))}01 se shuru
             </span>
           </div>
           <p className="billing-sub">
@@ -536,61 +622,57 @@ export default function Billing() {
           TAB 1: CREATE NEW INVOICE FORM
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "create" && (
-        <div className="billing-workspace-grid">
-          {/* Left: Input Form */}
+        <div className="billing-workspace-vertical">
+          {/* Top: 100% Full-Width Input Form */}
           <div className="billing-form-card">
             <form onSubmit={handleSaveInvoice}>
               {/* Section 1: Customer & Vehicle Info */}
               <div className="form-sub-card">
                 <div className="card-section-title">
-                  <span>1</span> Dukan, Grahak Aur Gaadi Ki Details (Shop & Customer Info)
+                  <span>1</span> Grahak Aur Gaadi Ki Jankari (Customer & Vehicle Info)
                 </div>
 
-                <div className="form-grid-3" style={{ marginBottom: "14px" }}>
+                {/* Top Mini Meta Row */}
+                <div className="billing-meta-compact-row">
                   <div className="form-input-group">
-                    <label>Bill / Invoice No. (बिल नंबर) *</label>
-                    <div className="input-with-icon">
-                      <Receipt size={15} />
-                      <input
-                        type="text"
-                        placeholder="TS-INV-01"
-                        value={invoice.invoiceNo}
-                        onChange={(e) => setInvoice({ ...invoice, invoiceNo: e.target.value.toUpperCase() })}
-                        style={{ fontFamily: "monospace", fontWeight: 700 }}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-input-group">
-                    <label>Shop / Business Name (दुकान का नाम) *</label>
+                    <label>Bill No. (बिल नंबर) *</label>
                     <input
                       type="text"
-                      placeholder="e.g. ABC Tyre & Service Center"
-                      value={invoice.shopName}
-                      onChange={(e) => setInvoice({ ...invoice, shopName: e.target.value })}
+                      value={invoice.invoiceNo}
+                      onChange={(e) => setInvoice({ ...invoice, invoiceNo: e.target.value.toUpperCase() })}
+                      style={{ fontFamily: "monospace", fontWeight: 800 }}
                       required
                     />
                   </div>
-
                   <div className="form-input-group">
-                    <label>Invoice Date (तारीख)</label>
+                    <label>Date (तारीख)</label>
                     <input
                       type="date"
                       value={invoice.date}
                       onChange={(e) => setInvoice({ ...invoice, date: e.target.value })}
                     />
                   </div>
+                  <div className="form-input-group" style={{ flex: 1.5 }}>
+                    <label>Shop Name (दुकान का नाम)</label>
+                    <input
+                      type="text"
+                      value={invoice.shopName}
+                      onChange={(e) => handleShopNameChange(e.target.value)}
+                      placeholder="उदा: Ahamad Tyres / Super Tyre Care"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div className="form-grid-2">
+                {/* Compact 2x2 Customer Grid */}
+                <div className="customer-compact-grid">
                   <div className="form-input-group">
                     <label>Customer Name (ग्राहक का नाम) *</label>
                     <div className="input-with-icon">
-                      <User size={15} />
+                      <User size={14} />
                       <input
                         type="text"
-                        placeholder="e.g. Your Name"
+                        placeholder="उदा: राहुल शर्मा / Customer Name"
                         value={invoice.customerName}
                         onChange={(e) => setInvoice({ ...invoice, customerName: e.target.value })}
                         required
@@ -601,7 +683,7 @@ export default function Billing() {
                   <div className="form-input-group">
                     <label>Mobile Number (मोबाइल नंबर) *</label>
                     <div className="input-with-icon">
-                      <Phone size={15} />
+                      <Phone size={14} />
                       <input
                         type="tel"
                         placeholder="10 digit mobile number"
@@ -611,16 +693,14 @@ export default function Billing() {
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="form-grid-2" style={{ marginTop: "12px" }}>
                   <div className="form-input-group">
                     <label>Vehicle Model (गाड़ी का नाम/मॉडल)</label>
                     <div className="input-with-icon">
-                      <Car size={15} />
+                      <Car size={14} />
                       <input
                         type="text"
-                        placeholder="e.g. Swift Dzire / Creta / Activa"
+                        placeholder="उदा: Swift Dzire / Creta / Truck 16-Wheeler"
                         value={invoice.vehicleName}
                         onChange={(e) => setInvoice({ ...invoice, vehicleName: e.target.value })}
                       />
@@ -628,10 +708,10 @@ export default function Billing() {
                   </div>
 
                   <div className="form-input-group">
-                    <label>Vehicle Registration No. (गाड़ी नंबर)</label>
+                    <label>Vehicle Reg No. (गाड़ी नंबर)</label>
                     <input
                       type="text"
-                      placeholder="e.g. DL 01 AB 1234 / KA 05 MN 4589"
+                      placeholder="उदा: DL 01 AB 1234"
                       value={invoice.vehicleNumber}
                       onChange={(e) => setInvoice({ ...invoice, vehicleNumber: e.target.value.toUpperCase() })}
                       style={{ textTransform: "uppercase" }}
@@ -640,128 +720,376 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Section 2: Items & Service Breakdown */}
+              {/* Section 2: Tyres, Tubes & Services (सामान और सर्विस विवरण) */}
               <div className="form-sub-card">
                 <div className="card-section-header">
                   <div className="card-section-title">
                     <span>2</span> Tyres, Tubes & Services (सामान और सर्विस विवरण)
                   </div>
-                  <div className="quick-add-actions">
-                    <button type="button" className="btn-quick-add" onClick={() => addItemRow("tyre")}>
-                      + 🛞 Tyre Item
-                    </button>
-                    <button type="button" className="btn-quick-add" onClick={() => addItemRow("service")}>
-                      + 🛠️ Service Item
-                    </button>
-                  </div>
                 </div>
 
-                {/* Quick Presets Bar */}
-                <div className="presets-bar">
-                  <span className="preset-label">⚡ Quick Services:</span>
-                  {presetServices.map((svc, i) => (
-                    <button
-                      key={svc.id || i}
-                      type="button"
-                      className="preset-chip"
-                      onClick={() => addPresetService(svc)}
-                      title={svc.category ? `Category: ${svc.category}` : undefined}
-                    >
-                      {svc.icon ? `${svc.icon} ` : "+ "}
-                      {svc.name.includes("(") ? svc.name.split("(")[0].trim() : svc.name} (₹{Number(svc.rate || 0).toLocaleString("en-IN")})
-                    </button>
+                {/* Tyre Brands Datalist */}
+                <datalist id="tyre-brands-list">
+                  {STANDARD_TYRE_BRANDS.map((b) => (
+                    <option key={b} value={b} />
                   ))}
-                </div>
-
-                {/* Items Table */}
-                <datalist id="tyre-sizes-list">
-                  <option value="145/80 R12" label="Alto / WagonR" />
-                  <option value="155/80 R13" label="Santro / Eon" />
-                  <option value="165/80 R14" label="Swift / Dzire" />
-                  <option value="175/65 R14" label="Tiago / i10 / Amaze" />
-                  <option value="185/65 R15" label="Baleno / Swift / Ertiga" />
-                  <option value="195/65 R15" label="City / Corolla / Civic" />
-                  <option value="195/55 R16" label="i20 / Baleno Top" />
-                  <option value="205/60 R16" label="Brezza / EcoSport" />
-                  <option value="215/60 R16" label="Creta / Seltos" />
-                  <option value="215/65 R16" label="Duster / Harrier" />
-                  <option value="235/65 R17" label="Scorpio / XUV500" />
-                  <option value="265/65 R17" label="Fortuner / Endeavour" />
-                  <option value="90/90-12" label="Activa / Jupiter Front" />
-                  <option value="90/100-10" label="Pleasure / Scooty" />
-                  <option value="2.75-17" label="Splendor / HF Deluxe" />
-                  <option value="3.00-17" label="Shine / Passion" />
-                  <option value="100/90-17" label="Pulsar / Apache Rear" />
-                  <option value="140/60 R17" label="FZ / Duke Rear" />
-                  <option value="10.00-20" label="Commercial Truck / Bus" />
-                  <option value="295/90 R20" label="Heavy Truck Radial" />
-                  <option value="13.6-28" label="Tractor Rear Tyre" />
+                  <option value="MRF ZVTS / Wanderer" />
+                  <option value="Apollo Amazer 4G Life / Alnac" />
+                  <option value="CEAT Milaze / SecuraDrive" />
+                  <option value="Goodyear Assurance TripleMax" />
+                  <option value="Bridgestone B290 / Ecopia" />
+                  <option value="Michelin Energy XM2+ / Primacy" />
+                  <option value="JK Tyre UX Royale / Elanzo" />
                 </datalist>
 
-                <div className="items-table-wrapper" style={{ overflowX: "auto" }}>
-                  <table className="items-entry-table" style={{ minWidth: "720px" }}>
+                {/* Tyre Sizes Datalist */}
+                <datalist id="tyre-sizes-list">
+                  {STANDARD_TYRE_SIZES.map((s, idx) => (
+                    <option key={idx} value={s.size} label={s.label} />
+                  ))}
+                  <option value="9.00-20" label="Truck / Commercial" />
+                  <option value="10.00-20" label="Truck / Commercial" />
+                </datalist>
+
+                {/* 🖥️ Desktop View Items Table (>= 768px) */}
+                <div className="items-table-desktop-wrapper">
+                  <table className="items-entry-table">
                     <thead>
                       <tr>
-                        <th style={{ width: "26%" }}>Item / Brand (आइटम नाम)</th>
-                        <th style={{ width: "20%" }}>🛞 Tyre Size / No. (टायर नंबर)</th>
-                        <th style={{ width: "20%" }}>🔢 Serial No. (सीरियल नंबर)</th>
-                        <th style={{ width: "10%" }}>Type</th>
-                        <th style={{ width: "7%" }}>Qty</th>
-                        <th style={{ width: "10%" }}>Rate (₹)</th>
-                        <th style={{ width: "10%" }}>Amount (₹)</th>
+                        <th style={{ width: "17%" }}>1. CATEGORY (प्रकार)</th>
+                        <th style={{ width: "27%" }}>2. ITEM / SERVICE (चुनें या लिखें)</th>
+                        <th style={{ width: "21%" }}>3. TYRE SIZE / SPEC</th>
+                        <th style={{ width: "15%" }}>4. SERIAL / DOT</th>
+                        <th style={{ width: "6%" }}>QTY</th>
+                        <th style={{ width: "7%" }}>RATE (₹)</th>
+                        <th style={{ width: "7%" }}>AMOUNT (₹)</th>
                         <th style={{ width: "4%" }}></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {invoice.items.map((it, idx) => (
-                        <tr key={it.id}>
-                          <td>
-                            <input
-                              type="text"
-                              value={it.name}
-                              placeholder="उदा: Apollo Amazer / MRF ZVTV"
-                              onChange={(e) => handleItemChange(it.id, "name", e.target.value)}
-                              className="item-name-input"
-                              required
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              list="tyre-sizes-list"
-                              value={it.tyreSize || ""}
-                              placeholder=""
-                              onChange={(e) => handleItemChange(it.id, "tyreSize", e.target.value)}
-                              className="item-size-input"
-                              autoComplete="off"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              maxLength={15}
-                              value={it.serialNo || ""}
-                              placeholder=""
-                              onChange={(e) => handleItemChange(it.id, "serialNo", e.target.value.toUpperCase().slice(0, 15))}
-                              className="item-serial-input"
-                              title="Tyre Serial / DOT No. (Max 15 digits)"
-                              autoComplete="off"
-                            />
-                          </td>
-                          <td>
-                            <select
-                              value={it.type}
-                              onChange={(e) => handleItemChange(it.id, "type", e.target.value)}
-                              className="item-type-select"
-                            >
-                              <option value="tyre">🛞 Tyre</option>
-                              <option value="tube">⭕ Tube</option>
-                              <option value="service">🛠️ Service</option>
-                              <option value="alloy">✨ Alloy</option>
-                              <option value="other">📦 Other</option>
-                            </select>
-                          </td>
-                          <td>
+                      {invoice.items.map((it) => {
+                        const isService = it.type === "service";
+                        const isTyre = it.type === "tyre";
+                        const isTube = it.type === "tube";
+                        return (
+                          <tr key={it.id} className={isService ? "table-service-row" : "table-tyre-row"}>
+                            <td>
+                              <select
+                                value={it.type}
+                                onChange={(e) => {
+                                  const newType = e.target.value;
+                                  handleItemChange(it.id, "type", newType);
+                                  if (newType === "service" && !it.name) {
+                                    handleItemChange(it.id, "name", "पंचर रिपेयर (Tubeless Puncture)");
+                                    handleItemChange(it.id, "rate", 200);
+                                  }
+                                }}
+                                className={`item-type-select ${isService ? "select-type-service" : "select-type-tyre"}`}
+                              >
+                                <option value="service">🛠️ Tyre Service (लेबर)</option>
+                                <option value="tyre">🛞 New Tyre</option>
+                                <option value="tube">⭕ Tube (ट्यूब)</option>
+                                <option value="other">📦 Other Item</option>
+                              </select>
+                            </td>
+                            <td>
+                              {isService ? (
+                                <select
+                                  className="service-quick-dropdown"
+                                  value={it.name && it.rate ? `${it.name}|${it.rate}` : it.name || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val && val !== "custom") {
+                                      const [sName, sRate] = val.split("|");
+                                      handleItemChange(it.id, "name", sName || val);
+                                      if (sRate) handleItemChange(it.id, "rate", Number(sRate));
+                                    } else if (val === "custom") {
+                                      const customName = prompt("सर्विस का नाम लिखें (Enter Custom Service Name):", "");
+                                      if (customName) {
+                                        handleItemChange(it.id, "name", customName);
+                                        const customRate = prompt("सर्विस चार्ज / दर दर्ज करें (Rate ₹):", "100");
+                                        if (customRate) handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <option value="">⚡ Service Dropdown se chunein...</option>
+                                  {presetServices.map((s, idx) => (
+                                    <option key={s.id || idx} value={`${s.name}|${s.rate}`}>
+                                      {s.icon || "🛠️"} {s.name} (₹{s.rate})
+                                    </option>
+                                  ))}
+                                  <option value="custom">✏️ + Custom Work (हाथ से लिखें)</option>
+                                </select>
+                              ) : (
+                                <select
+                                  className="brand-quick-dropdown"
+                                  value={it.name || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val && val !== "custom") {
+                                      handleItemChange(it.id, "name", val);
+                                    } else if (val === "custom") {
+                                      const customB = prompt("ब्रांड या सामान का नाम लिखें (Enter Brand / Item Name):", "");
+                                      if (customB) handleItemChange(it.id, "name", customB);
+                                    }
+                                  }}
+                                >
+                                  <option value="">⚡ Brand (ब्रांड चुनें)...</option>
+                                  {STANDARD_TYRE_BRANDS.map((b) => (
+                                    <option key={b} value={b}>{b}</option>
+                                  ))}
+                                  <option value="custom">✏️ + Other / Custom Brand</option>
+                                </select>
+                              )}
+                            </td>
+                            <td>
+                              {isService || isTyre ? (
+                                <select
+                                  className="size-quick-dropdown"
+                                  value={it.tyreSize || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val && val !== "custom") {
+                                      handleItemChange(it.id, "tyreSize", val);
+                                    } else if (val === "custom") {
+                                      const customSize = prompt("टायर साइज़ लिखें (Enter Custom Tyre Size):", "");
+                                      if (customSize) handleItemChange(it.id, "tyreSize", customSize);
+                                    }
+                                  }}
+                                >
+                                  <option value="">⚡ Size (साइज़)...</option>
+                                  {STANDARD_TYRE_SIZES.map((s, idx) => (
+                                    <option key={idx} value={s.size}>{s.label}</option>
+                                  ))}
+                                  <option value="custom">✏️ + Other Size (हाथ से लिखें)</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  list="tyre-sizes-list"
+                                  value={it.tyreSize || ""}
+                                  placeholder="उदा: 165/80 R14"
+                                  onChange={(e) => handleItemChange(it.id, "tyreSize", e.target.value)}
+                                  className="item-size-input"
+                                  autoComplete="off"
+                                />
+                              )}
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                maxLength={18}
+                                value={it.serialNo || ""}
+                                placeholder="उदा: DOT 89412"
+                                onChange={(e) => handleItemChange(it.id, "serialNo", e.target.value.toUpperCase().slice(0, 18))}
+                                className="item-serial-input"
+                                title="Tyre Serial / DOT No."
+                                autoComplete="off"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="1"
+                                value={it.qty}
+                                onChange={(e) => handleItemChange(it.id, "qty", e.target.value)}
+                                className="item-qty-input"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="0"
+                                value={it.rate}
+                                onChange={(e) => handleItemChange(it.id, "rate", e.target.value)}
+                                className="item-rate-input"
+                              />
+                            </td>
+                            <td className="item-amount-col">
+                              ₹{Number(it.amount || 0).toLocaleString("en-IN")}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="btn-remove-row"
+                                onClick={() => removeItemRow(it.id)}
+                                title="Delete Item"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 📱 Mobile Dropdown Cards View (< 768px) */}
+                <div className="items-cards-mobile-view">
+                  {invoice.items.map((it, idx) => {
+                    const isService = it.type === "service";
+                    const isTyre = it.type === "tyre";
+                    return (
+                      <div key={it.id} className={`mobile-item-card ${isService ? "mobile-service-card" : "mobile-tyre-card"}`}>
+                        <div className="mobile-item-card-header">
+                          <div className="mobile-item-title-wrap">
+                            <span className={`mobile-item-badge ${isService ? "badge-service" : "badge-tyre"}`}>
+                              #{idx + 1} {isService ? "🛠️ TYRE SERVICE" : "🛞 NEW TYRE"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-remove-mobile-item"
+                            onClick={() => removeItemRow(it.id)}
+                            title="Hatao"
+                          >
+                            <Trash2 size={13} /> Hatao
+                          </button>
+                        </div>
+
+                        {/* Dropdown 1: Select Type / Category */}
+                        <div className="mobile-field-group">
+                          <label>1. कैटेगरी (Category) *</label>
+                          <select
+                            value={it.type}
+                            onChange={(e) => {
+                              const newType = e.target.value;
+                              handleItemChange(it.id, "type", newType);
+                              if (newType === "service" && !it.name) {
+                                handleItemChange(it.id, "name", "पंचर रिपेयर (Tubeless Puncture)");
+                                handleItemChange(it.id, "rate", 200);
+                              }
+                            }}
+                            className={`item-type-select ${isService ? "select-type-service" : "select-type-tyre"}`}
+                          >
+                            <option value="service">🛠️ 1. Tyre Service (लेबर)</option>
+                            <option value="tyre">🛞 2. New Tyre</option>
+                            <option value="tube">⭕ 3. Tube (ट्यूब)</option>
+                            <option value="other">📦 4. Other Item</option>
+                          </select>
+                        </div>
+
+                        {/* Dropdown 2: Item / Service / Brand */}
+                        {isService ? (
+                          <div className="service-mobile-fields">
+                            <div className="mobile-field-group">
+                              <label>2. सर्विस चुनें (Service Dropdown):</label>
+                              <select
+                                className="service-quick-dropdown"
+                                value={it.name && it.rate ? `${it.name}|${it.rate}` : it.name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val && val !== "custom") {
+                                    const [sName, sRate] = val.split("|");
+                                    handleItemChange(it.id, "name", sName || val);
+                                    if (sRate) handleItemChange(it.id, "rate", Number(sRate));
+                                  } else if (val === "custom") {
+                                    const customName = prompt("सर्विस का नाम लिखें:", "");
+                                    if (customName) {
+                                      handleItemChange(it.id, "name", customName);
+                                      const customRate = prompt("दर दर्ज करें (Rate ₹):", "100");
+                                      if (customRate) handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                    }
+                                  }
+                                }}
+                              >
+                                <option value="">⚡ ड्रॉपडाउन से सर्विस चुनें...</option>
+                                {presetServices.map((s, idx) => (
+                                  <option key={s.id || idx} value={`${s.name}|${s.rate}`}>
+                                    {s.icon || "🛠️"} {s.name} (₹{s.rate})
+                                  </option>
+                                ))}
+                                <option value="custom">✏️ + Custom Work (हाथ से लिखें)</option>
+                              </select>
+                            </div>
+
+                            <div className="mobile-field-group" style={{ marginTop: "6px" }}>
+                              <label>3. साइज़ (Size Dropdown):</label>
+                              <select
+                                className="size-quick-dropdown"
+                                value={it.tyreSize || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val && val !== "custom") {
+                                    handleItemChange(it.id, "tyreSize", val);
+                                  }
+                                }}
+                              >
+                                <option value="">⚡ Size (साइज़)...</option>
+                                {STANDARD_TYRE_SIZES.map((s, idx) => (
+                                  <option key={idx} value={s.size}>{s.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="tyre-mobile-fields">
+                            <div className="mobile-field-group">
+                              <label>2. ब्रांड चुनें (Brand Dropdown) *</label>
+                              <select
+                                className="brand-quick-dropdown"
+                                value={it.name || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val && val !== "custom") {
+                                    handleItemChange(it.id, "name", val);
+                                  } else if (val === "custom") {
+                                    const customB = prompt("ब्रांड या मॉडल का नाम लिखें:", "");
+                                    if (customB) handleItemChange(it.id, "name", customB);
+                                  }
+                                }}
+                              >
+                                <option value="">⚡ ब्रांड चुनें (MRF / Apollo / CEAT etc.)...</option>
+                                {STANDARD_TYRE_BRANDS.map((b) => (
+                                  <option key={b} value={b}>{b}</option>
+                                ))}
+                                <option value="custom">✏️ + Custom Brand</option>
+                              </select>
+                            </div>
+
+                            <div className="mobile-field-group" style={{ marginTop: "6px" }}>
+                              <label>3. साइज़ चुनें (Tyre Size Dropdown)</label>
+                              <select
+                                className="size-quick-dropdown"
+                                value={it.tyreSize || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val && val !== "custom") {
+                                    handleItemChange(it.id, "tyreSize", val);
+                                  } else if (val === "custom") {
+                                    const customSize = prompt("टायर साइज़ लिखें:", "");
+                                    if (customSize) handleItemChange(it.id, "tyreSize", customSize);
+                                  }
+                                }}
+                              >
+                                <option value="">⚡ साइज़ चुनें (165/80 R14, 185/65 R15 आदि)...</option>
+                                {STANDARD_TYRE_SIZES.map((s, idx) => (
+                                  <option key={idx} value={s.size}>{s.label}</option>
+                                ))}
+                                <option value="custom">✏️ + Other Size</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mobile-field-group" style={{ marginTop: "6px" }}>
+                          <label>4. Serial / DOT No</label>
+                          <input
+                            type="text"
+                            maxLength={18}
+                            value={it.serialNo || ""}
+                            placeholder="उदा: DOT 89412"
+                            onChange={(e) => handleItemChange(it.id, "serialNo", e.target.value.toUpperCase().slice(0, 18))}
+                            className="item-serial-input"
+                            autoComplete="off"
+                          />
+                        </div>
+
+                        <div className="mobile-two-col-grid" style={{ marginTop: "6px" }}>
+                          <div className="mobile-field-group">
+                            <label>मात्रा (Qty)</label>
                             <input
                               type="number"
                               min="1"
@@ -769,8 +1097,9 @@ export default function Billing() {
                               onChange={(e) => handleItemChange(it.id, "qty", e.target.value)}
                               className="item-qty-input"
                             />
-                          </td>
-                          <td>
+                          </div>
+                          <div className="mobile-field-group">
+                            <label>दर (Rate ₹)</label>
                             <input
                               type="number"
                               min="0"
@@ -778,32 +1107,27 @@ export default function Billing() {
                               onChange={(e) => handleItemChange(it.id, "rate", e.target.value)}
                               className="item-rate-input"
                             />
-                          </td>
-                          <td className="item-amount-col">
-                            ₹{it.amount}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn-remove-row"
-                              onClick={() => removeItemRow(it.id)}
-                              title="Delete Item"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                        </div>
+
+                        {/* Total Display */}
+                        <div className="mobile-total-display">
+                          <span className="mobile-total-label">Item Total:</span>
+                          <span className="mobile-total-val">₹{Number(it.amount || 0).toLocaleString("en-IN")}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
+                {/* Add Row Button - Single place at bottom */}
                 <button
                   type="button"
                   className="btn-add-row-full"
                   onClick={() => addItemRow("tyre")}
+                  style={{ marginTop: "10px" }}
                 >
-                  <Plus size={15} /> Nayi Line / Item Jodein
+                  <Plus size={15} /> + ➕ Naya Item / Service Jodein
                 </button>
               </div>
 
@@ -897,127 +1221,132 @@ export default function Billing() {
             </form>
           </div>
 
-          {/* Right: Live Bill Summary / Receipt Card */}
-          <div className="billing-receipt-sidebar">
+          {/* 🧾 Bottom: Live Bill Summary / Receipt Card (Now Placed Below the Form) */}
+          <div className="billing-receipt-bottom-wrapper">
             <div className="live-receipt-card">
-              <div className="receipt-top-brand">
-                <span className="brand-badge">🧾 RETAIL INVOICE</span>
-                <span className="receipt-inv-num">#{invoice.invoiceNo}</span>
-              </div>
-
-              <div className="receipt-shop-meta">
-                <h3 style={{ color: "#c0392b", fontWeight: 800, fontSize: "16px", margin: "0 0 2px" }}>
-                  {invoice.shopName || profile?.shopName || "ABC Tyre & Service Center"}
-                </h3>
-                <p style={{ fontSize: "12px", fontWeight: 700, color: "#c0392b", margin: 0 }}>
-                  Authorized TyreSaathi Partner Network
-                </p>
-                <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>Date: {invoice.date}</small>
-              </div>
-
-              <div className="receipt-divider" />
-
-              {/* Customer Box */}
-              <div className="receipt-customer-details">
-                <div>
-                  <span className="meta-lbl">Customer:</span>
-                  <strong>{invoice.customerName || "Grahak Ka Naam"}</strong>
-                </div>
-                <div>
-                  <span className="meta-lbl">Phone:</span>
-                  <span>{invoice.customerPhone || "Mobile Number"}</span>
-                </div>
-                {invoice.vehicleNumber && (
-                  <div>
-                    <span className="meta-lbl">Vehicle:</span>
-                    <span>{invoice.vehicleName} ({invoice.vehicleNumber})</span>
+              <div className="receipt-bottom-grid">
+                {/* Left / Upper Column: Shop Info, Customer & Items */}
+                <div className="receipt-preview-main">
+                  <div className="receipt-top-brand">
+                    <span className="brand-badge">🧾 LIVE RETAIL INVOICE PREVIEW</span>
+                    <span className="receipt-inv-num">#{invoice.invoiceNo}</span>
                   </div>
-                )}
-              </div>
 
-              <div className="receipt-divider" />
+                  <div className="receipt-shop-meta">
+                    <h3 style={{ color: "#c0392b", fontWeight: 800, fontSize: "17px", margin: "0 0 2px" }}>
+                      {invoice.shopName || getActiveShopName(profile, user)}
+                    </h3>
+                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#c0392b", margin: 0 }}>
+                      Authorized TyreSaathi Partner Network
+                    </p>
+                    <small style={{ color: "var(--text-muted)", fontSize: "11px" }}>Date: {invoice.date}</small>
+                  </div>
 
-              {/* Items Summary */}
-              <div className="receipt-items-list">
-                {invoice.items.map((it, idx) => (
-                  <div key={idx} className="receipt-item-row">
-                    <div className="it-left">
-                      <span className="it-name">{it.name || "Item Name"}</span>
-                      {(it.tyreSize || it.serialNo) && (
-                        <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", margin: "3px 0" }}>
-                          {it.tyreSize && (
-                            <span style={{ fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
-                              🛞 {it.tyreSize}
-                            </span>
-                          )}
-                          {it.serialNo && (
-                            <span style={{ fontSize: "11px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "4px", fontWeight: 700, fontFamily: "monospace" }}>
-                              🔢 #{it.serialNo}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <small className="it-qty">{it.qty} x ₹{it.rate}</small>
+                  <div className="receipt-divider" />
+
+                  {/* Customer Box */}
+                  <div className="receipt-customer-details">
+                    <div>
+                      <span className="meta-lbl">Customer:</span>
+                      <strong>{invoice.customerName || "Grahak Ka Naam"}</strong>
                     </div>
-                    <span className="it-amt">₹{it.amount}</span>
+                    <div>
+                      <span className="meta-lbl">Phone:</span>
+                      <span>{invoice.customerPhone || "Mobile Number"}</span>
+                    </div>
+                    {invoice.vehicleNumber && (
+                      <div>
+                        <span className="meta-lbl">Vehicle:</span>
+                        <span>{invoice.vehicleName} ({invoice.vehicleNumber})</span>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
 
-              <div className="receipt-divider" />
+                  <div className="receipt-divider" />
 
-              {/* Calculation Breakdown */}
-              <div className="receipt-calc-table">
-                <div className="calc-row">
-                  <span>Subtotal:</span>
-                  <span>₹{invoice.subtotal}</span>
+                  {/* Items Summary Table */}
+                  <div className="receipt-items-list">
+                    {invoice.items.map((it, idx) => (
+                      <div key={idx} className="receipt-item-row">
+                        <div className="it-left">
+                          <span className="it-name">{it.name || "Item / Service Name"}</span>
+                          {(it.tyreSize || it.serialNo) && (
+                            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", margin: "3px 0" }}>
+                              {it.tyreSize && (
+                                <span style={{ fontSize: "11px", background: "#eff6ff", color: "#1d4ed8", padding: "1px 6px", borderRadius: "4px", fontWeight: 700 }}>
+                                  🛞 {it.tyreSize}
+                                </span>
+                              )}
+                              {it.serialNo && (
+                                <span style={{ fontSize: "11px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "4px", fontWeight: 700, fontFamily: "monospace" }}>
+                                  🔢 #{it.serialNo}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <small className="it-qty">{it.qty} x ₹{it.rate}</small>
+                        </div>
+                        <span className="it-amt">₹{it.amount}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                {invoice.discount > 0 && (
-                  <div className="calc-row discount-row">
-                    <span>Discount:</span>
-                    <span>-₹{invoice.discount}</span>
+
+                {/* Right / Side Column: Calculations, Payment & Actions */}
+                <div className="receipt-preview-side">
+                  <div className="receipt-calc-table">
+                    <div className="calc-row">
+                      <span>Subtotal:</span>
+                      <span>₹{invoice.subtotal}</span>
+                    </div>
+                    {invoice.discount > 0 && (
+                      <div className="calc-row discount-row">
+                        <span>Discount:</span>
+                        <span>-₹{invoice.discount}</span>
+                      </div>
+                    )}
+                    {invoice.taxAmount > 0 && (
+                      <div className="calc-row tax-row">
+                        <span>GST ({invoice.taxType === "gst18" ? "18%" : "28%"}):</span>
+                        <span>+₹{invoice.taxAmount}</span>
+                      </div>
+                    )}
+                    <div className="calc-row grand-total-row">
+                      <span>Grand Total:</span>
+                      <span className="grand-amount">₹{invoice.grandTotal}</span>
+                    </div>
                   </div>
-                )}
-                {invoice.taxAmount > 0 && (
-                  <div className="calc-row tax-row">
-                    <span>GST ({invoice.taxType === "gst18" ? "18%" : "28%"}):</span>
-                    <span>+₹{invoice.taxAmount}</span>
+
+                  {/* Payment Mode Tag */}
+                  <div className="receipt-payment-tag">
+                    <span>Payment Mode: <strong>{invoice.paymentMode.toUpperCase()}</strong></span>
+                    <span className={invoice.paymentStatus === "paid" ? "badge-paid" : "badge-pending"}>
+                      {invoice.paymentStatus === "paid" ? "✅ PAID" : "⏳ KHATA"}
+                    </span>
                   </div>
-                )}
-                <div className="calc-row grand-total-row">
-                  <span>Grand Total:</span>
-                  <span className="grand-amount">₹{invoice.grandTotal}</span>
+
+                  {/* Direct Quick Actions */}
+                  <div className="receipt-actions-grid">
+                    <button
+                      type="button"
+                      className="btn-print-preview"
+                      onClick={() => setPrintModalInvoice(invoice)}
+                    >
+                      <Printer size={15} /> Print / PDF Slip
+                    </button>
+
+                    {invoice.customerPhone && (
+                      <a
+                        href={getWhatsAppShareUrl(invoice)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn-whatsapp-share"
+                      >
+                        💬 WhatsApp Bill
+                      </a>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              {/* Payment Mode Tag */}
-              <div className="receipt-payment-tag">
-                <span>Payment Mode: <strong>{invoice.paymentMode.toUpperCase()}</strong></span>
-                <span className={invoice.paymentStatus === "paid" ? "badge-paid" : "badge-pending"}>
-                  {invoice.paymentStatus === "paid" ? "✅ PAID" : "⏳ KHATA"}
-                </span>
-              </div>
-
-              {/* Direct Quick Actions */}
-              <div className="receipt-actions-grid">
-                <button
-                  type="button"
-                  className="btn-print-preview"
-                  onClick={() => setPrintModalInvoice(invoice)}
-                >
-                  <Printer size={15} /> Print / PDF Slip
-                </button>
-
-                {invoice.customerPhone && (
-                  <a
-                    href={getWhatsAppShareUrl(invoice)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn-whatsapp-share"
-                  >
-                    💬 WhatsApp Bill
-                  </a>
-                )}
               </div>
             </div>
           </div>
@@ -1417,10 +1746,11 @@ export default function Billing() {
           margin: 0 auto;
           padding: 12px 16px 50px;
           box-sizing: border-box;
+          width: 100%;
         }
         @media (max-width: 600px) {
           .billing-page-container {
-            padding: 8px 12px 60px;
+            padding: 4px 4px 60px;
           }
         }
         .billing-header-row {
@@ -1429,6 +1759,8 @@ export default function Billing() {
           justify-content: space-between;
           gap: 12px;
           margin-bottom: 14px;
+          width: 100%;
+          box-sizing: border-box;
         }
         @media (max-width: 800px) {
           .billing-header-row { flex-direction: column; gap: 10px; }
@@ -1459,6 +1791,7 @@ export default function Billing() {
           border: 1px solid var(--border);
           padding: 3px;
           border-radius: 8px;
+          flex-wrap: wrap;
         }
         .pill-btn {
           background: none;
@@ -1491,17 +1824,17 @@ export default function Billing() {
           align-items: center;
           gap: 6px;
           margin-bottom: 14px;
+          width: 100%;
+          box-sizing: border-box;
         }
 
-        /* Workspace Grid */
-        .billing-workspace-grid {
-          display: grid;
-          grid-template-columns: 1fr 340px;
-          gap: 16px;
-          align-items: start;
-        }
-        @media (max-width: 1050px) {
-          .billing-workspace-grid { grid-template-columns: 1fr; }
+        /* Vertical Workspace Layout */
+        .billing-workspace-vertical {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         /* Form Sub Cards */
@@ -1515,16 +1848,17 @@ export default function Billing() {
         .form-sub-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 10px;
+          border-radius: 12px;
           padding: 14px 12px;
           box-shadow: 0 2px 10px rgba(0,0,0,0.04);
           box-sizing: border-box;
           width: 100%;
+          max-width: 100%;
         }
         @media (min-width: 640px) {
           .form-sub-card {
             padding: 18px 20px;
-            border-radius: 12px;
+            border-radius: 14px;
           }
         }
         .card-section-header {
@@ -1607,35 +1941,43 @@ export default function Billing() {
           color: #c0392b;
         }
 
-        /* Form Grids */
-        .form-grid-3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-          box-sizing: border-box;
+        /* Compact Meta & Customer Grids */
+        .billing-meta-compact-row {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 10px;
+          flex-wrap: wrap;
         }
-        .form-grid-2 {
+        .customer-compact-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          gap: 8px 12px;
+          width: 100%;
           box-sizing: border-box;
         }
-        @media (max-width: 700px) {
-          .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; gap: 8px; }
+        @media (max-width: 600px) {
+          .customer-compact-grid {
+            grid-template-columns: 1fr;
+            gap: 6px;
+          }
+          .billing-meta-compact-row {
+            flex-direction: column;
+            gap: 6px;
+          }
         }
 
         .form-input-group {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
           width: 100%;
           box-sizing: border-box;
         }
         .form-input-group label {
-          font-size: 0.88rem;
+          font-size: 0.82rem;
           font-weight: 700;
-          color: var(--text);
-          margin-bottom: 2px;
+          color: var(--text-muted);
+          margin-bottom: 1px;
         }
         .input-with-icon {
           position: relative;
@@ -1646,23 +1988,23 @@ export default function Billing() {
         }
         .input-with-icon svg {
           position: absolute;
-          left: 12px;
+          left: 10px;
           color: var(--text-muted);
           pointer-events: none;
           z-index: 1;
-          width: 18px;
-          height: 18px;
+          width: 15px;
+          height: 15px;
         }
         .input-with-icon input {
           width: 100%;
-          padding: 11px 12px 11px 38px !important;
+          padding: 8px 10px 8px 32px !important;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.95rem;
+          font-size: 0.88rem;
           outline: none;
-          font-weight: 500;
+          font-weight: 600;
           box-sizing: border-box;
         }
         .input-with-icon input:focus,
@@ -1673,59 +2015,31 @@ export default function Billing() {
         .form-input-group input,
         .form-input-group select {
           width: 100%;
-          padding: 11px 14px;
+          padding: 8px 10px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.95rem;
-          outline: none;
-          font-weight: 500;
-          box-sizing: border-box;
-        }
-
-        .payment-status-toggle {
-          display: flex;
-          gap: 8px;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        @media (max-width: 600px) {
-          .payment-status-toggle {
-            flex-direction: column;
-            gap: 6px;
-          }
-        }
-        .status-toggle-btn {
-          flex: 1;
-          padding: 10px 12px;
-          border-radius: 8px;
-          border: 1.5px solid var(--border);
-          background: var(--bg);
           font-size: 0.88rem;
-          font-weight: 700;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all 0.15s ease;
-          text-align: center;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          outline: none;
+          font-weight: 600;
           box-sizing: border-box;
         }
-        .status-paid-active {
-          background: #eafaf1;
-          border-color: #2ecc71;
-          color: #27ae60;
+
+        .btn-quick-tyre {
+          background: #FDF2F2 !important;
+          color: #c0392b !important;
+          border: 1.5px solid #FADBD8 !important;
         }
-        .status-pending-active {
-          background: #fef9e7;
-          border-color: #f39c12;
-          color: #d35400;
+        .btn-quick-service {
+          background: #EBF5FB !important;
+          color: #2980b9 !important;
+          border: 1.5px solid #AED6F1 !important;
         }
 
-        /* Items Entry Table */
-        .items-table-wrapper {
+        /* Items Entry: Responsive Dual Mode */
+        .items-table-desktop-wrapper {
+          display: block;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           margin-bottom: 14px;
@@ -1734,18 +2048,17 @@ export default function Billing() {
         }
         .items-entry-table {
           width: 100%;
-          min-width: 500px;
           border-collapse: collapse;
           font-size: 0.88rem;
         }
         .items-entry-table th {
           background: var(--surface-2);
-          padding: 10px 10px;
+          padding: 9px 8px;
           text-align: left;
           font-weight: 800;
           color: var(--text);
           border-bottom: 1.5px solid var(--border);
-          font-size: 0.82rem;
+          font-size: 0.78rem;
           text-transform: uppercase;
           letter-spacing: 0.4px;
         }
@@ -1753,16 +2066,237 @@ export default function Billing() {
           padding: 8px 6px;
           border-bottom: 1px solid var(--border);
         }
+
+        .table-service-row {
+          background: rgba(41, 128, 185, 0.03);
+        }
+        .table-tyre-row {
+          background: transparent;
+        }
+
+        .select-type-service {
+          background: #EBF5FB !important;
+          color: #1B4F72 !important;
+          font-weight: 700 !important;
+          border-color: #AED6F1 !important;
+        }
+        .select-type-tyre {
+          background: #FDF2F2 !important;
+          color: #922B21 !important;
+          font-weight: 700 !important;
+          border-color: #FADBD8 !important;
+        }
+
+        .service-quick-dropdown {
+          width: 100%;
+          padding: 8px 10px;
+          border-radius: 8px;
+          border: 1.5px solid #AED6F1;
+          background: #EBF5FB;
+          color: #1B4F72;
+          font-size: 0.85rem;
+          font-weight: 700;
+          outline: none;
+          box-sizing: border-box;
+          cursor: pointer;
+        }
+        .service-quick-dropdown:focus {
+          border-color: #2980b9;
+        }
+
+        .brand-quick-dropdown,
+        .size-quick-dropdown {
+          width: 100%;
+          padding: 8px 10px;
+          border-radius: 8px;
+          border: 1.5px solid #FADBD8;
+          background: #FFFAF8;
+          color: #922B21;
+          font-size: 0.85rem;
+          font-weight: 700;
+          outline: none;
+          box-sizing: border-box;
+          cursor: pointer;
+        }
+        .brand-quick-dropdown:focus,
+        .size-quick-dropdown:focus {
+          border-color: #c0392b;
+        }
+
+        .service-cell-na {
+          font-size: 0.78rem;
+          color: var(--text-muted);
+          font-style: italic;
+          display: inline-block;
+          padding: 6px;
+        }
+
+        /* Mobile Cards Mode (Default Hidden on Desktop, Active on Mobile) */
+        .items-cards-mobile-view {
+          display: none;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 14px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 768px) {
+          .items-table-desktop-wrapper {
+            display: none !important;
+          }
+          .items-cards-mobile-view {
+            display: flex !important;
+          }
+        }
+
+        .mobile-item-card {
+          background: var(--bg);
+          border: 1.5px solid var(--border);
+          border-radius: 12px;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          box-sizing: border-box;
+          width: 100%;
+        }
+
+        .mobile-service-card {
+          background: #F4F9FD;
+          border-color: #AED6F1;
+        }
+        .mobile-tyre-card {
+          background: #FFFAF8;
+          border-color: #FADBD8;
+        }
+
+        .mobile-item-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: 6px;
+          border-bottom: 1px dashed var(--border);
+        }
+
+        .mobile-item-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .mobile-item-badge {
+          font-size: 11px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+        .badge-service {
+          background: #D4E6F1;
+          color: #1B4F72;
+        }
+        .badge-tyre {
+          background: #FADBD8;
+          color: #922B21;
+        }
+
+        .mobile-type-switch-row {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 4px;
+        }
+        .type-pill-btn {
+          flex: 1;
+          padding: 6px 8px;
+          border-radius: 6px;
+          border: 1.5px solid var(--border);
+          background: #fff;
+          font-size: 0.74rem;
+          font-weight: 700;
+          color: var(--text-muted);
+          cursor: pointer;
+        }
+        .type-pill-active-tyre {
+          background: #FDF2F2;
+          color: #c0392b;
+          border-color: #c0392b;
+        }
+        .type-pill-active-service {
+          background: #EBF5FB;
+          color: #2980b9;
+          border-color: #2980b9;
+        }
+
+        .btn-remove-mobile-item {
+          background: rgba(192, 57, 43, 0.1);
+          border: 1px solid rgba(192, 57, 43, 0.3);
+          color: #c0392b;
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 6px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .mobile-field-group {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .mobile-field-group label {
+          font-size: 0.74rem;
+          font-weight: 700;
+          color: var(--text-muted);
+        }
+
+        .mobile-two-col-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .mobile-total-display {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 8px;
+          padding: 6px 10px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 4px;
+        }
+
+        .mobile-total-label {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--text-muted);
+        }
+
+        .mobile-total-val {
+          font-size: 1rem;
+          font-weight: 800;
+          color: #c0392b;
+        }
+
         .item-name-input,
         .item-size-input,
         .item-serial-input {
           width: 100%;
-          padding: 9px 12px;
+          padding: 8px 10px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.9rem;
+          font-size: 0.88rem;
           font-weight: 600;
           outline: none;
           box-sizing: border-box;
@@ -1782,24 +2316,24 @@ export default function Billing() {
         }
         .item-type-select {
           width: 100%;
-          padding: 9px 8px;
+          padding: 8px 6px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.85rem;
           font-weight: 600;
           box-sizing: border-box;
         }
         .item-qty-input,
         .item-rate-input {
           width: 100%;
-          padding: 9px 10px;
+          padding: 8px 8px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.92rem;
+          font-size: 0.88rem;
           font-weight: 700;
           text-align: right;
           box-sizing: border-box;
@@ -1809,7 +2343,7 @@ export default function Billing() {
           color: #c0392b;
           text-align: right;
           padding-right: 10px;
-          font-size: 0.95rem;
+          font-size: 0.92rem;
         }
         .btn-remove-row {
           background: none;
@@ -1818,30 +2352,47 @@ export default function Billing() {
           cursor: pointer;
           padding: 6px;
         }
-        .btn-add-row-full {
+
+        .dual-add-row-actions {
+          display: flex;
+          gap: 8px;
           width: 100%;
-          background: var(--surface-2);
-          border: 1.5px dashed var(--border);
-          color: var(--text);
-          padding: 11px;
+          box-sizing: border-box;
+        }
+        @media (max-width: 550px) {
+          .dual-add-row-actions {
+            flex-direction: column;
+            gap: 6px;
+          }
+        }
+        .btn-add-row-option {
+          flex: 1;
+          padding: 10px 12px;
           border-radius: 8px;
           font-weight: 800;
-          font-size: 0.88rem;
+          font-size: 0.84rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
+          border: 1.5px dashed;
           box-sizing: border-box;
-          transition: background 0.15s ease;
         }
-        .btn-add-row-full:hover {
-          background: var(--border);
+        .btn-add-tyre-row {
+          background: #FDF2F2;
+          border-color: #c0392b;
+          color: #c0392b;
+        }
+        .btn-add-service-row {
+          background: #EBF5FB;
+          border-color: #2980b9;
+          color: #2980b9;
         }
 
         .billing-action-buttons {
           display: flex;
-          gap: 12px;
+          gap: 10px;
           margin-top: 14px;
           width: 100%;
           box-sizing: border-box;
@@ -1857,60 +2408,94 @@ export default function Billing() {
           background: var(--surface-2);
           border: 1.5px solid var(--border);
           color: var(--text);
-          padding: 12px 16px;
+          padding: 10px 14px;
           border-radius: 8px;
           font-weight: 700;
-          font-size: 0.92rem;
+          font-size: 0.88rem;
           cursor: pointer;
           box-sizing: border-box;
           text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 42px;
         }
         .btn-generate-bill {
           flex: 2;
           background: #c0392b;
           color: white;
           border: none;
-          padding: 12px 20px;
+          padding: 11px 16px;
           border-radius: 8px;
           font-weight: 800;
-          font-size: 1rem;
+          font-size: 0.92rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 6px;
           box-sizing: border-box;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
           transition: transform 0.15s ease, background 0.15s ease;
+          min-height: 42px;
         }
         .btn-generate-bill:hover {
           background: #a93226;
           transform: translateY(-1px);
         }
 
-        /* Live Receipt Sidebar */
-        .billing-receipt-sidebar {
+        /* Live Receipt Bottom Section */
+        .billing-receipt-bottom-wrapper {
           width: 100%;
           box-sizing: border-box;
+          margin-top: 6px;
         }
         .live-receipt-card {
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 14px;
-          padding: 20px 18px;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.05);
-          position: sticky;
-          top: 85px;
+          border-radius: 12px;
+          padding: 16px 14px;
+          box-shadow: 0 4px 18px rgba(0,0,0,0.05);
           box-sizing: border-box;
           width: 100%;
           max-width: 100%;
         }
-        @media (max-width: 1050px) {
+        @media (min-width: 768px) {
           .live-receipt-card {
-            position: static;
-            padding: 16px 14px;
-            margin-top: 8px;
+            border-radius: 14px;
+            padding: 22px 24px;
           }
+        }
+        .receipt-bottom-grid {
+          display: grid;
+          grid-template-columns: 1.3fr 1fr;
+          gap: 24px;
+          align-items: start;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        @media (max-width: 850px) {
+          .receipt-bottom-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+        .receipt-preview-main {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        .receipt-preview-side {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+          box-sizing: border-box;
+          background: var(--bg);
+          padding: 16px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
         }
         .receipt-top-brand {
           display: flex;

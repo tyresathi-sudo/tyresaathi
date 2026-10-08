@@ -201,7 +201,7 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
               className="btn-add-ad-top"
               onClick={() => setModalOpen(true)}
             >
-              <Plus size={15} /> + Add Your Shop Offer (ऐड लगाएं)
+              <Plus size={15} /> Add Your Shop Offer (ऐड लगाएं)
             </button>
           </div>
         )}

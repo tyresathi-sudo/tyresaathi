@@ -504,10 +504,14 @@ export default function Sidebar({ open, onClose }) {
           .sidebar {
             position: sticky;
             transform: none;
-            top: 58px;
-            height: calc(100vh - 58px);
-            z-index: 10;
+            top: 92px;
+            height: calc(100vh - 92px);
+            max-height: calc(100vh - 92px);
+            overflow-y: auto;
+            z-index: 100;
             box-shadow: none;
+            flex-shrink: 0;
+            width: 280px;
           }
           .sidebar-close { display: none; }
         }
