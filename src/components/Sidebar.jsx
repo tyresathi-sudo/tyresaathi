@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Home, X, ShieldCheck, User, MessageCircle, ChevronRight, LogOut } from "lucide-react";
+import { Home, X, ShieldCheck, User, MessageCircle, ChevronRight, LogOut, Share2 } from "lucide-react";
 import {
   BUSINESS_NAV_ITEMS,
   GROWTH_NAV_ITEMS,
@@ -8,9 +8,61 @@ import {
   ACCOUNT_NAV_ITEMS
 } from "../config/navItems.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { shareApp } from "../utils/nativeBridge.js";
+import { db } from "../firebase.js";
+import { collection, onSnapshot } from "firebase/firestore";
 
 export default function Sidebar({ open, onClose }) {
   const { user, profile, isAdmin, isVendor, logout } = useAuth();
+  const [liveShopRating, setLiveShopRating] = useState({ rating: 0, reviewsCount: 0 });
+
+  // 🌟 Live Shop Rating & Reviews Listener (Real-Time Firestore Sync)
+  useEffect(() => {
+    if (!user || !isVendor) return;
+
+    try {
+      const unsub = onSnapshot(
+        collection(db, "shop_reviews"),
+        (snapshot) => {
+          const targetId = profile?.shopId || profile?.id || user.uid;
+          const targetName = (profile?.shopName || "").trim().toLowerCase();
+
+          let total = 0;
+          let count = 0;
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const matchId = data.shopId && (data.shopId === targetId || data.shopId === user.uid);
+            const matchName = targetName && data.shopName && data.shopName.trim().toLowerCase() === targetName;
+
+            if (matchId || matchName) {
+              total += Number(data.rating) || 0;
+              count += 1;
+            }
+          });
+
+          if (count > 0) {
+            setLiveShopRating({
+              rating: Number((total / count).toFixed(1)),
+              reviewsCount: count,
+            });
+          } else {
+            setLiveShopRating({
+              rating: 0,
+              reviewsCount: 0,
+            });
+          }
+        },
+        (err) => {
+          console.warn("Sidebar reviews listener warning:", err);
+        }
+      );
+
+      return () => unsub();
+    } catch (err) {
+      console.warn("Could not setup sidebar reviews listener:", err);
+    }
+  }, [user, isVendor, profile]);
 
   const supportWhatsappUrl = "https://wa.me/918877277757?text=" + encodeURIComponent("Hello TyreSaathi Support, I need assistance with my account/shop.");
 
@@ -54,12 +106,26 @@ export default function Sidebar({ open, onClose }) {
               <div className="drawer-store-info">
                 <strong className="drawer-store-name">{isVendor ? shopNameDisplay : (profile?.name || user.email?.split("@")[0] || "Customer")}</strong>
                 <div className="drawer-rating-row">
-                  <span 
-                    className="drawer-star-tag"
-                    style={isVendor ? {} : { background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
-                  >
-                    {isVendor ? "⭐ Verified Partner" : "👤 Verified Customer"}
-                  </span>
+                  {isVendor ? (
+                    <div className="live-vendor-star-wrap">
+                      <span className="drawer-star-tag live-star-pill" title="Live Customer Rating">
+                        ⭐ {liveShopRating.reviewsCount > 0 ? liveShopRating.rating.toFixed(1) : "0.0"} 
+                        <span className="live-reviews-sub">({liveShopRating.reviewsCount} {liveShopRating.reviewsCount === 1 ? "review" : "reviews"})</span>
+                      </span>
+                      <span className="drawer-tier-pill">
+                        {liveShopRating.reviewsCount === 0 
+                          ? "Verified Partner" 
+                          : (liveShopRating.rating >= 4.5 ? "⭐ 5-Star Elite" : "⭐ Verified Store")}
+                      </span>
+                    </div>
+                  ) : (
+                    <span 
+                      className="drawer-star-tag"
+                      style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
+                    >
+                      👤 Verified Customer
+                    </span>
+                  )}
                 </div>
                 <span className="drawer-role-tag">{userRoleDisplay}</span>
               </div>
@@ -180,6 +246,22 @@ export default function Sidebar({ open, onClose }) {
               <ChevronRight size={14} className="nav-chevron" />
             </NavLink>
           ))}
+
+          {/* 📤 Share TyreSaathi App Direct Action */}
+          <button
+            type="button"
+            className="sidebar-link-modern"
+            onClick={() => {
+              shareApp();
+            }}
+            title="Share TyreSaathi App via WhatsApp, SMS, etc."
+          >
+            <div className="nav-icon-badge" style={{ color: "#2563eb", backgroundColor: "#eff6ff" }}>
+              <Share2 size={16} />
+            </div>
+            <span className="nav-link-text">Share TyreSaathi App</span>
+            <span className="sidebar-share-pill">Indus App</span>
+          </button>
 
           {/* WhatsApp Support Direct Link */}
           <a
@@ -449,12 +531,27 @@ export default function Sidebar({ open, onClose }) {
           color: #cbd5e1;
         }
         .link-active { 
-          background: #f1f5f9 !important; 
-          color: #0f172a !important; 
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important; 
+          color: #ffffff !important; 
+          font-weight: 800;
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
+        }
+        .link-active .nav-link-text {
+          color: #ffffff !important;
           font-weight: 800;
         }
+        .link-active .nav-icon-badge {
+          background: rgba(255, 255, 255, 0.22) !important;
+          color: #ffffff !important;
+        }
+        .link-active .nav-icon-badge svg {
+          stroke: #ffffff !important;
+          color: #ffffff !important;
+        }
         .link-active .nav-chevron {
-          color: #0f172a;
+          color: #ffffff !important;
+          opacity: 1;
+          transform: translateX(3px);
         }
         .btn-sidebar-logout {
           margin-top: 4px;
@@ -490,6 +587,47 @@ export default function Sidebar({ open, onClose }) {
           font-size: 11px;
           font-weight: 700;
         }
+        .sidebar-share-pill {
+          font-size: 10px;
+          font-weight: 800;
+          color: #2563eb;
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          padding: 2px 7px;
+          border-radius: 10px;
+          letter-spacing: 0.3px;
+        }
+
+        .live-vendor-star-wrap {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .live-star-pill {
+          background: #fffbeb !important;
+          color: #b45309 !important;
+          border: 1px solid #fde68a !important;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .live-reviews-sub {
+          font-size: 9.5px;
+          color: #92400e;
+          font-weight: 600;
+        }
+        .drawer-tier-pill {
+          font-size: 9.5px;
+          font-weight: 800;
+          color: #166534;
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          padding: 2px 6px;
+          border-radius: 8px;
+          letter-spacing: 0.2px;
+        }
+
         .version-status-dot {
           width: 5px;
           height: 5px;

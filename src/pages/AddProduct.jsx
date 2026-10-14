@@ -778,41 +778,39 @@ export default function AddProduct() {
 
       <style>{`
         .add-product-container {
-          max-width: 1350px;
-          margin: 0 auto;
-          padding: 8px 4px 40px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 8px 0 50px;
         }
         .page-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          margin-bottom: 22px;
+          margin-bottom: 24px;
           border-bottom: 1px solid var(--border);
-          padding-bottom: 14px;
-          gap: 12px;
+          padding-bottom: 16px;
+          gap: 14px;
         }
         .page-main-heading {
-          font-size: 1.5rem;
+          font-size: clamp(1.4rem, 2.2vw, 2rem);
           font-weight: 800;
           color: var(--text);
           margin: 0 0 6px;
           line-height: 1.25;
         }
-        @media (min-width: 640px) {
-          .page-main-heading { font-size: 1.85rem; }
-        }
         .page-subheading {
-          font-size: 0.92rem;
+          font-size: 1rem;
           color: var(--text-muted);
           margin: 0;
           line-height: 1.45;
         }
         .back-link-btn {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           color: var(--orange);
           text-decoration: none;
           font-weight: 700;
-          padding: 8px 16px;
+          padding: 10px 18px;
           border-radius: 8px;
           background: var(--surface-2);
           white-space: nowrap;
@@ -822,67 +820,63 @@ export default function AddProduct() {
           background: var(--border);
         }
         .form-preview-grid {
-          display: flex;
-          gap: 24px;
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          gap: 28px;
           align-items: flex-start;
+          width: 100%;
         }
-        @media (max-width: 950px) {
+        @media (max-width: 1100px) {
           .form-preview-grid {
-            flex-direction: column;
+            grid-template-columns: 1fr;
           }
         }
         .add-product-form {
-          flex: 1;
+          width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 22px;
         }
         .form-section-card {
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 14px;
-          padding: 20px 18px;
-          box-shadow: 0 3px 14px rgba(0,0,0,0.04);
-        }
-        @media (min-width: 640px) {
-          .form-section-card {
-            padding: 24px 26px;
-            border-radius: 16px;
-          }
+          border-radius: 16px;
+          padding: clamp(20px, 2.2vw, 30px);
+          box-shadow: 0 4px 18px rgba(0,0,0,0.04);
         }
         .section-title {
-          font-size: 1.15rem;
+          font-size: clamp(1.15rem, 1.4vw, 1.35rem);
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 16px;
+          margin: 0 0 18px;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           line-height: 1.3;
         }
         .step-num {
           background: #c0392b;
           color: white;
-          width: 26px;
-          height: 26px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 800;
           flex-shrink: 0;
         }
         .product-type-pill-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-          margin-bottom: 16px;
+          gap: 12px;
+          margin-bottom: 18px;
         }
         @media (min-width: 640px) {
           .product-type-pill-grid {
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 14px;
           }
         }
         .type-select-pill {
@@ -890,16 +884,16 @@ export default function AddProduct() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 12px 10px;
+          gap: 8px;
+          padding: 14px 12px;
           border-radius: 12px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           font-weight: 700;
           cursor: pointer;
-          min-height: 72px;
+          min-height: 80px;
           transition: all 0.15s ease;
         }
         .type-select-pill:hover {
@@ -910,30 +904,30 @@ export default function AddProduct() {
           border-color: #c0392b;
           background: color-mix(in srgb, #c0392b 12%, var(--bg));
           color: #c0392b;
-          box-shadow: 0 3px 10px rgba(192, 57, 43, 0.15);
+          box-shadow: 0 3px 12px rgba(192, 57, 43, 0.18);
         }
         .pill-icon {
-          font-size: 22px;
+          font-size: 24px;
         }
         .condition-toggle-row {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding-top: 12px;
+          gap: 14px;
+          padding-top: 14px;
           border-top: 1px dashed var(--border);
           flex-wrap: wrap;
         }
         .toggle-btn-group {
           display: flex;
-          gap: 8px;
+          gap: 10px;
         }
         .toggle-option {
-          padding: 8px 16px;
+          padding: 10px 18px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -944,13 +938,13 @@ export default function AddProduct() {
           border-color: #c0392b;
         }
         .input-field-group {
-          margin-bottom: 14px;
+          margin-bottom: 16px;
           display: flex;
           flex-direction: column;
           gap: 6px;
         }
         .field-label {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: var(--text);
         }
@@ -958,12 +952,12 @@ export default function AddProduct() {
         .smart-text-input,
         .smart-textarea {
           width: 100%;
-          padding: 11px 14px;
+          padding: 12px 16px;
           border-radius: 10px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.95rem;
+          font-size: 1rem;
           outline: none;
           font-weight: 500;
           transition: border-color 0.2s ease;
@@ -980,18 +974,18 @@ export default function AddProduct() {
         .two-col-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 14px;
         }
         @media (min-width: 600px) {
           .two-col-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 18px;
           }
         }
         .highlight-price-input {
           border-color: #27ae60;
           font-weight: 800;
-          font-size: 1.15rem;
+          font-size: 1.25rem;
         }
 
         /* 📸 4 Photo Slots Grid */
@@ -999,32 +993,32 @@ export default function AddProduct() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 16px;
-          gap: 10px;
+          margin-bottom: 18px;
+          gap: 12px;
         }
         .section-subtext {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           color: var(--text-muted);
-          margin: 3px 0 0;
+          margin: 4px 0 0;
           line-height: 1.45;
         }
         .photos-counter-tag {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           background: #27ae60;
           color: white;
-          padding: 4px 10px;
-          border-radius: 14px;
+          padding: 5px 12px;
+          border-radius: 16px;
           font-weight: 700;
           white-space: nowrap;
         }
         .four-photo-slots-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 14px;
+          gap: 16px;
         }
         @media (min-width: 640px) {
           .four-photo-slots-grid {
-            gap: 18px;
+            gap: 20px;
           }
         }
         .photo-slot-box {
@@ -1039,8 +1033,8 @@ export default function AddProduct() {
         }
         .slot-title-bar {
           background: var(--surface, #ffffff);
-          padding: 8px 12px;
-          font-size: 0.85rem;
+          padding: 10px 14px;
+          font-size: 0.92rem;
           font-weight: 700;
           color: var(--text);
           border-bottom: 1px solid var(--border);
@@ -1054,7 +1048,7 @@ export default function AddProduct() {
           justify-content: center;
           gap: 8px;
           cursor: pointer;
-          padding: 16px 10px;
+          padding: 16px 12px;
           text-align: center;
           border: 2px dashed transparent;
           transition: all 0.15s ease;
@@ -1064,12 +1058,12 @@ export default function AddProduct() {
           border-color: #c0392b;
         }
         .slot-cta-text {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: #c0392b;
         }
         .slot-desc-text {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
         }
         .slot-img-preview-wrap {
@@ -1086,7 +1080,7 @@ export default function AddProduct() {
           width: 100%;
           height: 100%;
           object-fit: contain;
-          padding: 4px;
+          padding: 6px;
           transition: transform 0.2s ease;
         }
         .slot-img-preview-wrap:hover .slot-preview-img {
@@ -1094,20 +1088,20 @@ export default function AddProduct() {
         }
         .slot-remove-btn {
           position: absolute;
-          bottom: 8px;
-          right: 8px;
+          bottom: 10px;
+          right: 10px;
           background: rgba(192, 57, 43, 0.95);
           color: white;
           border: none;
           border-radius: 8px;
-          padding: 5px 10px;
-          font-size: 0.78rem;
+          padding: 6px 12px;
+          font-size: 0.85rem;
           font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           cursor: pointer;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
           backdrop-filter: blur(4px);
         }
         .slot-remove-btn:hover {
@@ -1117,7 +1111,7 @@ export default function AddProduct() {
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           color: #c0392b;
           font-weight: 700;
         }
@@ -1125,18 +1119,18 @@ export default function AddProduct() {
         /* Action Buttons */
         .form-action-row {
           display: flex;
-          gap: 12px;
-          margin-top: 18px;
+          gap: 14px;
+          margin-top: 20px;
         }
         .save-draft-btn {
           flex: 1;
           background: var(--surface-2);
           color: var(--text);
           border: 1.5px solid var(--border);
-          padding: 12px 16px;
-          border-radius: 10px;
+          padding: 14px 20px;
+          border-radius: 12px;
           font-weight: 700;
-          font-size: 0.95rem;
+          font-size: 1.02rem;
           cursor: pointer;
         }
         .publish-submit-btn {
@@ -1144,12 +1138,12 @@ export default function AddProduct() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 12px 20px;
-          border-radius: 10px;
+          padding: 14px 24px;
+          border-radius: 12px;
           font-weight: 800;
-          font-size: 1rem;
+          font-size: 1.08rem;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
+          box-shadow: 0 4px 16px rgba(192, 57, 43, 0.35);
           transition: transform 0.15s ease, background 0.15s ease;
         }
         .publish-submit-btn:hover {
@@ -1159,21 +1153,20 @@ export default function AddProduct() {
 
         /* Live Preview Sidebar */
         .live-preview-sidebar {
-          flex: 0 0 350px;
-          max-width: 380px;
           width: 100%;
+          max-width: 100%;
         }
         .preview-sticky-card {
           position: sticky;
           top: 85px;
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 14px;
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+          box-shadow: 0 6px 24px rgba(0,0,0,0.06);
         }
         .preview-header {
-          padding: 12px 16px;
+          padding: 14px 18px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -1182,16 +1175,16 @@ export default function AddProduct() {
         }
         .preview-header h4 {
           margin: 0;
-          font-size: 0.92rem;
+          font-size: 1.02rem;
           font-weight: 800;
         }
         .preview-tag {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
         }
         .preview-main-img-box {
           position: relative;
-          height: 220px;
+          height: 240px;
           background: #0f172a;
           display: flex;
           align-items: center;
@@ -1202,45 +1195,45 @@ export default function AddProduct() {
           width: 100%;
           height: 100%;
           object-fit: contain;
-          padding: 6px;
+          padding: 8px;
         }
         .preview-img-empty {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           color: var(--text-muted);
-          font-size: 0.85rem;
+          font-size: 0.95rem;
         }
         .preview-discount-badge {
           position: absolute;
-          top: 10px;
-          left: 10px;
+          top: 12px;
+          left: 12px;
           background: #c0392b;
           color: white;
-          padding: 3px 8px;
+          padding: 4px 10px;
           border-radius: 6px;
-          font-size: 0.75rem;
+          font-size: 0.82rem;
           font-weight: 800;
         }
         .preview-thumbs-row {
           display: flex;
-          gap: 6px;
-          padding: 10px 14px;
+          gap: 8px;
+          padding: 12px 16px;
           background: var(--bg);
           border-bottom: 1px solid var(--border);
         }
         .preview-thumb {
           flex: 1;
-          height: 48px;
-          border-radius: 6px;
+          height: 52px;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           overflow: hidden;
           display: flex;
           align-items: center;
           justify-content: center;
           background: var(--surface);
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
         }
         .preview-thumb img {
@@ -1249,47 +1242,47 @@ export default function AddProduct() {
           object-fit: cover;
         }
         .preview-body {
-          padding: 16px 18px;
+          padding: 18px 20px;
         }
         .preview-category-badge {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: #c0392b;
           font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
         .preview-product-title {
-          font-size: 1.05rem;
+          font-size: 1.18rem;
           font-weight: 800;
           color: var(--text);
-          margin: 4px 0 8px;
+          margin: 6px 0 10px;
           line-height: 1.3;
         }
         .preview-price-box {
           display: flex;
           align-items: baseline;
-          gap: 8px;
-          margin-bottom: 12px;
+          gap: 10px;
+          margin-bottom: 14px;
         }
         .preview-offer-price {
-          font-size: 1.45rem;
+          font-size: 1.65rem;
           font-weight: 800;
           color: #27ae60;
         }
         .preview-mrp {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           color: var(--text-muted);
           text-decoration: line-through;
         }
         .preview-features-list {
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          font-size: 0.82rem;
+          gap: 8px;
+          font-size: 0.92rem;
           color: var(--text);
           background: var(--bg);
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 12px 14px;
+          border-radius: 10px;
           font-weight: 600;
         }
       `}</style>

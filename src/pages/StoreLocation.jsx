@@ -24,12 +24,14 @@ import {
   User,
   HeartHandshake,
   Check,
-  Send
+  Send,
+  Award,
+  SlidersHorizontal
 } from "lucide-react";
 import { SAMPLE_SHOPS, SHOP_PRIMARY_CATEGORIES, getCategoryByCode } from "../config/tyreCatalog";
 import { trackStoreEvent } from "../utils/analyticsTracker";
 import { db } from "../firebase";
-import { collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { sendInAppNotification } from "../utils/notificationService";
 
@@ -75,6 +77,8 @@ export default function StoreLocation() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState(false);
   const [shopReviewsMap, setShopReviewsMap] = useState({});
+  const [allReviews, setAllReviews] = useState([]);
+  const [sortMode, setSortMode] = useState("rating"); // "rating" | "distance" | "reviews"
 
   // 🛠️ In-Place Shop Service Booking Modal State
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -100,49 +104,52 @@ export default function StoreLocation() {
     trackStoreEvent("view", { page: "store_location" });
   }, []);
 
-  // Fetch verified reviews from Firestore
+  // 🌟 Live Real-time Firestore Reviews Listener (Real-Time Performance Sync)
   useEffect(() => {
-    async function loadReviews() {
-      try {
-        const snap = await getDocs(collection(db, "shop_reviews"));
-        if (!snap.empty) {
-          const map = {};
-          snap.docs.forEach((d) => {
-            const data = { id: d.id, ...d.data() };
-            if (data.shopId) {
-              if (!map[data.shopId]) map[data.shopId] = [];
-              map[data.shopId].push(data);
-            }
-          });
-          setShopReviewsMap(map);
-
-          // Recalculate real ratings for shops based on Firestore reviews
-          setShopsList((prevShops) =>
-            prevShops.map((s) => {
-              const revs = map[s.id] || [];
-              if (revs.length > 0) {
-                const sum = revs.reduce((acc, curr) => acc + (Number(curr.rating) || 0), 0);
-                const avg = Number((sum / revs.length).toFixed(1));
-                return {
-                  ...s,
-                  rating: avg,
-                  reviewsCount: revs.length,
-                };
-              }
-              return {
-                ...s,
-                rating: s.rating && s.reviewsCount ? s.rating : 0,
-                reviewsCount: s.reviewsCount || 0,
-              };
-            })
-          );
-        }
-      } catch (err) {
-        console.warn("Reviews load fallback in StoreLocation:", err);
+    const unsub = onSnapshot(
+      collection(db, "shop_reviews"),
+      (snapshot) => {
+        const list = [];
+        const map = {};
+        snapshot.forEach((d) => {
+          const data = { id: d.id, ...d.data() };
+          list.push(data);
+          if (data.shopId) {
+            if (!map[data.shopId]) map[data.shopId] = [];
+            map[data.shopId].push(data);
+          }
+        });
+        setAllReviews(list);
+        setShopReviewsMap(map);
+      },
+      (err) => {
+        console.warn("Real-time reviews listener error in StoreLocation:", err);
       }
-    }
-    loadReviews();
+    );
+    return () => unsub();
   }, []);
+
+  // Robust review matching for any shop (by ID, UID, Shop Name, or Phone)
+  const getReviewsForShop = (shop) => {
+    if (!shop || !Array.isArray(allReviews)) return [];
+    const sId = (shop.id || "").toString().trim().toLowerCase();
+    const sUid = (shop.uid || "").toString().trim().toLowerCase();
+    const sName = (shop.name || "").toString().trim().toLowerCase();
+    const sPhone = (shop.phone || "").replace(/[^0-9]/g, "");
+
+    return allReviews.filter((rev) => {
+      const revShopId = (rev.shopId || "").toString().trim().toLowerCase();
+      const revShopUid = (rev.shopUid || "").toString().trim().toLowerCase();
+      const revShopName = (rev.shopName || "").toString().trim().toLowerCase();
+      const revPhone = (rev.shopPhone || rev.phone || rev.reviewerPhone || "").replace(/[^0-9]/g, "");
+
+      if (revShopId && (revShopId === sId || (sUid && revShopId === sUid))) return true;
+      if (revShopUid && (revShopUid === sId || (sUid && revShopUid === sUid))) return true;
+      if (sName && revShopName && (sName === revShopName || sName.includes(revShopName) || revShopName.includes(sName))) return true;
+      if (sPhone && revPhone && sPhone.length >= 10 && sPhone === revPhone) return true;
+      return false;
+    });
+  };
 
   // Live GPS / IP Hybrid Location Detection (Works accurately on Laptops & Mobiles anywhere in India)
   const handleDetectLiveLocation = async () => {
@@ -295,33 +302,103 @@ export default function StoreLocation() {
     loadData();
   }, [initialShopId, initialShopName]);
 
-  // Recalculate Distances ONLY for shops that have real coordinates
+  // 🌟 Recalculate Distances & Live Ratings from Firestore for shops
   const enrichedShops = shopsList.map((shop) => {
     let distance = null;
     if (userLocation && userLocation.lat && userLocation.lng && shop.lat && shop.lng) {
       distance = calculateDistanceKm(userLocation.lat, userLocation.lng, shop.lat, shop.lng);
     }
 
+    // Live rating calculation from real-time allReviews
+    const liveRevs = getReviewsForShop(shop);
+    let liveRating = 0;
+    let liveCount = 0;
+
+    if (liveRevs.length > 0) {
+      const sum = liveRevs.reduce((acc, curr) => acc + (Number(curr.rating) || 0), 0);
+      liveRating = Number((sum / liveRevs.length).toFixed(1));
+      liveCount = liveRevs.length;
+    } else if (shop.rating && shop.reviewsCount) {
+      liveRating = Number(shop.rating);
+      liveCount = Number(shop.reviewsCount);
+    }
+
+    // Determine live performance tier
+    let performanceTier = "New Partner";
+    if (liveRating >= 4.8 && liveCount > 0) {
+      performanceTier = "5-Star Elite";
+    } else if (liveRating >= 4.5 && liveCount > 0) {
+      performanceTier = "Top Performer";
+    } else if (liveRating >= 4.0 && liveCount > 0) {
+      performanceTier = "Highly Rated";
+    } else if (liveCount > 0) {
+      performanceTier = "Rated Partner";
+    }
+
     return {
       ...shop,
+      rating: liveRating,
+      reviewsCount: liveCount,
+      performanceTier,
       distanceKm: distance,
       distanceFormatted: distance !== null ? formatDistanceString(distance) : null
     };
   });
 
-  // Sort by Nearest distance first (shops with known distance come first; shops without location come at the end)
+  // 🔄 Dynamic Live Sorting: Top Rated (Default) vs Nearest vs Most Reviews
   enrichedShops.sort((a, b) => {
-    if (a.distanceKm !== null && b.distanceKm !== null) {
-      return a.distanceKm - b.distanceKm;
+    if (sortMode === "rating") {
+      // 1. Highest Star Rating first
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating;
+      }
+      // 2. Highest Review Count if ratings are equal
+      if (b.reviewsCount !== a.reviewsCount) {
+        return b.reviewsCount - a.reviewsCount;
+      }
+      // 3. Fallback to Nearest Distance
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      if (a.distanceKm !== null) return -1;
+      if (b.distanceKm !== null) return 1;
+      return 0;
+    } else if (sortMode === "reviews") {
+      if (b.reviewsCount !== a.reviewsCount) {
+        return b.reviewsCount - a.reviewsCount;
+      }
+      if (b.rating !== a.rating) {
+        return b.rating - a.rating;
+      }
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      return 0;
+    } else {
+      // Distance sort
+      if (a.distanceKm !== null && b.distanceKm !== null) {
+        return a.distanceKm - b.distanceKm;
+      }
+      if (a.distanceKm !== null) return -1;
+      if (b.distanceKm !== null) return 1;
+      return b.rating - a.rating;
     }
+  });
+
+  // Mark first shop as Top Rated if it has ratings
+  if (enrichedShops.length > 0 && enrichedShops[0].rating > 0 && sortMode === "rating") {
+    enrichedShops[0].isTopRated = true;
+  }
+
+  // Mark nearest shop ONLY if it is truly nearby (< 50 km)
+  const nearestCandidate = [...enrichedShops].sort((a, b) => {
+    if (a.distanceKm !== null && b.distanceKm !== null) return a.distanceKm - b.distanceKm;
     if (a.distanceKm !== null) return -1;
     if (b.distanceKm !== null) return 1;
     return 0;
-  });
-
-  // Mark first shop as nearest ONLY if it is truly nearby (< 50 km)
-  if (enrichedShops.length > 0 && enrichedShops[0].distanceKm !== null && enrichedShops[0].distanceKm <= 50) {
-    enrichedShops[0].isNearest = true;
+  })[0];
+  if (nearestCandidate && nearestCandidate.distanceKm !== null && nearestCandidate.distanceKm <= 50) {
+    nearestCandidate.isNearest = true;
   }
 
   const filteredShops = enrichedShops.filter((shop) => {
@@ -433,15 +510,52 @@ export default function StoreLocation() {
       localStorage.setItem("tyresaathi_user_bookings", JSON.stringify([newBookingRecord, ...existing]));
     } catch (err) {}
 
-    // Send in-app notification
+    // Send in-app notification (Strictly targeted to Customer and Shop Owner)
     try {
-      if (currentUser?.uid) {
+      const custPhone = (currentUser?.phoneNumber || "").replace(/\D/g, "").slice(-10);
+      const custEmail = (currentUser?.email || "").toLowerCase().trim();
+      const shopPhone = (bookingShop?.phone || "").replace(/\D/g, "").slice(-10);
+      const targetRecipient = custPhone ? `phone_${custPhone}` : (custEmail || currentUser?.uid || "guest_cust");
+
+      // 1. To Customer
+      sendInAppNotification({
+        recipientId: targetRecipient,
+        recipientRole: "customer",
+        title: `🚗 Service Booking Confirmed at ${bookingShop?.name}!`,
+        message: `Booking #${bookingId} for ${bookingService} on ${bookingDate} (${bookingTimeSlot}) successfully booked.`,
+        type: "booking_created",
+        link: "/bookings",
+        data: {
+          bookingId,
+          shopId: bookingShop?.id || "",
+          shopName: bookingShop?.name || "",
+          shopPhone,
+          customerId: currentUser?.uid || targetRecipient,
+          customerPhone: custPhone,
+          customerEmail: custEmail,
+          serviceName: bookingService,
+        }
+      });
+
+      // 2. To Shop Owner
+      if (bookingShop?.id || shopPhone) {
         sendInAppNotification({
-          userId: currentUser.uid,
-          title: `🚗 Service Booking Confirmed at ${bookingShop?.name}!`,
-          message: `Booking #${bookingId} for ${bookingService} on ${bookingDate} (${bookingTimeSlot}) successfully booked.`,
-          type: "booking",
-          bookingId: bookingId,
+          recipientId: bookingShop?.id || `phone_${shopPhone}`,
+          recipientRole: "shop_owner",
+          title: `📅 Nayi Service Booking Aayi (${bookingShop.name})!`,
+          message: `${currentUser?.displayName || "Customer"} ne "${bookingService}" ke liye booking ki hai.`,
+          type: "booking_created",
+          link: "/bookings",
+          data: {
+            bookingId,
+            shopId: bookingShop?.id || "",
+            shopName: bookingShop?.name || "",
+            shopPhone,
+            customerId: currentUser?.uid || targetRecipient,
+            customerPhone: custPhone,
+            customerEmail: custEmail,
+            serviceName: bookingService,
+          }
         });
       }
     } catch (e) {}
@@ -486,7 +600,9 @@ export default function StoreLocation() {
     try {
       const newReview = {
         shopId: ratingShop.id,
+        shopUid: ratingShop.uid || ratingShop.id,
         shopName: ratingShop.name,
+        shopPhone: ratingShop.phone || "",
         rating: Number(selectedStars),
         reviewerName: reviewerName.trim(),
         reviewerPhone: reviewerPhone.trim(),
@@ -499,19 +615,18 @@ export default function StoreLocation() {
 
       await addDoc(collection(db, "shop_reviews"), newReview);
 
-      // Instant UI update
+      // Instant optimistic UI update for real-time ranking
+      const localReview = {
+        id: "local-" + Date.now(),
+        ...newReview,
+        createdAt: new Date(),
+      };
+      setAllReviews((prev) => [localReview, ...prev.filter((r) => r.id !== localReview.id)]);
       setShopReviewsMap((prev) => {
         const existing = prev[ratingShop.id] || [];
         return {
           ...prev,
-          [ratingShop.id]: [
-            {
-              id: "local-" + Date.now(),
-              ...newReview,
-              createdAt: new Date(),
-            },
-            ...existing,
-          ],
+          [ratingShop.id]: [localReview, ...existing],
         };
       });
 
@@ -840,6 +955,55 @@ export default function StoreLocation() {
           </div>
         </div>
 
+        {/* 📊 Live Store Ranking & Dynamic Sort Control Bar */}
+        <div className="store-results-sort-bar">
+          <div className="sort-bar-left">
+            <span className="sort-stores-count">
+              Showing <strong>{filteredShops.length}</strong> Verified Partner Hubs
+            </span>
+            <span className="live-ranking-indicator" title="Ratings and store rankings update live from verified customer reviews">
+              <span className="live-ranking-dot"></span>
+              Live Ranking
+            </span>
+          </div>
+
+          <div className="sort-bar-right">
+            <span className="sort-label-text">
+              <SlidersHorizontal size={13} style={{ verticalAlign: "middle", marginRight: "5px" }} />
+              Sort By:
+            </span>
+            <div className="sort-pills-group">
+              <button
+                type="button"
+                className={`sort-pill-btn ${sortMode === "rating" ? "sort-pill-active" : ""}`}
+                onClick={() => setSortMode("rating")}
+                title="Sort by highest verified star rating"
+              >
+                <Star size={12} fill={sortMode === "rating" ? "#f59e0b" : "none"} color={sortMode === "rating" ? "#f59e0b" : "currentColor"} />
+                Top Rated
+              </button>
+              <button
+                type="button"
+                className={`sort-pill-btn ${sortMode === "distance" ? "sort-pill-active" : ""}`}
+                onClick={() => setSortMode("distance")}
+                title="Sort by nearest distance from your location"
+              >
+                <Navigation size={12} />
+                Nearest
+              </button>
+              <button
+                type="button"
+                className={`sort-pill-btn ${sortMode === "reviews" ? "sort-pill-active" : ""}`}
+                onClick={() => setSortMode("reviews")}
+                title="Sort by maximum customer reviews"
+              >
+                <Award size={12} />
+                Most Reviews
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* 🌟 Full-Width Responsive Store Cards Grid */}
         {filteredShops.length === 0 ? (
           <div className="no-stores-found">
@@ -858,7 +1022,10 @@ export default function StoreLocation() {
         ) : (
           <div className="stores-grid-layout">
             {filteredShops.map((shop) => (
-              <div key={shop.id} className={`store-card-full ${shop.isNearest ? "nearest-hub-border" : ""}`}>
+              <div 
+                key={shop.id} 
+                className={`store-card-full ${shop.isNearest ? "nearest-hub-border" : ""} ${shop.isTopRated && sortMode === "rating" ? "top-rated-hub-border" : ""}`}
+              >
                 {/* Top Badge & Title Row */}
                 <div className="store-card-top-row">
                   <div className="store-title-wrap">
@@ -868,6 +1035,9 @@ export default function StoreLocation() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                         <h3 className="store-title-text">{shop.name}</h3>
+                        {shop.isTopRated && sortMode === "rating" && (
+                          <span className="top-ranked-banner-pill">🏆 #1 Top Rated</span>
+                        )}
                         {shop.isNearest && <span className="nearest-badge">⚡ Nearest</span>}
                         {shop.categoryName && (
                           <span style={{
@@ -915,7 +1085,7 @@ export default function StoreLocation() {
                   <div 
                     className="meta-pill meta-rating-pill" 
                     onClick={(e) => openRatingModal(shop, e)}
-                    title="Click to give star rating to this shop"
+                    title="Click to rate this shop"
                   >
                     <Star 
                       size={12} 
@@ -925,12 +1095,15 @@ export default function StoreLocation() {
                     {shop.reviewsCount > 0 ? (
                       <>
                         <strong>{shop.rating}</strong>
-                        <span>({shop.reviewsCount} reviews)</span>
+                        <span>({shop.reviewsCount} {shop.reviewsCount === 1 ? "review" : "reviews"})</span>
+                        {shop.performanceTier && shop.performanceTier !== "New Partner" && (
+                          <span className="live-performance-tier-badge">⭐ {shop.performanceTier}</span>
+                        )}
                       </>
                     ) : (
                       <span style={{ color: "#64748b", fontSize: "11.5px" }}>New Partner (0 reviews)</span>
                     )}
-                    <span className="rate-click-hint">⭐ Star दें</span>
+                    <span className="rate-click-hint">Rate Store</span>
                   </div>
                   <div className="meta-pill">
                     <Clock size={12} color="#64748b" />
@@ -1020,11 +1193,11 @@ export default function StoreLocation() {
                     <button
                       type="button"
                       className="btn-quick-contact btn-quick-rate"
-                      title="Give Star Rating to this shop owner"
+                      title="Rate this verified shop"
                       onClick={(e) => openRatingModal(shop, e)}
                     >
                       <Star size={13} fill="#f59e0b" color="#f59e0b" />
-                      <span>⭐ Star दें</span>
+                      <span>Rate Store</span>
                     </button>
                   </div>
                 </div>
@@ -1073,7 +1246,7 @@ export default function StoreLocation() {
                           ? `${activeShopProfile.rating} (${activeShopProfile.reviewsCount} reviews)`
                           : "No ratings yet"}
                       </span>
-                      <span className="pill-rate-action">⭐ Star दें</span>
+                      <span className="pill-rate-action">Rate Store</span>
                     </button>
                     <span className="meta-divider">•</span>
                     <span className="meta-timing"><Clock size={13} /> {activeShopProfile.timing}</span>
@@ -1134,7 +1307,7 @@ export default function StoreLocation() {
                 onClick={(e) => openRatingModal(activeShopProfile, e)}
               >
                 <Star size={16} fill="#f59e0b" color="#f59e0b" />
-                <span>⭐ Rate Shop (स्टार दें)</span>
+                <span>⭐ Rate Store (सत्यापित रेटिंग दें)</span>
               </button>
             </div>
 
@@ -1235,109 +1408,121 @@ export default function StoreLocation() {
                     className="btn-write-review-cta"
                     onClick={() => openRatingModal(activeShopProfile)}
                   >
-                    ⭐ Write a Review / स्टार दें
+                    ⭐ Write a Review (सत्यापित रिव्यू लिखें)
                   </button>
                 </div>
 
                 {/* Rating Summary Card */}
-                <div className="rating-summary-card">
-                  <div className="rating-score-box">
-                    <span className="big-rating-number">
-                      {activeShopProfile.reviewsCount > 0 ? activeShopProfile.rating : "0.0"}
-                    </span>
-                    <div className="stars-visual-row">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star 
-                          key={s} 
-                          size={18} 
-                          fill={activeShopProfile.reviewsCount > 0 && s <= Math.round(Number(activeShopProfile.rating)) ? "#f59e0b" : "none"} 
-                          color={activeShopProfile.reviewsCount > 0 && s <= Math.round(Number(activeShopProfile.rating)) ? "#f59e0b" : "#cbd5e1"} 
-                        />
-                      ))}
-                    </div>
-                    <span className="rating-reviews-sub">
-                      {activeShopProfile.reviewsCount > 0 
-                        ? `Based on ${activeShopProfile.reviewsCount} customer ratings`
-                        : "Abhi koi customer rating nahi mili hai"}
-                    </span>
-                  </div>
+                {(() => {
+                  const activeReviews = getReviewsForShop(activeShopProfile);
+                  const activeRevCount = activeReviews.length > 0 ? activeReviews.length : (activeShopProfile.reviewsCount || 0);
+                  const activeAvgRating = activeReviews.length > 0 
+                    ? Number((activeReviews.reduce((acc, c) => acc + (Number(c.rating) || 0), 0) / activeReviews.length).toFixed(1))
+                    : (Number(activeShopProfile.rating) || 0);
 
-                  <div className="rating-cta-message">
-                    <h4>Aapne is dukan se tyre ya repair service li hai?</h4>
-                    <p>Shop owner ko 1 se 5 star dekar apna review aur feedback share karein.</p>
-                    <button
-                      type="button"
-                      className="btn-open-rate-modal"
-                      onClick={() => openRatingModal(activeShopProfile)}
-                    >
-                      ⭐ Give Star Rating (स्टार व रिव्यू दें)
-                    </button>
-                  </div>
-                </div>
-
-                {/* Real Reviews List (No fake/dummy reviews) */}
-                {shopReviewsMap[activeShopProfile.id] && shopReviewsMap[activeShopProfile.id].length > 0 ? (
-                  <div className="reviews-cards-list">
-                    {shopReviewsMap[activeShopProfile.id].map((rev) => (
-                      <div key={rev.id} className="customer-review-card">
-                        <div className="review-top-row">
-                          <div className="reviewer-avatar-info">
-                            <div className="reviewer-avatar-circle">
-                              {(rev.reviewerName || "Customer").charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="reviewer-name-wrap">
-                                <strong>{rev.reviewerName || "Verified Customer"}</strong>
-                                <span className="verified-buyer-pill">
-                                  <CheckCircle2 size={11} /> Verified Customer
-                                </span>
-                              </div>
-                              <span className="review-date-text">{rev.dateStr || "Recently reviewed"}</span>
-                            </div>
-                          </div>
-
-                          <div className="review-star-pills">
+                  return (
+                    <>
+                      <div className="rating-summary-card">
+                        <div className="rating-score-box">
+                          <span className="big-rating-number">
+                            {activeRevCount > 0 ? activeAvgRating : "0.0"}
+                          </span>
+                          <div className="stars-visual-row">
                             {[1, 2, 3, 4, 5].map((s) => (
-                              <Star
-                                key={s}
-                                size={14}
-                                fill={s <= Number(rev.rating) ? "#f59e0b" : "none"}
-                                color={s <= Number(rev.rating) ? "#f59e0b" : "#cbd5e1"}
+                              <Star 
+                                key={s} 
+                                size={18} 
+                                fill={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "none"} 
+                                color={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "#cbd5e1"} 
                               />
                             ))}
                           </div>
+                          <span className="rating-reviews-sub">
+                            {activeRevCount > 0 
+                              ? `Based on ${activeRevCount} verified customer ratings`
+                              : "Abhi koi customer rating nahi mili hai"}
+                          </span>
                         </div>
 
-                        {rev.comment && <p className="review-comment-text">"{rev.comment}"</p>}
-
-                        {Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                          <div className="review-tags-row">
-                            {rev.tags.map((tag, tIdx) => (
-                              <span key={tIdx} className="review-tag-chip">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                        <div className="rating-cta-message">
+                          <h4>Aapne is dukan se tyre ya repair service li hai?</h4>
+                          <p>दुकान की सर्विस और गुणवत्ता के आधार पर अपनी प्रामाणिक रेटिंग एवं अनुभव साझा करें।</p>
+                          <button
+                            type="button"
+                            className="btn-open-rate-modal"
+                            onClick={() => openRatingModal(activeShopProfile)}
+                          >
+                            ⭐ Rate Store (सत्यापित रेटिंग दें)
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="no-reviews-empty-box">
-                    <div className="empty-star-icon">
-                      <Star size={36} color="#94a3b8" />
-                    </div>
-                    <h4>Abhi tak is shop ke liye koi review nahi hai</h4>
-                    <p>Aap pehle customer bankar is dukan ko 1 se 5 star aur anubhav de sakte hain!</p>
-                    <button
-                      type="button"
-                      className="btn-open-rate-modal"
-                      onClick={() => openRatingModal(activeShopProfile)}
-                    >
-                      ⭐ Give First Review (पहला स्टार व रिव्यू दें)
-                    </button>
-                  </div>
-                )}
+
+                      {/* Real Reviews List (No fake/dummy reviews) */}
+                      {activeReviews.length > 0 ? (
+                        <div className="reviews-cards-list">
+                          {activeReviews.map((rev) => (
+                            <div key={rev.id} className="customer-review-card">
+                              <div className="review-top-row">
+                                <div className="reviewer-avatar-info">
+                                  <div className="reviewer-avatar-circle">
+                                    {(rev.reviewerName || "Customer").charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="reviewer-name-wrap">
+                                      <strong>{rev.reviewerName || "Verified Customer"}</strong>
+                                      <span className="verified-buyer-pill">
+                                        <CheckCircle2 size={11} /> Verified Customer
+                                      </span>
+                                    </div>
+                                    <span className="review-date-text">{rev.dateStr || "Recently reviewed"}</span>
+                                  </div>
+                                </div>
+
+                                <div className="review-star-pills">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      size={14}
+                                      fill={s <= Number(rev.rating) ? "#f59e0b" : "none"}
+                                      color={s <= Number(rev.rating) ? "#f59e0b" : "#cbd5e1"}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+
+                              {rev.comment && <p className="review-comment-text">"{rev.comment}"</p>}
+
+                              {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                                <div className="review-tags-row">
+                                  {rev.tags.map((tag, tIdx) => (
+                                    <span key={tIdx} className="review-tag-chip">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="no-reviews-empty-box">
+                          <div className="empty-star-icon">
+                            <Star size={36} color="#94a3b8" />
+                          </div>
+                          <h4>Abhi tak is shop ke liye koi review nahi hai</h4>
+                          <p>इस दुकान के लिए अपना प्रामाणिक अनुभव और रेटिंग दर्ज करने वाले पहले ग्राहक बनें!</p>
+                          <button
+                            type="button"
+                            className="btn-open-rate-modal"
+                            onClick={() => openRatingModal(activeShopProfile)}
+                          >
+                            ⭐ Be First to Review (पहला रिव्यू दर्ज करें)
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1514,7 +1699,7 @@ export default function StoreLocation() {
                     ) : (
                       <>
                         <Send size={14} />
-                        <span>⭐ Submit Rating (स्टार भेजें)</span>
+                        <span>⭐ Submit Rating & Review (सत्यापित रिव्यू सबमिट करें)</span>
                       </>
                     )}
                   </button>
@@ -1752,9 +1937,10 @@ export default function StoreLocation() {
       {/* Scoped Styles for StoreLocation */}
       <style>{`
         .store-location-page {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 20px 16px 80px 16px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 10px 0 80px 0;
           font-family: 'Inter', sans-serif;
           color: #0f172a;
         }
@@ -1995,6 +2181,144 @@ export default function StoreLocation() {
           box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
         }
 
+        /* 📊 Live Store Ranking & Dynamic Sort Control Bar */
+        .store-results-sort-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin-bottom: 16px;
+          padding: 12px 16px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .sort-bar-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .sort-stores-count {
+          font-size: 13px;
+          color: #334155;
+        }
+
+        .live-ranking-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          background: #ecfdf5;
+          color: #065f46;
+          border: 1px solid #a7f3d0;
+          padding: 3px 9px;
+          border-radius: 20px;
+        }
+
+        .live-ranking-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10b981;
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+          animation: pulse-ranking-dot 1.8s infinite;
+        }
+
+        @keyframes pulse-ranking-dot {
+          0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+          }
+          70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+          }
+          100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+          }
+        }
+
+        .sort-bar-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .sort-label-text {
+          font-size: 12px;
+          color: #64748b;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .sort-pills-group {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: #f1f5f9;
+          padding: 3px;
+          border-radius: 10px;
+        }
+
+        .sort-pill-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          border: none;
+          background: transparent;
+          padding: 5px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .sort-pill-btn:hover {
+          color: #0f172a;
+        }
+
+        .sort-pill-btn.sort-pill-active {
+          background: #ffffff;
+          color: #0f172a;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .top-ranked-banner-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: #fffbeb;
+          color: #b45309;
+          border: 1px solid #fde68a;
+          font-size: 10.5px;
+          font-weight: 800;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+
+        .live-performance-tier-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 10.5px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 6px;
+          background: #ecfdf5;
+          color: #047857;
+          border: 1px solid #a7f3d0;
+        }
+
         /* 🌟 Full-Width Responsive Store Cards Grid */
         .stores-grid-layout {
           display: grid;
@@ -2026,7 +2350,7 @@ export default function StoreLocation() {
           display: flex;
           flex-direction: column;
           gap: 10px;
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
           position: relative;
         }
         .store-card-full:hover {
@@ -2037,6 +2361,10 @@ export default function StoreLocation() {
 
         .nearest-hub-border {
           border-left: 5px solid #16a34a !important;
+        }
+
+        .top-rated-hub-border {
+          border-left: 5px solid #f59e0b !important;
         }
 
         .store-card-top-row {
@@ -2328,20 +2656,36 @@ export default function StoreLocation() {
           font-size: 10px;
           font-weight: 800;
           background: #fef3c7;
-          color: #d97706;
-          padding: 1px 6px;
+          color: #b45309;
+          padding: 2px 7px;
           border-radius: 6px;
-          margin-left: 2px;
+          margin-left: 3px;
+          border: 1px solid #fde68a;
+          letter-spacing: 0.2px;
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          transition: all 0.2s;
+        }
+        .meta-rating-pill:hover .rate-click-hint {
+          background: #fde68a;
+          color: #92400e;
         }
 
         .btn-quick-rate {
-          background: #fefce8;
+          background: #fffbeb;
           color: #b45309;
-          border: 1px solid #fef08a;
+          border: 1px solid #fde68a;
           cursor: pointer;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
         }
         .btn-quick-rate:hover {
           background: #fef08a;
+          color: #78350f;
+          border-color: #f59e0b;
         }
 
         /* 🏪 Shop Profile Modal */

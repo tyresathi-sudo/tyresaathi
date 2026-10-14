@@ -99,6 +99,48 @@ export async function showNativeToast(text, duration = "short") {
       });
     } else {
       console.log(`[Toast] ${text}`);
+      if (typeof document !== "undefined") {
+        let toastEl = document.getElementById("tyresaathi-web-toast");
+        if (!toastEl) {
+          toastEl = document.createElement("div");
+          toastEl.id = "tyresaathi-web-toast";
+          toastEl.style.cssText = `
+            position: fixed;
+            bottom: 85px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #0f172a;
+            color: #ffffff;
+            padding: 10px 22px;
+            border-radius: 9999px;
+            font-size: 13.5px;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            z-index: 99999;
+            opacity: 0;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            border: 1px solid rgba(255,255,255,0.15);
+          `;
+          document.body.appendChild(toastEl);
+        }
+        toastEl.innerText = text;
+        requestAnimationFrame(() => {
+          toastEl.style.opacity = "1";
+          toastEl.style.transform = "translateX(-50%) translateY(0)";
+        });
+        clearTimeout(window.__tyreToastTimer);
+        window.__tyreToastTimer = setTimeout(() => {
+          if (toastEl) {
+            toastEl.style.opacity = "0";
+            toastEl.style.transform = "translateX(-50%) translateY(15px)";
+          }
+        }, duration === "long" ? 3500 : 2200);
+      }
     }
   } catch (err) {
     console.warn("[NativeBridge] Toast error:", err);
@@ -106,10 +148,17 @@ export async function showNativeToast(text, duration = "short") {
 }
 
 // -------------------------------------------------------------
-// 4. Native Share Sheet (Invoices, Tyre Quotes, Shop Profile)
+// 4. Native Share Sheet (Invoices, Tyre Quotes, Shop Profile, App Share)
 // -------------------------------------------------------------
+export const INDUS_APPSTORE_URL = "https://indusapp.store/t5arj7n8";
+
 export async function shareNativeContent({ title, text, url, dialogTitle }) {
   triggerHaptic("medium");
+
+  const finalUrl = url || INDUS_APPSTORE_URL;
+  const shareText = text 
+    ? (text.includes("http") ? text : `${text} ${finalUrl}`)
+    : finalUrl;
 
   try {
     if (isNative) {
@@ -117,8 +166,8 @@ export async function shareNativeContent({ title, text, url, dialogTitle }) {
       if (canShare.value) {
         await Share.share({
           title: title || "TyreSaathi",
-          text: text || "",
-          url: url || window.location.href,
+          text: shareText,
+          url: finalUrl,
           dialogTitle: dialogTitle || "Share via",
         });
         return { success: true };
@@ -129,17 +178,16 @@ export async function shareNativeContent({ title, text, url, dialogTitle }) {
     if (typeof navigator !== "undefined" && navigator.share) {
       await navigator.share({
         title: title || "TyreSaathi",
-        text: text || "",
-        url: url || window.location.href,
+        text: shareText,
+        url: finalUrl,
       });
       return { success: true };
     }
 
     // Clipboard fallback
     if (navigator.clipboard) {
-      const shareText = `${title ? title + "\n" : ""}${text ? text + "\n" : ""}${url || window.location.href}`;
       await navigator.clipboard.writeText(shareText);
-      showNativeToast("Copied to clipboard!");
+      showNativeToast("Link copied to clipboard! Share it with friends.");
       return { success: true, copied: true };
     }
   } catch (err) {
@@ -149,6 +197,18 @@ export async function shareNativeContent({ title, text, url, dialogTitle }) {
     return { success: false, error: err };
   }
   return { success: false };
+}
+
+/**
+ * Global helper to share the TyreSaathi Indus Appstore link
+ */
+export async function shareApp() {
+  return await shareNativeContent({
+    title: "TyreSaathi - India's Trusted Tyre & Service App",
+    text: "Check out this amazing app on Indus Appstore! Download it now and explore best tyre deals, services & verified shops: " + INDUS_APPSTORE_URL,
+    url: INDUS_APPSTORE_URL,
+    dialogTitle: "Share TyreSaathi App",
+  });
 }
 
 // -------------------------------------------------------------

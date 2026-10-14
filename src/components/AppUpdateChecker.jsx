@@ -84,7 +84,7 @@ export default function AppUpdateChecker() {
   const handleDownload = () => {
     triggerHaptic("success");
     setDownloadStarted(true);
-    const targetUrl = updateInfo?.downloadUrl || "https://github.com/tyresathi-sudo/tyresaathi/releases/latest/download/TyreSaathi.apk";
+    const targetUrl = updateInfo?.downloadUrl || "https://indusapp.store/t5arj7n8";
     
     // Open direct download link in browser / download manager
     window.open(targetUrl, "_blank");

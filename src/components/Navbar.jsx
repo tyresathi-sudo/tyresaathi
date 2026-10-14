@@ -20,12 +20,14 @@ import {
   LifeBuoy,
   ShieldCheck,
   Crown,
-  Package
+  Package,
+  Share2
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { MEGA_MENU_BRANDS, TYRE_CATEGORIES } from "../config/tyreCatalog";
 import NotificationBell from "./NotificationBell.jsx";
+import { shareApp } from "../utils/nativeBridge.js";
 
 export default function Navbar({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
@@ -98,6 +100,16 @@ export default function Navbar({ onMenuClick }) {
           </div>
 
           <div className="top-right-tools">
+            {/* Share App Quick Button (Desktop) */}
+            <button
+              className="utility-tool-btn share-desktop-tool-btn"
+              onClick={shareApp}
+              title="Share TyreSaathi App (Indus Appstore)"
+            >
+              <Share2 size={13} style={{ color: "#60a5fa" }} />
+              <span>Share App</span>
+            </button>
+
             {/* Notification Bell */}
             <NotificationBell />
 
@@ -327,6 +339,16 @@ export default function Navbar({ onMenuClick }) {
           <div className="mobile-right-actions">
             <NotificationBell />
 
+            {/* 📤 Mobile One-Tap Share Button */}
+            <button
+              className="mobile-icon-btn mobile-share-icon-btn"
+              onClick={shareApp}
+              title="Share TyreSaathi App"
+              aria-label="Share TyreSaathi App"
+            >
+              <Share2 size={18} />
+            </button>
+
             <button
               className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`}
               onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
@@ -437,6 +459,17 @@ export default function Navbar({ onMenuClick }) {
         .utility-tool-btn:hover {
           color: #ff6b35;
           background: rgba(255,255,255,0.08);
+        }
+        .share-desktop-tool-btn {
+          background: rgba(59, 130, 246, 0.12);
+          border: 1px solid rgba(96, 165, 250, 0.3);
+          color: #93c5fd !important;
+          border-radius: 20px;
+          padding: 3px 10px;
+        }
+        .share-desktop-tool-btn:hover {
+          background: rgba(59, 130, 246, 0.22) !important;
+          color: #bfdbfe !important;
         }
         .user-profile-menu-wrap {
           position: relative;
@@ -703,9 +736,22 @@ export default function Navbar({ onMenuClick }) {
           gap: 5px;
           transition: color 0.15s ease;
         }
-        .nav-link:hover,
-        .nav-link-active {
+        .nav-link:hover {
           color: #c0392b;
+        }
+        .nav-link-active {
+          color: #c0392b !important;
+          font-weight: 800;
+        }
+        .nav-link-active::after {
+          content: "";
+          position: absolute;
+          bottom: 0px;
+          left: 4px;
+          right: 4px;
+          height: 3px;
+          background: #c0392b;
+          border-radius: 3px;
         }
         .categories-trigger-btn {
           color: #c0392b;

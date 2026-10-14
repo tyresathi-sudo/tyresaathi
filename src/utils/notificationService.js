@@ -67,57 +67,96 @@ export async function sendInAppNotification({
 }
 
 /**
- * Real-time listener for current user's notifications (Strict Privacy & Target Filter)
+ * Real-time listener for current user's notifications (Strict Privacy: Mobile, Email & Shop Filter)
  */
-export function listenUserNotifications(userId, userRole, onUpdate, profile = null) {
+export function listenUserNotifications(userId, userRole, onUpdate, profile = null, userObj = null) {
   try {
     const notifRef = collection(db, "notifications");
     
-    // Listen to recent notifications (limit 40)
-    const q = query(notifRef, limit(40));
+    // Listen to recent notifications (limit 50)
+    const q = query(notifRef, limit(50));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         if (!snapshot.empty) {
           const userShopName = (profile?.shopName || "").toLowerCase().trim();
-          const userPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
-          const isAdmin = userRole === "admin";
+          const userPhone = (profile?.phone || userObj?.phoneNumber || "").replace(/[^0-9]/g, "").slice(-10);
+          const userEmail = (profile?.email || userObj?.email || "").toLowerCase().trim();
+          const isAdmin = userRole === "admin" || userEmail === "tyresathi@gmail.com";
 
           const list = snapshot.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((n) => {
-              // 1. Master Admin sees everything
+              // 1. Master Admin sees all activity
               if (isAdmin) return true;
 
-              // 2. Broadcast alerts for all
-              if (n.recipientId === "all" && (n.recipientRole === "all" || n.recipientRole === userRole)) {
-                return true;
+              // Check if notification is a personal booking event
+              const isBookingNotif = 
+                n.type === "booking_created" || 
+                n.type === "booking_status" || 
+                n.type === "booking" ||
+                (n.title && n.title.toLowerCase().includes("booking")) ||
+                (n.message && n.message.toLowerCase().includes("booking"));
+
+              // 🛑 CRITICAL PRIVACY: Personal Booking notifications can NEVER be broadcasted to 'all'!
+              // Must strictly match customer's mobile/email or shop's details.
+              if (isBookingNotif) {
+                const notifShopId = n.data?.shopId || "";
+                const notifShopName = (n.data?.shopName || "").toLowerCase().trim();
+                const notifShopPhone = (n.data?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
+                const notifShopEmail = (n.data?.shopEmail || "").toLowerCase().trim();
+
+                const notifCustId = n.data?.customerId || n.recipientId || "";
+                const notifCustPhone = (n.data?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+                const notifCustEmail = (n.data?.customerEmail || "").toLowerCase().trim();
+
+                // Check if this notification belongs to this Shop Owner
+                const isForMyShop = 
+                  (userId && notifShopId && notifShopId === userId) ||
+                  (userPhone && notifShopPhone && userPhone === notifShopPhone) ||
+                  (userEmail && notifShopEmail && userEmail === notifShopEmail) ||
+                  (userShopName && notifShopName && notifShopName === userShopName);
+
+                if (isForMyShop && (userRole === "vendor" || userRole === "shop_owner" || profile?.shopName)) {
+                  return true;
+                }
+
+                // Check if this notification belongs to this Customer (STRICTLY by Mobile, Email, or UID)
+                const isForMeAsCustomer = 
+                  (userPhone && notifCustPhone && userPhone === notifCustPhone) ||
+                  (userEmail && notifCustEmail && userEmail === notifCustEmail) ||
+                  (userPhone && n.recipientId && n.recipientId === `phone_${userPhone}`) ||
+                  (userEmail && n.recipientId && n.recipientId === userEmail) ||
+                  (userId && notifCustId && notifCustId === userId && notifCustId !== "all" && notifCustId !== "guest_cust");
+
+                if (isForMeAsCustomer) {
+                  return true;
+                }
+
+                // If it is a booking event and does NOT match this customer or shop, NEVER show it!
+                return false;
               }
 
-              // 3. Specific targeted notifications
-              const notifShopId = n.data?.shopId || n.recipientId;
-              const notifShopName = (n.data?.shopName || "").toLowerCase().trim();
-              const notifShopPhone = (n.data?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
-              const notifCustId = n.data?.customerId || n.recipientId;
-              const notifCustPhone = (n.data?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+              // 2. Broadcast alerts for all (ONLY for app updates, announcements or general news)
+              if (n.recipientId === "all" && (n.recipientRole === "all" || n.recipientRole === userRole)) {
+                return n.type === "app_update" || n.type === "general" || n.type === "announcement";
+              }
 
-              // Shop Owner matches
-              if (userRole === "vendor" || userRole === "shop_owner" || profile?.shopName) {
+              // 3. Shop Ratings / Reviews
+              if (n.type === "rating_received") {
+                const notifShopId = n.data?.shopId || n.recipientId;
+                const notifShopName = (n.data?.shopName || "").toLowerCase().trim();
                 const isForMyShop = 
                   (userId && notifShopId === userId) ||
-                  (userShopName && notifShopName && (notifShopName === userShopName || notifShopName.includes(userShopName) || userShopName.includes(notifShopName))) ||
-                  (userPhone && notifShopPhone && userPhone === notifShopPhone);
-
-                if (isForMyShop) return true;
+                  (userShopName && notifShopName && userShopName === notifShopName);
+                return isForMyShop;
               }
 
-              // Customer matches
-              const isForMeAsCustomer = 
-                (userId && notifCustId === userId) ||
-                (userPhone && notifCustPhone && userPhone === notifCustPhone);
-
-              if (isForMeAsCustomer) return true;
+              // 4. Targeted alerts strictly matching customer's Mobile, Email, or UID
+              if (userPhone && n.recipientId === `phone_${userPhone}`) return true;
+              if (userEmail && n.recipientId === userEmail) return true;
+              if (userId && n.recipientId === userId && n.recipientId !== "all" && n.recipientId !== "guest_cust") return true;
 
               return false;
             });

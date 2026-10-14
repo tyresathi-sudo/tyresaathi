@@ -36,14 +36,14 @@ export const MEGA_MENU_BRANDS = [
 ];
 
 export const TYRE_CATEGORIES = [
-  { id: "two_wheeler", name: "Two-Wheeler (Bike / Scooter / EV)", icon: "🏍️" },
-  { id: "passenger_car", name: "Passenger Car & Hatchback", icon: "🚗" },
-  { id: "suv_muv", name: "SUV & Compact MUV", icon: "🚙" },
-  { id: "commercial", name: "Commercial (Truck / Bus / LCV)", icon: "🚚" },
-  { id: "tractor_agri", name: "Tractor & Agriculture Farm", icon: "🚜" },
-  { id: "auto_rickshaw", name: "Auto Rickshaw (3-Wheeler)", icon: "🛺" },
-  { id: "otr_industrial", name: "OTR & Industrial Crane", icon: "🏗️" },
-  { id: "alloy_wheels", name: "Alloy Wheels & Designer Rims", icon: "✨" },
+  { id: "two_wheeler", name: "Two-Wheeler", subtitle: "Bike, Scooter & EV", icon: "🏍️" },
+  { id: "passenger_car", name: "Passenger Car", subtitle: "Hatchback, Sedan & EV", icon: "🚗" },
+  { id: "suv_muv", name: "SUV & Compact MUV", subtitle: "Creta, Thar, Scorpio & Innova", icon: "🚙" },
+  { id: "commercial", name: "Commercial Vehicle", subtitle: "Truck, Bus, Tata Ace & LCV", icon: "🚚" },
+  { id: "tractor_agri", name: "Tractor & Agriculture", subtitle: "Farm, Harvester & Trailer", icon: "🚜" },
+  { id: "auto_rickshaw", name: "Auto Rickshaw", subtitle: "3-Wheeler & E-Rickshaw", icon: "🛺" },
+  { id: "otr_industrial", name: "OTR & Industrial", subtitle: "JCB, Loader, Crane & Dumper", icon: "🏗️" },
+  { id: "alloy_wheels", name: "Alloy Wheels", subtitle: "Designer Diamond Cut Rims", icon: "✨" },
 ];
 
 export const VEHICLE_TYPES = {

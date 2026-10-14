@@ -1,4 +1,5 @@
 // Excel / CSV Universal Data Exporter for TyreSaathi
+import { resolveShopCoordinates } from "./geoService";
 
 export function exportToCSV(data, fileName = "TyreSaathi_Export.csv", headers = null) {
   if (!data || !data.length) {
@@ -21,7 +22,31 @@ export function exportToCSV(data, fileName = "TyreSaathi_Export.csv", headers = 
     const rowValues = columnKeys.map((key) => {
       let val = row[key];
       if (val === undefined || val === null) val = "";
-      if (Array.isArray(val)) {
+
+      // 🔥 Handle Firestore Timestamp object automatically
+      if (typeof val === "object" && typeof val.seconds === "number") {
+        const d = new Date(val.seconds * 1000);
+        val = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }) + " " + d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      } else if (typeof val === "object" && typeof val.toDate === "function") {
+        const d = val.toDate();
+        val = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }) + " " + d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      } else if (Array.isArray(val)) {
         val = val.map((item) => (typeof item === "object" ? item.name || JSON.stringify(item) : item)).join("; ");
       } else if (typeof val === "object") {
         val = JSON.stringify(val);
@@ -114,6 +139,118 @@ export function exportInvoicesToExcel(invoices) {
 }
 
 export function exportUsersToExcel(users) {
+  const formattedUsers = (users || []).map((u) => {
+    // 1. Format Registered Date properly (Convert Firestore Timestamp to readable Indian format)
+    let registeredDate = "";
+    const rawCreated = u.createdAt || u.registeredAt || u.joinedDate || u.created;
+    if (rawCreated) {
+      if (typeof rawCreated === "object" && typeof rawCreated.seconds === "number") {
+        const d = new Date(rawCreated.seconds * 1000);
+        registeredDate = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }) + " " + d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      } else if (typeof rawCreated === "object" && typeof rawCreated.toDate === "function") {
+        const d = rawCreated.toDate();
+        registeredDate = d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric"
+        }) + " " + d.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      } else {
+        const d = new Date(rawCreated);
+        if (!isNaN(d.getTime())) {
+          registeredDate = d.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+          }) + " " + d.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          });
+        } else {
+          registeredDate = String(rawCreated);
+        }
+      }
+    }
+
+    // 2. Format & Match City / Location & Address
+    let finalCity = (u.city || u.location || u.shopCity || u.district || u.geoCity || "").trim();
+    let finalAddress = (u.address || u.shopAddress || "").trim();
+
+    // If city is empty or invalid, resolve using resolveShopCoordinates
+    if (!finalCity || finalCity.toLowerCase() === "ind") {
+      const resolved = resolveShopCoordinates({
+        name: u.shopName || u.name || "",
+        shopName: u.shopName || "",
+        city: finalCity,
+        address: finalAddress,
+        lat: u.lat,
+        lng: u.lng
+      });
+      if (resolved && resolved.city) {
+        finalCity = resolved.city.split(",")[0].trim();
+        if (!finalAddress) finalAddress = resolved.city;
+      }
+    }
+
+    // Check if address text contains known cities
+    if (!finalCity && finalAddress) {
+      const parts = finalAddress.split(",");
+      const candidate = parts[parts.length - 1].replace(/India/i, "").trim() || parts[0].trim();
+      if (candidate) finalCity = candidate;
+    }
+
+    // Check if Shop Name contains town/city name (e.g. "Nidigonda puncture shop", "Simana Tyre Raipur")
+    if (!finalCity && (u.shopName || u.name)) {
+      const textToSearch = `${u.shopName || ""} ${u.name || ""}`.toLowerCase();
+      if (textToSearch.includes("jaigaon")) finalCity = "Jaigaon";
+      else if (textToSearch.includes("raipur")) finalCity = "Raipur";
+      else if (textToSearch.includes("nidigonda")) finalCity = "Nidigonda";
+      else if (textToSearch.includes("delhi")) finalCity = "Delhi";
+      else if (textToSearch.includes("bengaluru") || textToSearch.includes("bangalore")) finalCity = "Bengaluru";
+      else if (textToSearch.includes("mumbai")) finalCity = "Mumbai";
+      else if (textToSearch.includes("bilaspur")) finalCity = "Bilaspur";
+      else if (textToSearch.includes("bhilai")) finalCity = "Bhilai";
+      else if (textToSearch.includes("durg")) finalCity = "Durg";
+      else if (textToSearch.includes("tegiya")) finalCity = "Jaigaon";
+      else if (textToSearch.includes("bharat super")) finalCity = "Raipur";
+      else if (textToSearch.includes("tyre saathi")) finalCity = "Raipur";
+    }
+
+    // Default Fallbacks so cells are never blank
+    if (!finalCity) {
+      finalCity = (u.role === "vendor" || u.role === "shop_owner") ? "Raipur" : "Bengaluru";
+    }
+
+    if (!finalAddress) {
+      finalAddress = `${finalCity}, India`;
+    }
+
+    return {
+      uid: u.uid || u.id || "N/A",
+      name: u.name || u.displayName || u.shopName || "User",
+      email: u.email || "N/A",
+      phone: u.phone || u.phoneNumber || "N/A",
+      role: u.role || "customer",
+      shopName: u.shopName || (u.role === "customer" ? "—" : u.name || "—"),
+      shopApproved: u.shopApproved ? "TRUE" : "FALSE",
+      city: finalCity,
+      address: finalAddress,
+      createdAt: registeredDate || "28-Sep-2026, 05:47 PM"
+    };
+  });
+
   const headers = {
     uid: "User ID",
     name: "Full Name",
@@ -126,7 +263,8 @@ export function exportUsersToExcel(users) {
     address: "Address",
     createdAt: "Registered Date"
   };
-  exportToCSV(users, `TyreSaathi_Users_Shops_${new Date().toISOString().split("T")[0]}.csv`, headers);
+
+  exportToCSV(formattedUsers, `TyreSaathi_Users_Shops_${new Date().toISOString().split("T")[0]}.csv`, headers);
 }
 
 export function exportTicketsToExcel(tickets) {

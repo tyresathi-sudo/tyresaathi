@@ -40,6 +40,7 @@ export const SERVICE_NAV_ITEMS = [
 // 4. Account & Support
 export const ACCOUNT_NAV_ITEMS = [
   { to: "/settings", label: "App & Account Settings", icon: SettingsIcon, color: "#64748b", bg: "#f8fafc" },
+  { to: "/support", label: "Support Tickets (हेल्पडेस्क टिकट)", icon: LifeBuoy, color: "#ef4444", bg: "#fef2f2" },
   { to: "/privacy-policy", label: "About Us & Policies (कंपनी विवरण)", icon: Info, color: "#0284c7", bg: "#f0f9ff" },
 ];
 

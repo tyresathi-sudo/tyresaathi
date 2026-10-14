@@ -138,6 +138,23 @@ export default function Subscription() {
 
   return (
     <div className="subscription-page-container">
+      {/* ❌ Clean Circular Top-Right Close Button */}
+      <button
+        type="button"
+        className="btn-close-subscription-page"
+        onClick={() => {
+          if (window.history.length > 1) {
+            window.history.back();
+          } else {
+            window.location.href = "/";
+          }
+        }}
+        title="Close (वापस जाएं)"
+        aria-label="Close subscription plans"
+      >
+        <X size={20} strokeWidth={2.5} />
+      </button>
+
       {/* 🌟 Top Hero Header */}
       <div className="pricing-hero-header">
         <div className="pricing-badge-pill">
@@ -381,17 +398,54 @@ export default function Subscription() {
       {/* High-End Pricing Styling */}
       <style>{`
         .subscription-page-container {
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 16px 12px 60px 12px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 18px 0 60px 0;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
           color: #0f172a;
+          position: relative;
+        }
+
+        /* ❌ Top-Right Circular Close Button */
+        .btn-close-subscription-page {
+          position: absolute;
+          top: 10px;
+          right: 8px;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          border: 1.5px solid var(--border, #cbd5e1);
+          background: var(--surface, #ffffff);
+          color: #475569;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+          transition: all 0.2s ease;
+          z-index: 20;
+        }
+        .btn-close-subscription-page:hover {
+          background: #fee2e2;
+          border-color: #ef4444;
+          color: #dc2626;
+          transform: rotate(90deg) scale(1.08);
+        }
+        @media (max-width: 600px) {
+          .btn-close-subscription-page {
+            top: 4px;
+            right: 4px;
+            width: 36px;
+            height: 36px;
+          }
         }
 
         .pricing-hero-header {
           text-align: center;
-          max-width: 680px;
-          margin: 0 auto 24px auto;
+          max-width: 820px;
+          margin: 0 auto 28px auto;
+          padding: 0 16px;
         }
 
         .pricing-badge-pill {
@@ -401,19 +455,19 @@ export default function Subscription() {
           background: rgba(192, 57, 43, 0.08);
           border: 1px solid rgba(192, 57, 43, 0.2);
           color: #c0392b;
-          font-size: 10.5px;
+          font-size: 11.5px;
           font-weight: 800;
-          padding: 4px 12px;
+          padding: 5px 14px;
           border-radius: 20px;
           letter-spacing: 0.5px;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
 
         .pricing-main-title {
-          font-size: 1.45rem;
+          font-size: clamp(1.4rem, 2.5vw, 2.2rem);
           font-weight: 900;
           letter-spacing: -0.5px;
-          margin: 0 0 6px 0;
+          margin: 0 0 8px 0;
           line-height: 1.25;
         }
 
@@ -424,24 +478,24 @@ export default function Subscription() {
         }
 
         .pricing-sub-desc {
-          font-size: 0.8125rem;
+          font-size: clamp(0.95rem, 1.1vw, 1.1rem);
           color: #475569;
-          margin: 0 0 16px 0;
-          line-height: 1.4;
+          margin: 0 0 20px 0;
+          line-height: 1.5;
         }
 
         .launch-free-banner {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           background: #f0fdf4;
           border: 1.5px dashed #22c55e;
-          padding: 10px 14px;
-          border-radius: 10px;
+          padding: 12px 18px;
+          border-radius: 12px;
           text-align: left;
-          margin: 0 auto 16px auto;
-          max-width: 600px;
-          font-size: 12px;
+          margin: 0 auto 20px auto;
+          max-width: 720px;
+          font-size: 13.5px;
           color: #166534;
         }
 
@@ -449,21 +503,21 @@ export default function Subscription() {
           display: inline-flex;
           align-items: center;
           background: #f1f5f9;
-          padding: 3px;
-          border-radius: 24px;
+          padding: 4px;
+          border-radius: 26px;
           border: 1px solid #e2e8f0;
-          gap: 3px;
+          gap: 4px;
         }
 
         .cycle-btn {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           background: transparent;
           border: none;
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-size: 12px;
+          padding: 8px 18px;
+          border-radius: 22px;
+          font-size: 13.5px;
           font-weight: 700;
           color: #475569;
           cursor: pointer;
@@ -473,92 +527,93 @@ export default function Subscription() {
         .cycle-btn-active {
           background: #c0392b !important;
           color: #ffffff !important;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+          box-shadow: 0 2px 10px rgba(192, 57, 43, 0.3);
         }
 
         .save-pill {
           background: #fef08a;
           color: #854d0e;
-          font-size: 9.5px;
+          font-size: 11px;
           font-weight: 800;
-          padding: 1px 6px;
-          border-radius: 8px;
+          padding: 2px 8px;
+          border-radius: 10px;
         }
 
         /* Responsive Cards Grid */
         .plans-cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 16px;
-          margin-bottom: 36px;
+          grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+          gap: 24px;
+          margin-bottom: 44px;
           align-items: stretch;
+          width: 100%;
         }
 
         .plan-card {
           background: #ffffff;
           border: 1.5px solid #e2e8f0;
-          border-radius: 16px;
-          padding: 18px 16px;
+          border-radius: 18px;
+          padding: clamp(20px, 2.2vw, 26px);
           display: flex;
           flex-direction: column;
           position: relative;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
           transition: all 0.25s ease;
         }
 
         .plan-card-popular {
           border-color: #fca5a5;
-          box-shadow: 0 6px 20px rgba(192, 57, 43, 0.09);
+          box-shadow: 0 6px 24px rgba(192, 57, 43, 0.1);
         }
 
         .popular-ribbon {
           position: absolute;
-          top: -10px;
+          top: -12px;
           left: 50%;
           transform: translateX(-50%);
           background: linear-gradient(135deg, #c0392b 0%, #dc2626 100%);
           color: #ffffff;
-          font-size: 10px;
+          font-size: 11px;
           font-weight: 800;
-          padding: 3px 12px;
-          border-radius: 16px;
+          padding: 4px 14px;
+          border-radius: 18px;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
+          gap: 5px;
+          box-shadow: 0 2px 10px rgba(192, 57, 43, 0.35);
           letter-spacing: 0.4px;
         }
 
         .plan-card-top {
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
 
         .plan-badge-tag {
           display: inline-block;
-          font-size: 10.5px;
+          font-size: 11.5px;
           font-weight: 800;
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: 6px;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
         }
 
         .plan-title {
-          font-size: 1.35rem;
+          font-size: clamp(1.35rem, 1.6vw, 1.65rem);
           font-weight: 800;
-          margin: 0 0 4px 0;
+          margin: 0 0 6px 0;
           color: #0f172a;
         }
 
         .plan-tagline {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           color: #64748b;
           margin: 0;
           line-height: 1.45;
         }
 
         .plan-price-wrap {
-          margin-bottom: 16px;
-          padding-bottom: 14px;
+          margin-bottom: 18px;
+          padding-bottom: 16px;
           border-bottom: 1px solid #f1f5f9;
         }
 
@@ -567,18 +622,18 @@ export default function Subscription() {
         .paid-price-box {
           display: flex;
           align-items: baseline;
-          gap: 6px;
+          gap: 8px;
         }
 
         .price-big {
-          font-size: 2.15rem;
+          font-size: clamp(2.2rem, 3vw, 2.85rem);
           font-weight: 900;
           color: #0f172a;
           line-height: 1;
         }
 
         .price-period {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           color: #64748b;
           font-weight: 600;
         }
@@ -586,17 +641,17 @@ export default function Subscription() {
         .launch-pricing-box {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 5px;
         }
 
         .striked-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
 
         .price-strikethrough {
-          font-size: 1rem;
+          font-size: 1.15rem;
           text-decoration: line-through;
           color: #94a3b8;
           font-weight: 700;
@@ -605,9 +660,9 @@ export default function Subscription() {
         .free-offer-badge {
           background: #ea580c;
           color: #fff;
-          font-size: 11px;
+          font-size: 12px;
           font-weight: 800;
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: 6px;
         }
 
@@ -616,7 +671,7 @@ export default function Subscription() {
         }
 
         .plan-cta-box {
-          margin-bottom: 18px;
+          margin-bottom: 20px;
         }
 
         .btn-plan-upgrade {
@@ -628,9 +683,9 @@ export default function Subscription() {
           background: #f1f5f9;
           color: #0f172a;
           border: 1.5px solid #cbd5e1;
-          padding: 12px 18px;
-          border-radius: 10px;
-          font-size: 0.95rem;
+          padding: 14px 20px;
+          border-radius: 12px;
+          font-size: 1.05rem;
           font-weight: 800;
           cursor: pointer;
           transition: all 0.2s;
@@ -640,12 +695,12 @@ export default function Subscription() {
           background: #c0392b;
           color: white;
           border-color: #c0392b;
-          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
+          box-shadow: 0 4px 16px rgba(192, 57, 43, 0.3);
         }
 
         .btn-popular-upgrade:hover {
           background: #a93226;
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
 
         .btn-plan-active {
@@ -657,9 +712,9 @@ export default function Subscription() {
           background: #dcfce7;
           color: #15803d;
           border: 1.5px solid #bbf7d0;
-          padding: 12px 18px;
-          border-radius: 10px;
-          font-size: 0.95rem;
+          padding: 14px 20px;
+          border-radius: 12px;
+          font-size: 1.05rem;
           font-weight: 800;
           cursor: default;
         }
@@ -667,57 +722,57 @@ export default function Subscription() {
         .plan-features-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
           flex: 1;
         }
 
         .features-header {
-          font-size: 0.8rem;
+          font-size: 0.88rem;
           font-weight: 800;
           color: #94a3b8;
           text-transform: uppercase;
           letter-spacing: 0.6px;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
 
         .feature-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 8px;
-          font-size: 0.88rem;
+          gap: 10px;
+          font-size: 0.95rem;
           color: #334155;
           line-height: 1.45;
         }
 
         .feature-check-icon {
           flex-shrink: 0;
-          margin-top: 2px;
+          margin-top: 3px;
         }
 
         .limitations-wrap {
-          margin-top: 8px;
-          padding-top: 8px;
+          margin-top: 10px;
+          padding-top: 10px;
           border-top: 1px dashed #e2e8f0;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
 
         .limitation-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 8px;
-          font-size: 0.82rem;
+          gap: 10px;
+          font-size: 0.88rem;
           color: #94a3b8;
         }
 
         .lim-dash {
-          font-size: 13px;
+          font-size: 14px;
         }
 
         /* FAQ Section */
         .pricing-faq-section {
-          max-width: 760px;
+          max-width: 820px;
           margin: 0 auto;
         }
 

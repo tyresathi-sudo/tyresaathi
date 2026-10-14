@@ -258,42 +258,33 @@ export default function Search() {
 
       <style>{`
         .search-page-container {
-          max-width: 1350px;
-          margin: 0 auto;
-          padding: 10px 16px 40px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 8px 0 50px;
         }
         .search-hero-bar {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 16px 18px;
-          margin-bottom: 20px;
+          border-radius: 16px;
+          padding: clamp(16px, 2vw, 26px);
+          margin-bottom: 22px;
           box-shadow: 0 4px 16px rgba(0,0,0,0.04);
         }
-        @media (min-width: 768px) {
-          .search-hero-bar {
-            padding: 22px 24px;
-            border-radius: 16px;
-            margin-bottom: 24px;
-          }
-        }
         .search-page-title {
-          font-size: 20px;
+          font-size: clamp(1.4rem, 2.2vw, 1.85rem);
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 4px;
-        }
-        @media (min-width: 768px) {
-          .search-page-title { font-size: 24px; }
+          margin: 0 0 6px;
         }
         .search-page-sub {
-          font-size: 13px;
+          font-size: 0.95rem;
           color: var(--text-muted);
-          margin: 0 0 16px;
-          line-height: 1.4;
+          margin: 0 0 18px;
+          line-height: 1.45;
         }
         .search-input-row {
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
         .search-bar-wrap {
           position: relative;
@@ -302,19 +293,19 @@ export default function Search() {
         }
         .search-bar-icon {
           position: absolute;
-          left: 12px;
+          left: 14px;
           color: var(--text-muted);
-          width: 18px;
-          height: 18px;
+          width: 20px;
+          height: 20px;
         }
         .search-bar-wrap input {
           width: 100%;
-          padding: 11px 36px 11px 40px;
-          border-radius: 10px;
+          padding: 13px 40px 13px 46px;
+          border-radius: 12px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 14px;
+          font-size: 1rem;
           font-weight: 600;
           outline: none;
           transition: border-color 0.2s ease;
@@ -324,30 +315,30 @@ export default function Search() {
         }
         .clear-search-btn {
           position: absolute;
-          right: 12px;
+          right: 14px;
           background: none;
           border: none;
           color: var(--text-muted);
-          font-size: 14px;
+          font-size: 16px;
           cursor: pointer;
         }
         .search-filters-row {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .filter-select-wrap {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: var(--bg);
           border: 1.5px solid var(--border);
-          padding: 7px 12px;
-          border-radius: 8px;
+          padding: 9px 14px;
+          border-radius: 10px;
         }
         .filter-select-wrap label {
-          font-size: 12px;
+          font-size: 0.88rem;
           font-weight: 700;
           color: var(--text-muted);
         }
@@ -355,7 +346,7 @@ export default function Search() {
           border: none;
           background: none;
           color: var(--text);
-          font-size: 13px;
+          font-size: 0.95rem;
           font-weight: 600;
           outline: none;
           cursor: pointer;
@@ -364,71 +355,68 @@ export default function Search() {
           background: var(--surface-2);
           border: 1.5px solid var(--border);
           color: #c0392b;
-          font-size: 12px;
+          font-size: 0.9rem;
           font-weight: 700;
-          padding: 7px 14px;
-          border-radius: 8px;
+          padding: 9px 16px;
+          border-radius: 10px;
           cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .reset-all-filters-btn:hover {
+          background: #fdedec;
         }
 
         /* Results Group */
         .results-group-section {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 14px;
-          padding: 18px 20px;
-          box-shadow: 0 3px 14px rgba(0,0,0,0.04);
-        }
-        @media (min-width: 768px) {
-          .results-group-section {
-            padding: 22px 24px;
-            border-radius: 16px;
-          }
+          border-radius: 16px;
+          padding: clamp(16px, 2.2vw, 26px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+          margin-bottom: 24px;
         }
         .group-section-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
+          margin-bottom: 18px;
           border-bottom: 1.5px solid var(--border);
-          padding-bottom: 10px;
-          gap: 10px;
+          padding-bottom: 12px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .header-left {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
         }
         .nearest-flame-icon {
-          font-size: 20px;
+          font-size: 22px;
         }
         .other-shops-icon {
-          font-size: 20px;
+          font-size: 22px;
         }
         .group-title {
-          font-size: 17px;
+          font-size: clamp(1.15rem, 1.6vw, 1.45rem);
           font-weight: 800;
           color: var(--text);
           margin: 0;
         }
-        @media (min-width: 768px) {
-          .group-title { font-size: 19px; }
-        }
         .group-count-tag {
-          font-size: 11.5px;
+          font-size: 0.85rem;
           background: #16a34a;
           color: white;
-          padding: 3px 10px;
-          border-radius: 14px;
+          padding: 5px 12px;
+          border-radius: 16px;
           font-weight: 700;
         }
 
         /* Product Grid */
         .products-card-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 18px;
+          grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+          gap: 22px;
+          width: 100%;
         }
 
         @media (max-width: 640px) {
@@ -437,7 +425,7 @@ export default function Search() {
             gap: 14px;
           }
           .search-filters-row {
-            gap: 6px;
+            gap: 8px;
           }
           .filter-select-wrap {
             width: 100%;
@@ -453,23 +441,23 @@ export default function Search() {
         }
 
         .no-results-card {
-          padding: 48px 20px;
+          padding: 54px 20px;
           text-align: center;
           background: var(--surface);
           border: 1.5px dashed var(--border);
-          border-radius: 14px;
+          border-radius: 16px;
           color: var(--text-muted);
-          font-size: 14px;
+          font-size: 1rem;
         }
         .btn-browse-all {
-          margin-top: 14px;
+          margin-top: 16px;
           background: #c0392b;
           color: white;
           border: none;
-          padding: 10px 18px;
-          border-radius: 8px;
+          padding: 12px 22px;
+          border-radius: 10px;
           font-weight: 700;
-          font-size: 13.5px;
+          font-size: 0.95rem;
           cursor: pointer;
         }
       `}</style>
@@ -691,104 +679,107 @@ function ProductCard({ product }) {
           flex-wrap: wrap;
         }
         .brand-badge-tag {
-          font-size: 11.5px;
+          font-size: 13px;
           font-weight: 800;
           color: #c0392b;
           text-transform: uppercase;
         }
         .size-badge-tag {
-          font-size: 11.5px;
+          font-size: 13px;
           font-weight: 700;
           background: var(--bg);
           border: 1px solid var(--border);
-          padding: 2px 7px;
+          padding: 3px 9px;
           border-radius: 6px;
           color: var(--text);
         }
         .condition-badge-tag {
-          font-size: 11.5px;
+          font-size: 12.5px;
           color: var(--text-muted);
           font-weight: 600;
         }
         .card-product-title {
-          font-size: 16px;
+          font-size: 1.15rem;
           font-weight: 800;
           color: var(--text);
           margin: 0;
-          line-height: 1.3;
+          line-height: 1.35;
         }
         .card-price-row {
           display: flex;
           align-items: baseline;
-          gap: 8px;
+          gap: 10px;
         }
         .card-selling-price {
-          font-size: 22px;
+          font-size: 1.6rem;
           font-weight: 800;
           color: #16a34a;
         }
         .card-mrp-price {
-          font-size: 13px;
+          font-size: 0.95rem;
           color: var(--text-muted);
           text-decoration: line-through;
         }
         .card-shop-banner {
           background: var(--bg);
-          padding: 8px 10px;
-          border-radius: 8px;
+          padding: 10px 12px;
+          border-radius: 10px;
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
           border: 1px solid var(--border);
         }
         .shop-name-row {
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           font-weight: 700;
-          font-size: 12.5px;
+          font-size: 14px;
           color: var(--text);
         }
         .stock-info-text {
-          font-size: 11.5px;
+          font-size: 13px;
           font-weight: 600;
           color: var(--text-muted);
         }
         .card-action-buttons {
           display: flex;
-          gap: 8px;
-          margin-top: 6px;
+          gap: 10px;
+          margin-top: 8px;
         }
         .card-book-service-btn {
           flex: 1;
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: white;
-          border-radius: 8px;
+          border-radius: 10px;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 14.5px;
           font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
-          padding: 9px 12px;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+          gap: 6px;
+          padding: 11px 16px;
+          box-shadow: 0 2px 10px rgba(192, 57, 43, 0.3);
+          transition: transform 0.15s ease;
         }
         .card-book-service-btn:hover {
           background: #b91c1c;
+          transform: translateY(-1px);
         }
         .card-call-shop-btn {
           background: #16a34a;
           color: white;
-          border-radius: 8px;
+          border-radius: 10px;
           text-decoration: none;
-          font-size: 13px;
+          font-size: 14.5px;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
-          padding: 9px 14px;
+          gap: 6px;
+          padding: 11px 18px;
+          transition: background 0.15s ease;
         }
         .card-call-shop-btn:hover {
           background: #15803d;

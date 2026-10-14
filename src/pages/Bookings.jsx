@@ -222,9 +222,13 @@ export default function Bookings() {
           status: newStatus,
         });
 
-        // 🔔 Send in-app notification to Customer
+        // 🔔 Send in-app notification to Customer (Strictly locked to Customer Mobile & Email)
+        const custPhoneClean = (existing.customerPhone || "").replace(/\D/g, "").slice(-10);
+        const custEmailClean = (existing.customerEmail || "").toLowerCase().trim();
+        const targetCustRecipient = custPhoneClean ? `phone_${custPhoneClean}` : (custEmailClean || existing.customerId || "unknown_cust");
+
         sendInAppNotification({
-          recipientId: existing.customerId || "all",
+          recipientId: targetCustRecipient,
           recipientRole: "customer",
           title: `🔄 Booking Status Update: ${newStatus.toUpperCase()}`,
           message: `Aapki "${existing.serviceName || 'Tyre Service'}" booking at "${existing.shopName || 'Shop'}" ka status ab "${newStatus}" ho gaya hai.`,
@@ -234,6 +238,12 @@ export default function Bookings() {
             bookingId,
             status: newStatus,
             shopName: existing.shopName,
+            shopPhone: (existing.shopPhone || "").replace(/\D/g, "").slice(-10),
+            shopId: existing.shopId || "",
+            customerId: existing.customerId || targetCustRecipient,
+            customerPhone: custPhoneClean,
+            customerEmail: custEmailClean,
+            customerName: existing.customerName || "",
           }
         });
       }
@@ -289,8 +299,13 @@ export default function Bookings() {
       });
     } finally {
       // 🔔 1. Notify the Shop Owner in real-time
+      const shopPhoneClean = (bookingData.shopPhone || "").replace(/\D/g, "").slice(-10);
+      const targetShopRecipient = bookingData.shopId || (shopPhoneClean ? `phone_${shopPhoneClean}` : "shop_unknown");
+      const custPhoneClean = (bookingData.customerPhone || "").replace(/\D/g, "").slice(-10);
+      const custEmailClean = (bookingData.customerEmail || "").toLowerCase().trim();
+
       sendInAppNotification({
-        recipientId: bookingData.shopId || "all",
+        recipientId: targetShopRecipient,
         recipientRole: "shop_owner",
         title: `📅 Nayi Service Booking Aayi!`,
         message: `${bookingData.customerName} (${bookingData.customerPhone}) ne "${bookingData.serviceName}" (${bookingData.vehicleNumber}) ke liye booking ki hai.`,
@@ -299,21 +314,38 @@ export default function Bookings() {
         data: {
           bookingId: finalBookingId,
           shopId: bookingData.shopId,
+          shopName: bookingData.shopName,
+          shopPhone: shopPhoneClean,
           customerName: bookingData.customerName,
-          customerPhone: bookingData.customerPhone,
+          customerPhone: custPhoneClean,
+          customerEmail: custEmailClean,
+          customerId: bookingData.customerId,
           serviceName: bookingData.serviceName,
           vehicleNumber: bookingData.vehicleNumber,
         }
       });
 
-      // 🔔 2. Send confirmation to the Customer
+      // 🔔 2. Send confirmation to the Customer (Locked to Mobile & Email)
+      const targetCustRecipient = custPhoneClean ? `phone_${custPhoneClean}` : (custEmailClean || user?.uid || "guest_cust");
+
       sendInAppNotification({
-        recipientId: user?.uid || "guest_cust",
+        recipientId: targetCustRecipient,
         recipientRole: "customer",
         title: `✅ Booking Confirmed`,
         message: `Aapki "${bookingData.serviceName}" booking at "${bookingData.shopName}" receive ho gayi hai. Shop owner se confirmation yahan update hoga.`,
         type: "booking_created",
         link: "/bookings",
+        data: {
+          bookingId: finalBookingId,
+          shopId: bookingData.shopId,
+          shopName: bookingData.shopName,
+          shopPhone: shopPhoneClean,
+          customerId: user?.uid || targetCustRecipient,
+          customerPhone: custPhoneClean,
+          customerEmail: custEmailClean,
+          customerName: bookingData.customerName,
+          serviceName: bookingData.serviceName,
+        }
       });
 
       setLoading(false);
@@ -345,8 +377,8 @@ export default function Bookings() {
 
       const isForMyShop = 
         (bShopId && myUid && bShopId === myUid) ||
-        (myShopName && bShopName && (bShopName === myShopName || bShopName.includes(myShopName) || myShopName.includes(bShopName))) ||
-        (myPhone && bShopPhone && myPhone === bShopPhone);
+        (myPhone && bShopPhone && myPhone === bShopPhone) ||
+        (myShopName && bShopName && myShopName === bShopName);
 
       const isMyCustomerBooking = b.customerId === user?.uid || b.customerEmail === user?.email;
       return isForMyShop || isMyCustomerBooking;
@@ -879,9 +911,9 @@ export default function Bookings() {
       <style>{`
         .bookings-page-container {
           width: 100%;
-          max-width: 1440px;
-          margin: 0 auto;
-          padding: 14px 12px 80px 12px;
+          max-width: 100%;
+          margin: 0;
+          padding: 8px 0 80px;
           font-family: 'Inter', sans-serif;
           color: #0f172a;
           box-sizing: border-box;
@@ -889,13 +921,7 @@ export default function Bookings() {
 
         @media (min-width: 768px) {
           .bookings-page-container {
-            padding: 24px 28px 90px 28px;
-          }
-        }
-
-        @media (min-width: 1200px) {
-          .bookings-page-container {
-            padding: 28px 36px 100px 36px;
+            padding: 10px 0 90px;
           }
         }
 
@@ -903,9 +929,9 @@ export default function Bookings() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
+          margin-bottom: 18px;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 14px;
         }
 
         .bookings-header-text {
@@ -914,7 +940,7 @@ export default function Bookings() {
         }
 
         .page-heading {
-          font-size: clamp(18px, 4vw, 26px);
+          font-size: clamp(1.4rem, 2.2vw, 1.85rem);
           font-weight: 800;
           color: #0f172a;
           margin: 0;
@@ -922,25 +948,26 @@ export default function Bookings() {
         }
 
         .page-sub {
-          font-size: clamp(12px, 2.5vw, 14px);
+          font-size: 0.95rem;
           color: #64748b;
-          margin: 3px 0 0 0;
+          margin: 4px 0 0 0;
+          line-height: 1.45;
         }
 
         .header-actions-group {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           flex-wrap: wrap;
         }
 
         .btn-header-action-compact {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 8px 12px;
+          gap: 6px;
+          padding: 9px 15px;
           border-radius: 9px;
-          font-size: clamp(12px, 2.5vw, 13px);
+          font-size: 0.88rem;
           font-weight: 700;
           text-decoration: none;
           transition: all 0.2s;
@@ -970,22 +997,22 @@ export default function Bookings() {
         .btn-header-new-booking {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 7px;
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: #ffffff;
           border: none;
-          padding: 8px 15px;
+          padding: 10px 18px;
           border-radius: 9px;
-          font-size: clamp(12px, 2.5vw, 13.5px);
+          font-size: 0.92rem;
           font-weight: 800;
           cursor: pointer;
-          box-shadow: 0 3px 12px rgba(192, 57, 43, 0.28);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.28);
           transition: all 0.2s;
           white-space: nowrap;
         }
         .btn-header-new-booking:hover {
           transform: translateY(-1px);
-          box-shadow: 0 5px 16px rgba(192, 57, 43, 0.38);
+          box-shadow: 0 6px 18px rgba(192, 57, 43, 0.38);
         }
 
         /* 🏷️ Clean Horizontal Filter Chips */
@@ -993,8 +1020,8 @@ export default function Bookings() {
           display: flex;
           gap: 8px;
           overflow-x: auto;
-          padding: 2px 2px 12px 2px;
-          margin-bottom: 18px;
+          padding: 2px 2px 14px 2px;
+          margin-bottom: 20px;
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
         }
@@ -1004,11 +1031,11 @@ export default function Bookings() {
 
         .filter-tab {
           background: #ffffff;
-          border: 1.2px solid #e2e8f0;
+          border: 1.5px solid #e2e8f0;
           color: #64748b;
-          padding: 7px 14px;
+          padding: 8px 16px;
           border-radius: 20px;
-          font-size: clamp(12px, 2.5vw, 13px);
+          font-size: 0.88rem;
           font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
@@ -1057,7 +1084,7 @@ export default function Bookings() {
         .bookings-list-grid {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 14px;
+          gap: 16px;
           width: 100%;
         }
 
@@ -1068,9 +1095,9 @@ export default function Bookings() {
           }
         }
 
-        @media (min-width: 1200px) {
+        @media (min-width: 1100px) {
           .bookings-list-grid {
-            grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
             gap: 22px;
           }
         }
@@ -1078,46 +1105,46 @@ export default function Bookings() {
         .no-bookings-card {
           grid-column: 1 / -1;
           text-align: center;
-          padding: 36px 18px;
+          padding: 44px 20px;
           background: #ffffff;
           border: 1.5px dashed #cbd5e1;
           border-radius: 16px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
         .no-bookings-card h3 {
-          font-size: 17px;
+          font-size: 1.15rem;
           font-weight: 800;
           color: #0f172a;
           margin: 0;
         }
         .no-bookings-card p {
-          font-size: 13px;
+          font-size: 0.92rem;
           color: #64748b;
           margin: 0;
-          max-width: 420px;
+          max-width: 440px;
         }
 
         /* 📦 Dynamic Fluid Booking Card */
         .booking-item-card {
           background: #ffffff;
-          border: 1.2px solid #e2e8f0;
-          border-left: 4.5px solid #c0392b;
+          border: 1.5px solid #e2e8f0;
+          border-left: 5px solid #c0392b;
           border-radius: 14px;
-          padding: clamp(12px, 2.5vw, 18px);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+          padding: clamp(14px, 2.5vw, 20px);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
           transition: all 0.2s ease;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
           width: 100%;
           box-sizing: border-box;
         }
         .booking-item-card:hover {
           transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
           border-color: #cbd5e1;
         }
 
@@ -1132,24 +1159,24 @@ export default function Bookings() {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 8px;
+          gap: 10px;
         }
 
         .service-info-group {
           display: flex;
           align-items: center;
-          gap: 9px;
+          gap: 10px;
           min-width: 0;
           flex: 1;
         }
 
         .service-icon-circle {
-          width: 34px;
-          height: 34px;
+          width: 38px;
+          height: 38px;
           background: #fef2f2;
           color: #c0392b;
           border: 1px solid #fee2e2;
-          border-radius: 9px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1162,21 +1189,21 @@ export default function Bookings() {
         }
 
         .booking-service-title {
-          font-size: clamp(13.5px, 2.8vw, 16px);
+          font-size: clamp(1rem, 1.8vw, 1.2rem);
           font-weight: 800;
           color: #0f172a;
           margin: 0;
-          line-height: 1.25;
+          line-height: 1.3;
           word-break: break-word;
         }
 
         .booking-vehicle-tag {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: clamp(10.5px, 2vw, 12px);
+          gap: 5px;
+          font-size: 0.85rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 3px;
           word-break: break-word;
         }
         .booking-vehicle-tag strong {
@@ -1187,14 +1214,14 @@ export default function Bookings() {
           display: flex;
           flex-direction: column;
           align-items: flex-end;
-          gap: 3px;
+          gap: 4px;
           flex-shrink: 0;
         }
 
         .status-badge {
-          font-size: clamp(10px, 2vw, 11.5px);
+          font-size: 0.8rem;
           font-weight: 800;
-          padding: 2px 8px;
+          padding: 3px 10px;
           border-radius: 12px;
           white-space: nowrap;
         }
@@ -1205,11 +1232,11 @@ export default function Bookings() {
         .badge-rejected { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
         .booking-id-tag {
-          font-size: 9.5px;
+          font-size: 10.5px;
           color: #94a3b8;
           font-weight: 700;
           background: #f8fafc;
-          padding: 1px 5px;
+          padding: 2px 6px;
           border-radius: 4px;
           border: 1px solid #e2e8f0;
         }
@@ -1218,11 +1245,11 @@ export default function Bookings() {
         .booking-meta-box {
           background: #f8fafc;
           border: 1px solid #f1f5f9;
-          padding: clamp(8px, 2vw, 12px);
-          border-radius: 10px;
+          padding: 12px 14px;
+          border-radius: 12px;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
 
         .booking-meta-2col {
@@ -1620,6 +1647,35 @@ export default function Bookings() {
         }
 
         @media (max-width: 640px) {
+          .bookings-page-container {
+            padding: 4px 0 70px;
+          }
+          .bookings-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .header-actions-group {
+            width: 100%;
+          }
+          .btn-header-new-booking {
+            flex: 1;
+            justify-content: center;
+          }
+          .booking-item-card {
+            padding: 14px 14px;
+            gap: 10px;
+          }
+          .btn-action-accept,
+          .btn-action-reject,
+          .btn-action-progress,
+          .btn-action-complete,
+          .btn-action-bill-shortcut,
+          .btn-action-done-badge,
+          .btn-action-rejected-badge {
+            padding: 8px 8px;
+            font-size: 12px;
+          }
           .modal-grid-2 {
             grid-template-columns: 1fr;
           }

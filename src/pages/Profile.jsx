@@ -17,10 +17,12 @@ import {
   PlusCircle,
   CheckCircle2,
   Calendar,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Star
 } from "lucide-react";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "../firebase";
+import { storage, db } from "../firebase";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useTheme } from "../context/ThemeContext.jsx";
 import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { compressImage } from "../utils/imageOptimizer";
@@ -42,6 +44,55 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [liveShopStats, setLiveShopStats] = useState({ rating: 0, reviewsCount: 0 });
+
+  // 🌟 Live Shop Star Rating & Reviews Listener
+  useEffect(() => {
+    if (!user || profile?.role !== ROLES.SHOP_OWNER) return;
+
+    try {
+      const unsub = onSnapshot(
+        collection(db, "shop_reviews"),
+        (snapshot) => {
+          const targetId = profile?.shopId || profile?.id || user.uid;
+          const targetName = (profile?.shopName || "").trim().toLowerCase();
+
+          let total = 0;
+          let count = 0;
+
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const matchId = data.shopId && (data.shopId === targetId || data.shopId === user.uid);
+            const matchName = targetName && data.shopName && data.shopName.trim().toLowerCase() === targetName;
+
+            if (matchId || matchName) {
+              total += Number(data.rating) || 0;
+              count += 1;
+            }
+          });
+
+          if (count > 0) {
+            setLiveShopStats({
+              rating: Number((total / count).toFixed(1)),
+              reviewsCount: count,
+            });
+          } else {
+            setLiveShopStats({
+              rating: 0,
+              reviewsCount: 0,
+            });
+          }
+        },
+        (err) => {
+          console.warn("Profile reviews listener error:", err);
+        }
+      );
+
+      return () => unsub();
+    } catch (err) {
+      console.warn("Could not setup profile reviews listener:", err);
+    }
+  }, [user, profile]);
 
   // Editable Form State
   const [formData, setFormData] = useState({
@@ -295,6 +346,43 @@ export default function Profile() {
                 </span>
               )}
             </div>
+
+            {/* 🌟 Live Shop Star Rating & Customer Trust Scoreboard */}
+            {profile?.role === ROLES.SHOP_OWNER && (
+              <div className="profile-shop-rating-banner">
+                <div className="rating-banner-left">
+                  <div className="big-star-score-badge">
+                    <span className="star-symbol">⭐</span>
+                    <span className="big-score-text">
+                      {liveShopStats.reviewsCount > 0 ? liveShopStats.rating.toFixed(1) : "0.0"}
+                    </span>
+                    <span className="score-out-of">/ 5.0</span>
+                  </div>
+
+                  <div className="rating-banner-info">
+                    <div className="rating-banner-heading">
+                      Live Store Rating & Reputation Value
+                    </div>
+                    <div className="rating-banner-sub">
+                      {liveShopStats.reviewsCount > 0
+                        ? `कुल ${liveShopStats.reviewsCount} सत्यापित ग्राहकों की समीक्षाओं के आधार पर लाइव स्कोर`
+                        : "अभी तक इस दुकान के लिए कोई कस्टमर रिव्यू दर्ज नहीं हुआ है"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rating-banner-right">
+                  <span className="store-tier-pill">
+                    {liveShopStats.reviewsCount === 0
+                      ? "✨ New Verified Store"
+                      : (liveShopStats.rating >= 4.5 ? "🏆 5-Star Elite Partner" : "⭐ Verified Top Partner")}
+                  </span>
+                  <Link to="/store-location" className="btn-view-public-reviews">
+                    पब्लिक रिव्यू देखें →
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="profile-info-grid">
               <div className="info-item">
@@ -721,20 +809,106 @@ export default function Profile() {
       </div>
 
       <style>{`
+        .profile-shop-rating-banner {
+          background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+          border: 1.5px solid #fde68a;
+          border-radius: 16px;
+          padding: 14px 18px;
+          margin: 14px 0 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 14px;
+          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.08);
+        }
+        .rating-banner-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+        }
+        .big-star-score-badge {
+          display: inline-flex;
+          align-items: baseline;
+          gap: 4px;
+          background: #ffffff;
+          border: 1px solid #fcd34d;
+          padding: 6px 12px;
+          border-radius: 12px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          flex-shrink: 0;
+        }
+        .star-symbol {
+          font-size: 16px;
+        }
+        .big-score-text {
+          font-size: 26px;
+          font-weight: 900;
+          color: #b45309;
+        }
+        .score-out-of {
+          font-size: 14px;
+          color: #92400e;
+          font-weight: 700;
+        }
+        .rating-banner-heading {
+          font-size: 16px;
+          font-weight: 800;
+          color: #78350f;
+          margin-bottom: 3px;
+        }
+        .rating-banner-sub {
+          font-size: 13px;
+          color: #92400e;
+          line-height: 1.45;
+        }
+        .rating-banner-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .store-tier-pill {
+          background: #ffffff;
+          color: #166534;
+          border: 1px solid #bbf7d0;
+          font-size: 13px;
+          font-weight: 800;
+          padding: 6px 14px;
+          border-radius: 20px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .btn-view-public-reviews {
+          background: #b45309;
+          color: #ffffff;
+          padding: 8px 16px;
+          border-radius: 10px;
+          font-size: 13.5px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: background 0.15s ease;
+        }
+        .btn-view-public-reviews:hover {
+          background: #92400e;
+        }
+
         .profile-page-wrap {
-          max-width: 740px;
-          margin: 0 auto;
-          padding: 0 0 40px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 0 0 50px;
         }
         .profile-header-bar {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 16px;
-          gap: 10px;
+          margin-bottom: 20px;
+          gap: 12px;
         }
         .page-title {
-          font-size: 24px;
+          font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+          font-weight: 800;
           margin: 0;
           color: var(--text);
         }
@@ -742,51 +916,57 @@ export default function Profile() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 8px 14px;
+          padding: 10px 18px;
           border-radius: 8px;
-          font-size: 13px;
+          font-size: clamp(13px, 1.1vw, 15px);
           font-weight: 700;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           white-space: nowrap;
+          transition: transform 0.15s ease;
+        }
+        .btn-edit-toggle:hover {
+          transform: translateY(-1px);
         }
         .btn-cancel-edit {
           background: var(--surface-2);
           color: var(--text);
           border: 1px solid var(--border);
-          padding: 8px 14px;
+          padding: 10px 18px;
           border-radius: 8px;
-          font-size: 13px;
+          font-size: clamp(13px, 1.1vw, 15px);
           font-weight: 700;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           white-space: nowrap;
         }
         .save-success-banner {
           background: #eafaf1;
           border: 1.5px solid #27ae60;
           color: #27ae60;
-          padding: 12px 16px;
-          border-radius: 10px;
-          font-size: 13.5px;
+          padding: 14px 20px;
+          border-radius: 12px;
+          font-size: 15px;
           font-weight: 700;
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 16px;
+          gap: 10px;
+          margin-bottom: 20px;
         }
 
         .profile-card {
+          width: 100%;
+          max-width: 100%;
           background: var(--surface);
           border: 1px solid var(--border);
           border-radius: 16px;
-          padding: 28px;
-          margin-bottom: 16px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+          padding: clamp(20px, 2.8vw, 36px);
+          margin-bottom: 24px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.04);
         }
 
         /* Avatar */
@@ -794,21 +974,21 @@ export default function Profile() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 20px;
+          gap: 10px;
+          margin-bottom: 24px;
         }
         .profile-avatar-container {
           position: relative;
-          width: 84px;
-          height: 84px;
+          width: 96px;
+          height: 96px;
           border-radius: 50%;
-          border: 3px solid #c0392b;
+          border: 3.5px solid #c0392b;
           overflow: hidden;
           background: #ff6b35;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
         .profile-avatar-img {
           width: 100%;
@@ -817,7 +997,7 @@ export default function Profile() {
         }
         .profile-avatar-initial {
           color: white;
-          font-size: 36px;
+          font-size: 42px;
           font-weight: 800;
         }
         .avatar-upload-overlay {
@@ -835,13 +1015,13 @@ export default function Profile() {
           opacity: 1;
         }
         .btn-change-photo-text {
-          font-size: 12px;
+          font-size: 13.5px;
           color: #c0392b;
           font-weight: 700;
           cursor: pointer;
         }
         .upload-photo-text {
-          font-size: 11.5px;
+          font-size: 13px;
           color: #f39c12;
           font-weight: 700;
         }
@@ -851,66 +1031,67 @@ export default function Profile() {
           text-align: center;
         }
         .profile-name-text {
-          font-size: 22px;
+          font-size: clamp(24px, 2.6vw, 32px);
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 6px;
+          margin: 0 0 8px;
         }
         .profile-role-badge {
-          margin-bottom: 20px;
+          margin-bottom: 22px;
         }
         .role-pill-shop {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: #fdedec;
           color: #c0392b;
           border: 1px solid #c0392b;
-          padding: 4px 12px;
+          padding: 6px 16px;
           border-radius: 20px;
-          font-size: 13px;
+          font-size: 14.5px;
           font-weight: 700;
         }
         .role-pill-customer {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           background: var(--surface-2);
           color: var(--text);
-          padding: 3px 10px;
-          border-radius: 16px;
-          font-size: 0.75rem;
+          padding: 5px 14px;
+          border-radius: 18px;
+          font-size: 0.88rem;
           font-weight: 700;
         }
 
         .profile-info-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 16px;
           text-align: left;
           background: var(--bg);
-          padding: 12px;
-          border-radius: 10px;
-          margin-bottom: 14px;
+          padding: clamp(14px, 2vw, 24px);
+          border-radius: 12px;
+          margin-bottom: 20px;
+          border: 1px solid var(--border);
         }
         .info-item {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 4px;
         }
         .info-item.full-width {
           grid-column: 1 / -1;
         }
         .info-label {
-          font-size: 0.6875rem;
+          font-size: 0.82rem;
           font-weight: 700;
           color: var(--text-muted);
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
         }
         .info-value {
-          font-size: 0.8125rem;
+          font-size: 1rem;
           font-weight: 700;
           color: var(--text);
           word-break: break-word;
@@ -921,22 +1102,29 @@ export default function Profile() {
 
         .shop-quick-actions {
           display: flex;
-          gap: 8px;
+          gap: 12px;
           justify-content: center;
+          flex-wrap: wrap;
         }
         .btn-shop-action {
           flex: 1;
+          min-width: 180px;
           background: #c0392b;
           color: white;
           text-decoration: none;
-          padding: 8px 12px;
-          border-radius: 6px;
-          font-size: 0.75rem;
+          padding: 11px 16px;
+          border-radius: 8px;
+          font-size: 0.92rem;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
+          transition: all 0.15s ease;
+        }
+        .btn-shop-action:hover {
+          opacity: 0.95;
+          transform: translateY(-1px);
         }
         .btn-shop-action.secondary {
           background: var(--surface-2);
@@ -946,27 +1134,27 @@ export default function Profile() {
 
         @media (max-width: 768px) {
           .profile-header-bar {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
           }
           .page-title {
-            font-size: 1.25rem; /* text-xl */
+            font-size: 1.25rem;
           }
           .profile-card {
-            padding: 14px 12px;
-            border-radius: 10px;
+            padding: 16px 14px;
+            border-radius: 12px;
           }
           .profile-name-text {
-            font-size: 1.1rem;
+            font-size: 1.25rem;
           }
           .profile-info-grid {
             grid-template-columns: 1fr;
-            padding: 10px 8px;
-            gap: 8px;
-            border-radius: 8px;
+            padding: 12px 10px;
+            gap: 10px;
+            border-radius: 10px;
           }
           .shop-quick-actions {
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
           }
         }
 
@@ -974,28 +1162,28 @@ export default function Profile() {
         .profile-edit-form {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 16px;
           text-align: left;
         }
         .field-label-bold {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.92rem;
           font-weight: 700;
           color: var(--text);
-          margin-bottom: 4px;
+          margin-bottom: 6px;
           display: block;
         }
         .role-toggle-row {
           display: flex;
-          gap: 6px;
+          gap: 10px;
         }
         .role-choice-btn {
           flex: 1;
-          padding: 8px;
-          border-radius: 6px;
+          padding: 11px 14px;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.75rem;
+          font-size: 0.9rem;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -1008,7 +1196,7 @@ export default function Profile() {
         .form-two-col {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 8px;
+          gap: 12px;
         }
         @media (max-width: 600px) {
           .form-two-col {
@@ -1018,20 +1206,20 @@ export default function Profile() {
         .form-input-group {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
         }
         .form-input-group label {
-          font-size: 0.75rem; /* text-xs */
+          font-size: 0.88rem;
           font-weight: 700;
           color: var(--text-muted);
         }
         .form-input-group input {
-          padding: 8px 10px;
-          border-radius: 6px;
+          padding: 10px 14px;
+          border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           outline: none;
         }
         .form-input-group input:focus {
@@ -1040,18 +1228,18 @@ export default function Profile() {
 
         .edit-action-buttons {
           display: flex;
-          gap: 8px;
-          margin-top: 8px;
+          gap: 12px;
+          margin-top: 12px;
         }
         .btn-form-cancel {
           flex: 1;
           background: var(--surface-2);
           color: var(--text);
           border: 1px solid var(--border);
-          padding: 9px 12px;
-          border-radius: 6px;
+          padding: 12px 18px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
         }
         .btn-form-save {
@@ -1059,12 +1247,12 @@ export default function Profile() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 9px 12px;
-          border-radius: 6px;
+          padding: 12px 18px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
-          box-shadow: 0 4px 12px rgba(192, 57, 43, 0.25);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.25);
         }
 
         /* Settings */
@@ -1074,22 +1262,22 @@ export default function Profile() {
           justify-content: space-between;
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 10px 12px;
-          margin-bottom: 10px;
+          border-radius: 12px;
+          padding: 14px 18px;
+          margin-bottom: 12px;
           font-weight: 600;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
         }
         .theme-switch {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           background: var(--surface-2);
           border: none;
           border-radius: 100px;
-          padding: 5px 10px;
+          padding: 7px 14px;
           font-weight: 700;
-          font-size: 0.72rem;
+          font-size: 0.82rem;
           cursor: pointer;
           color: var(--text);
         }
@@ -1098,36 +1286,36 @@ export default function Profile() {
           background: var(--surface-2);
           color: var(--danger);
           border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px;
+          border-radius: 10px;
+          padding: 12px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
         }
 
         .profile-actions-row {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          margin-top: 14px;
+          gap: 10px;
+          margin-top: 16px;
         }
         .profile-settings-btn {
           background: var(--surface);
           border: 1.5px solid var(--border);
           color: var(--text);
-          border-radius: 10px;
-          padding: 10px 14px;
+          border-radius: 12px;
+          padding: 13px 18px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           text-decoration: none;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           transition: all 0.2s ease;
           box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
@@ -1141,15 +1329,15 @@ export default function Profile() {
           background: var(--surface-2);
           color: #e74c3c;
           border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 10px;
+          border-radius: 12px;
+          padding: 13px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           transition: all 0.2s ease;
         }
         .logout-btn-clean:hover {

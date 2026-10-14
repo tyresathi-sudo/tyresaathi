@@ -27,6 +27,7 @@ export default function NotificationBell() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [filterTab, setFilterTab] = useState("all");
   const [latestToast, setLatestToast] = useState(null);
   const dropdownRef = useRef(null);
   const prevCountRef = useRef(0);
@@ -58,11 +59,12 @@ export default function NotificationBell() {
         }
         prevCountRef.current = unreadList.length;
       },
-      profile
+      profile,
+      user
     );
 
     return () => unsubscribe();
-  }, [userId, userRole, profile]);
+  }, [userId, userRole, profile, user]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -170,9 +172,9 @@ export default function NotificationBell() {
               <div className="notif-bell-icon-badge">
                 <Bell size={16} color="#ffffff" />
               </div>
-              <div>
-                <h4>Notifications (सूचनाएं)</h4>
-                <small className="notif-header-sub">Updates, Bookings & Ratings</small>
+              <div className="notif-title-texts">
+                <h4>Notifications</h4>
+                <span className="notif-header-sub">Updates, Bookings & Ratings</span>
               </div>
               {unreadCount > 0 && (
                 <span className="unread-pill">{unreadCount} New</span>
@@ -187,7 +189,7 @@ export default function NotificationBell() {
                   onClick={handleMarkAllRead}
                   title="Mark all as read"
                 >
-                  <CheckCheck size={14} />
+                  <CheckCheck size={13} />
                   <span>Mark read</span>
                 </button>
               )}
@@ -197,24 +199,42 @@ export default function NotificationBell() {
                 onClick={() => setIsOpen(false)}
                 title="Close"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
           </div>
 
+          {/* Quick Filter Switch Tabs */}
+          <div className="notif-tabs-bar">
+            <button
+              type="button"
+              className={`notif-tab-btn ${filterTab === "all" ? "tab-active" : ""}`}
+              onClick={() => setFilterTab("all")}
+            >
+              All Alerts <span className="tab-count">{notifications.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`notif-tab-btn ${filterTab === "unread" ? "tab-active" : ""}`}
+              onClick={() => setFilterTab("unread")}
+            >
+              Unread <span className="tab-count tab-count-unread">{unreadCount}</span>
+            </button>
+          </div>
+
           {/* Body List */}
           <div className="notif-panel-body">
-            {notifications.length === 0 ? (
+            {(filterTab === "unread" ? notifications.filter((n) => !n.read) : notifications).length === 0 ? (
               <div className="notif-empty-state">
                 <div className="notif-empty-icon">
-                  <Bell size={28} color="#94a3b8" />
+                  <Bell size={26} color="#94a3b8" />
                 </div>
-                <h5>Koi Nayi Notification Nahi Hai</h5>
-                <p>Nayi bookings, customer ratings aur system alerts yaha real-time dikhenge.</p>
+                <h5>{filterTab === "unread" ? "Koi Unread Notification Nahi Hai" : "Koi Nayi Notification Nahi Hai"}</h5>
+                <p>Nayi bookings, customer ratings aur system alerts yahan real-time dikhenge.</p>
               </div>
             ) : (
               <div className="notif-items-list">
-                {notifications.map((notif) => (
+                {(filterTab === "unread" ? notifications.filter((n) => !n.read) : notifications).map((notif) => (
                   <div
                     key={notif.id}
                     className={`notif-item-row ${!notif.read ? "notif-unread" : ""}`}
@@ -398,31 +418,31 @@ export default function NotificationBell() {
         /* Desktop Dropdown Panel */
         .notification-dropdown-panel {
           position: absolute;
-          top: calc(100% + 10px);
+          top: calc(100% + 12px);
           right: 0;
-          width: 380px;
+          width: 410px;
+          max-width: 92vw;
           background: #ffffff;
-          border: 1.5px solid #e2e8f0;
-          border-radius: 18px;
-          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+          border: 1px solid #e2e8f0;
+          border-radius: 20px;
+          box-shadow: 0 20px 50px -10px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.04);
           z-index: 999999;
           overflow: hidden;
-          animation: dropIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: dropIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes dropIn {
-          from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+          from { opacity: 0; transform: translateY(-10px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .notif-panel-header {
-          background: #f8fafc;
-          border-bottom: 1.5px solid #e2e8f0;
-          padding: 14px 16px;
+          background: #ffffff;
+          padding: 14px 18px 10px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
+          gap: 10px;
         }
 
         .notif-header-title {
@@ -432,18 +452,19 @@ export default function NotificationBell() {
           min-width: 0;
         }
         .notif-bell-icon-badge {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          background: #c0392b;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          box-shadow: 0 4px 10px rgba(192, 57, 43, 0.25);
         }
-        .notif-header-title h4 {
+        .notif-title-texts h4 {
           margin: 0;
-          font-size: 14px;
+          font-size: 14.5px;
           font-weight: 800;
           color: #0f172a;
           line-height: 1.2;
@@ -456,12 +477,12 @@ export default function NotificationBell() {
         }
 
         .unread-pill {
-          background: #fee2e2;
+          background: #fef2f2;
           color: #dc2626;
           font-size: 10.5px;
           font-weight: 800;
           padding: 2px 8px;
-          border-radius: 10px;
+          border-radius: 12px;
           border: 1px solid #fecaca;
           white-space: nowrap;
         }
@@ -474,8 +495,8 @@ export default function NotificationBell() {
         }
 
         .btn-mark-all-read {
-          background: #eff6ff;
-          border: 1px solid #bfdbfe;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           color: #2563eb;
           font-size: 11px;
           font-weight: 700;
@@ -483,16 +504,17 @@ export default function NotificationBell() {
           align-items: center;
           gap: 4px;
           cursor: pointer;
-          padding: 5px 8px;
-          border-radius: 6px;
+          padding: 5px 9px;
+          border-radius: 8px;
           transition: all 0.15s ease;
         }
         .btn-mark-all-read:hover {
-          background: #dbeafe;
+          background: #eff6ff;
+          border-color: #bfdbfe;
         }
 
         .btn-close-notif-panel {
-          background: #f1f5f9;
+          background: #f8fafc;
           border: 1px solid #e2e8f0;
           color: #64748b;
           width: 28px;
@@ -510,10 +532,71 @@ export default function NotificationBell() {
           border-color: #fca5a5;
         }
 
+        /* Tabs Bar */
+        .notif-tabs-bar {
+          display: flex;
+          gap: 6px;
+          padding: 0 16px 10px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .notif-tab-btn {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          color: #64748b;
+          font-size: 11.5px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 20px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          transition: all 0.15s ease;
+        }
+        .notif-tab-btn:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+        }
+        .notif-tab-btn.tab-active {
+          background: #0f172a;
+          color: #ffffff;
+          border-color: #0f172a;
+        }
+        .tab-count {
+          font-size: 10px;
+          background: rgba(0,0,0,0.08);
+          padding: 1px 5px;
+          border-radius: 8px;
+        }
+        .notif-tab-btn.tab-active .tab-count {
+          background: rgba(255,255,255,0.2);
+          color: #ffffff;
+        }
+        .tab-count-unread {
+          background: #fee2e2 !important;
+          color: #dc2626 !important;
+        }
+
         .notif-panel-body {
           max-height: 380px;
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
+          padding: 6px 0;
+        }
+
+        /* Sleek custom scrollbar */
+        .notif-panel-body::-webkit-scrollbar {
+          width: 5px;
+        }
+        .notif-panel-body::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .notif-panel-body::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        .notif-panel-body::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
 
         .notif-empty-state {
@@ -551,42 +634,48 @@ export default function NotificationBell() {
         .notif-items-list {
           display: flex;
           flex-direction: column;
+          gap: 3px;
+          padding: 0 8px;
         }
 
         .notif-item-row {
           display: flex;
           align-items: flex-start;
-          gap: 9px;
-          padding: 9px 12px;
-          border-bottom: 1px solid #f1f5f9;
+          gap: 11px;
+          padding: 10px 12px;
+          border-radius: 12px;
           cursor: pointer;
           transition: all 0.15s ease;
           position: relative;
+          background: #ffffff;
+          border: 1px solid transparent;
         }
         .notif-item-row:hover {
           background: #f8fafc;
+          border-color: #e2e8f0;
         }
 
         .notif-item-row.notif-unread {
-          background: #fffafa;
-          border-left: 3px solid #dc2626;
+          background: #fffcfc;
+          border-color: #fecaca;
         }
         .notif-item-row.notif-unread:hover {
-          background: #fff1f2;
+          background: #fff5f5;
         }
 
         .notif-icon-box {
-          width: 28px;
-          height: 28px;
-          border-radius: 7px;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
         .notif-icon-star { background: #fef3c7; border: 1px solid #fde68a; }
         .notif-icon-booking { background: #eff6ff; border: 1px solid #bfdbfe; }
-        .notif-icon-status { background: #dcfce7; border: 1px solid #86efac; }
+        .notif-icon-status { background: #ecfdf5; border: 1px solid #a7f3d0; }
         .notif-icon-update { background: #f5f3ff; border: 1px solid #ddd6fe; }
         .notif-icon-general { background: #fee2e2; border: 1px solid #fecaca; }
 
@@ -604,7 +693,7 @@ export default function NotificationBell() {
         }
 
         .notif-item-title {
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 800;
           color: #0f172a;
           line-height: 1.25;
@@ -623,9 +712,9 @@ export default function NotificationBell() {
 
         .notif-item-msg {
           margin: 0;
-          font-size: 11px;
-          color: #475569;
-          line-height: 1.35;
+          font-size: 11.5px;
+          color: #64748b;
+          line-height: 1.4;
           word-break: break-word;
         }
 
@@ -634,38 +723,40 @@ export default function NotificationBell() {
           height: 7px;
           border-radius: 50%;
           background: #dc2626;
-          margin-top: 4px;
+          margin-top: 5px;
           flex-shrink: 0;
           box-shadow: 0 0 0 2.5px rgba(220, 38, 38, 0.2);
         }
 
         .notif-panel-footer {
           background: #f8fafc;
-          border-top: 1px solid #e2e8f0;
-          padding: 8px 10px;
+          border-top: 1px solid #f1f5f9;
+          padding: 10px 14px;
           display: flex;
-          gap: 6px;
+          gap: 8px;
         }
 
         .btn-view-bookings, .btn-view-shops {
           flex: 1;
           background: #ffffff;
-          border: 1px solid #cbd5e1;
+          border: 1px solid #e2e8f0;
           color: #334155;
-          padding: 6px 8px;
-          border-radius: 6px;
-          font-size: 11px;
+          padding: 7px 10px;
+          border-radius: 10px;
+          font-size: 11.5px;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 5px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
           transition: all 0.15s ease;
         }
         .btn-view-bookings:hover, .btn-view-shops:hover {
           background: #f1f5f9;
-          border-color: #94a3b8;
+          border-color: #cbd5e1;
+          color: #0f172a;
         }
 
         /* 📱 Mobile Responsive Compact View (< 640px) */
@@ -677,8 +768,8 @@ export default function NotificationBell() {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(15, 23, 42, 0.35);
-            backdrop-filter: blur(2px);
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(3px);
             z-index: 999990;
             animation: fadeInBackdrop 0.15s ease-out;
           }
@@ -690,19 +781,19 @@ export default function NotificationBell() {
 
           .notification-dropdown-panel {
             position: fixed !important;
-            top: 54px !important;
-            right: 10px !important;
+            top: 56px !important;
+            right: 12px !important;
             left: auto !important;
-            width: calc(100vw - 20px) !important;
-            max-width: 350px !important;
-            max-height: 420px !important;
-            border-radius: 14px !important;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22) !important;
+            width: calc(100vw - 24px) !important;
+            max-width: 370px !important;
+            max-height: 480px !important;
+            border-radius: 18px !important;
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.28) !important;
             z-index: 999999 !important;
           }
 
           .notif-panel-body {
-            max-height: 270px !important;
+            max-height: 310px !important;
           }
         }
       `}</style>

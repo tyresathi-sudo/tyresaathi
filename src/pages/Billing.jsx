@@ -1742,69 +1742,66 @@ export default function Billing() {
       ══════════════════════════════════════════════════════════════════ */}
       <style>{`
         .billing-page-container {
-          max-width: 1350px;
-          margin: 0 auto;
-          padding: 12px 16px 50px;
-          box-sizing: border-box;
           width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 8px 0 60px;
+          box-sizing: border-box;
         }
         @media (max-width: 600px) {
           .billing-page-container {
-            padding: 4px 4px 60px;
+            padding: 4px 0 60px;
           }
         }
         .billing-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 14px;
+          gap: 14px;
+          margin-bottom: 18px;
           width: 100%;
           box-sizing: border-box;
         }
         @media (max-width: 800px) {
-          .billing-header-row { flex-direction: column; gap: 10px; }
+          .billing-header-row { flex-direction: column; gap: 12px; }
         }
         .billing-title {
-          font-size: 1.25rem;
+          font-size: clamp(1.4rem, 2.2vw, 1.95rem);
           font-weight: 800;
           color: var(--text);
-          margin: 0 0 4px;
+          margin: 0 0 6px;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           line-height: 1.25;
         }
-        @media (min-width: 640px) {
-          .billing-title { font-size: 1.5rem; }
-        }
         .billing-sub {
-          font-size: 0.8rem;
+          font-size: 0.95rem;
           color: var(--text-muted);
           margin: 0;
-          line-height: 1.35;
+          line-height: 1.45;
         }
         .billing-nav-pills {
           display: flex;
-          gap: 6px;
+          gap: 8px;
           background: var(--surface);
           border: 1px solid var(--border);
-          padding: 3px;
-          border-radius: 8px;
+          padding: 4px;
+          border-radius: 10px;
           flex-wrap: wrap;
         }
         .pill-btn {
           background: none;
           border: none;
-          padding: 6px 12px;
-          border-radius: 6px;
+          padding: 8px 16px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.8rem;
+          font-size: 0.92rem;
           color: var(--text-muted);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           transition: all 0.15s ease;
         }
         .pill-btn-active {
@@ -1816,14 +1813,14 @@ export default function Billing() {
           background: #eafaf1;
           border: 1.5px solid #2ecc71;
           color: #27ae60;
-          padding: 10px 12px;
-          border-radius: 8px;
+          padding: 12px 16px;
+          border-radius: 10px;
           font-weight: 600;
-          font-size: 0.82rem;
+          font-size: 0.92rem;
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 14px;
+          gap: 8px;
+          margin-bottom: 16px;
           width: 100%;
           box-sizing: border-box;
         }
@@ -1832,7 +1829,7 @@ export default function Billing() {
         .billing-workspace-vertical {
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 20px;
           width: 100%;
           box-sizing: border-box;
         }
@@ -1841,67 +1838,61 @@ export default function Billing() {
         .billing-form-card {
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 16px;
           width: 100%;
           box-sizing: border-box;
         }
         .form-sub-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 14px 12px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+          border-radius: 14px;
+          padding: clamp(14px, 1.8vw, 22px);
+          box-shadow: 0 2px 12px rgba(0,0,0,0.04);
           box-sizing: border-box;
           width: 100%;
           max-width: 100%;
-        }
-        @media (min-width: 640px) {
-          .form-sub-card {
-            padding: 18px 20px;
-            border-radius: 14px;
-          }
         }
         .card-section-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 8px;
         }
         .card-section-title {
-          font-size: 0.95rem;
+          font-size: 1.1rem;
           font-weight: 700;
           color: var(--text);
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 10px;
+          gap: 8px;
+          margin-bottom: 12px;
           line-height: 1.3;
         }
         .card-section-title span {
           background: #c0392b;
           color: white;
-          width: 20px;
-          height: 20px;
+          width: 24px;
+          height: 24px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          font-size: 11px;
+          font-size: 12.5px;
           flex-shrink: 0;
         }
         .quick-add-actions {
           display: flex;
-          gap: 4px;
+          gap: 6px;
         }
         .btn-quick-add {
           background: var(--surface-2);
           border: 1px solid var(--border);
           color: var(--text);
-          padding: 4px 8px;
+          padding: 6px 12px;
           border-radius: 6px;
-          font-size: 0.72rem;
+          font-size: 0.82rem;
           font-weight: 700;
           cursor: pointer;
         }
@@ -1912,16 +1903,16 @@ export default function Billing() {
         .presets-bar {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           flex-wrap: wrap;
-          margin-bottom: 10px;
-          padding: 6px 10px;
+          margin-bottom: 12px;
+          padding: 8px 12px;
           background: var(--bg);
-          border-radius: 6px;
+          border-radius: 8px;
           border: 1px dashed var(--border);
         }
         .preset-label {
-          font-size: 0.75rem;
+          font-size: 0.85rem;
           font-weight: 700;
           color: #c0392b;
         }
@@ -1929,9 +1920,9 @@ export default function Billing() {
           background: var(--surface);
           border: 1px solid var(--border);
           color: var(--text);
-          font-size: 0.72rem;
-          padding: 3px 6px;
-          border-radius: 4px;
+          font-size: 0.82rem;
+          padding: 4px 8px;
+          border-radius: 6px;
           cursor: pointer;
           font-weight: 600;
         }
@@ -1944,40 +1935,40 @@ export default function Billing() {
         /* Compact Meta & Customer Grids */
         .billing-meta-compact-row {
           display: flex;
-          gap: 8px;
-          margin-bottom: 10px;
+          gap: 12px;
+          margin-bottom: 12px;
           flex-wrap: wrap;
         }
         .customer-compact-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 8px 12px;
+          gap: 12px 16px;
           width: 100%;
           box-sizing: border-box;
         }
         @media (max-width: 600px) {
           .customer-compact-grid {
             grid-template-columns: 1fr;
-            gap: 6px;
+            gap: 8px;
           }
           .billing-meta-compact-row {
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
           }
         }
 
         .form-input-group {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
           width: 100%;
           box-sizing: border-box;
         }
         .form-input-group label {
-          font-size: 0.82rem;
+          font-size: 0.92rem;
           font-weight: 700;
           color: var(--text-muted);
-          margin-bottom: 1px;
+          margin-bottom: 2px;
         }
         .input-with-icon {
           position: relative;
@@ -1988,21 +1979,21 @@ export default function Billing() {
         }
         .input-with-icon svg {
           position: absolute;
-          left: 10px;
+          left: 12px;
           color: var(--text-muted);
           pointer-events: none;
           z-index: 1;
-          width: 15px;
-          height: 15px;
+          width: 16px;
+          height: 16px;
         }
         .input-with-icon input {
           width: 100%;
-          padding: 8px 10px 8px 32px !important;
+          padding: 10px 12px 10px 38px !important;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.98rem;
           outline: none;
           font-weight: 600;
           box-sizing: border-box;
@@ -2015,12 +2006,12 @@ export default function Billing() {
         .form-input-group input,
         .form-input-group select {
           width: 100%;
-          padding: 8px 10px;
+          padding: 10px 12px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.98rem;
           outline: none;
           font-weight: 600;
           box-sizing: border-box;
@@ -2042,28 +2033,28 @@ export default function Billing() {
           display: block;
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
-          margin-bottom: 14px;
+          margin-bottom: 16px;
           width: 100%;
           box-sizing: border-box;
         }
         .items-entry-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.88rem;
+          font-size: 0.95rem;
         }
         .items-entry-table th {
           background: var(--surface-2);
-          padding: 9px 8px;
+          padding: 12px 10px;
           text-align: left;
           font-weight: 800;
           color: var(--text);
           border-bottom: 1.5px solid var(--border);
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           text-transform: uppercase;
           letter-spacing: 0.4px;
         }
         .items-entry-table td {
-          padding: 8px 6px;
+          padding: 10px 8px;
           border-bottom: 1px solid var(--border);
         }
 
@@ -2089,12 +2080,12 @@ export default function Billing() {
 
         .service-quick-dropdown {
           width: 100%;
-          padding: 8px 10px;
+          padding: 10px 12px;
           border-radius: 8px;
           border: 1.5px solid #AED6F1;
           background: #EBF5FB;
           color: #1B4F72;
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           font-weight: 700;
           outline: none;
           box-sizing: border-box;
@@ -2107,12 +2098,12 @@ export default function Billing() {
         .brand-quick-dropdown,
         .size-quick-dropdown {
           width: 100%;
-          padding: 8px 10px;
+          padding: 10px 12px;
           border-radius: 8px;
           border: 1.5px solid #FADBD8;
           background: #FFFAF8;
           color: #922B21;
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           font-weight: 700;
           outline: none;
           box-sizing: border-box;
@@ -2124,7 +2115,7 @@ export default function Billing() {
         }
 
         .service-cell-na {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           font-style: italic;
           display: inline-block;
@@ -2291,12 +2282,12 @@ export default function Billing() {
         .item-size-input,
         .item-serial-input {
           width: 100%;
-          padding: 8px 10px;
+          padding: 10px 12px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.98rem;
           font-weight: 600;
           outline: none;
           box-sizing: border-box;
@@ -2316,24 +2307,24 @@ export default function Billing() {
         }
         .item-type-select {
           width: 100%;
-          padding: 8px 6px;
+          padding: 10px 8px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.85rem;
+          font-size: 0.95rem;
           font-weight: 600;
           box-sizing: border-box;
         }
         .item-qty-input,
         .item-rate-input {
           width: 100%;
-          padding: 8px 8px;
+          padding: 10px 10px;
           border-radius: 8px;
           border: 1.5px solid var(--border);
           background: var(--bg);
           color: var(--text);
-          font-size: 0.88rem;
+          font-size: 0.98rem;
           font-weight: 700;
           text-align: right;
           box-sizing: border-box;
@@ -2343,39 +2334,39 @@ export default function Billing() {
           color: #c0392b;
           text-align: right;
           padding-right: 10px;
-          font-size: 0.92rem;
+          font-size: 1.05rem;
         }
         .btn-remove-row {
           background: none;
           border: none;
           color: #c0392b;
           cursor: pointer;
-          padding: 6px;
+          padding: 8px;
         }
 
         .dual-add-row-actions {
           display: flex;
-          gap: 8px;
+          gap: 12px;
           width: 100%;
           box-sizing: border-box;
         }
         @media (max-width: 550px) {
           .dual-add-row-actions {
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
           }
         }
         .btn-add-row-option {
           flex: 1;
-          padding: 10px 12px;
+          padding: 12px 16px;
           border-radius: 8px;
           font-weight: 800;
-          font-size: 0.84rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           border: 1.5px dashed;
           box-sizing: border-box;
         }
@@ -2392,15 +2383,15 @@ export default function Billing() {
 
         .billing-action-buttons {
           display: flex;
-          gap: 10px;
-          margin-top: 14px;
+          gap: 14px;
+          margin-top: 18px;
           width: 100%;
           box-sizing: border-box;
         }
         @media (max-width: 600px) {
           .billing-action-buttons {
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
           }
         }
         .btn-reset-bill {
@@ -2408,36 +2399,36 @@ export default function Billing() {
           background: var(--surface-2);
           border: 1.5px solid var(--border);
           color: var(--text);
-          padding: 10px 14px;
+          padding: 12px 18px;
           border-radius: 8px;
           font-weight: 700;
-          font-size: 0.88rem;
+          font-size: 0.98rem;
           cursor: pointer;
           box-sizing: border-box;
           text-align: center;
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 42px;
+          min-height: 46px;
         }
         .btn-generate-bill {
           flex: 2;
           background: #c0392b;
           color: white;
           border: none;
-          padding: 11px 16px;
+          padding: 12px 20px;
           border-radius: 8px;
           font-weight: 800;
-          font-size: 0.92rem;
+          font-size: 1.05rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           box-sizing: border-box;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.3);
           transition: transform 0.15s ease, background 0.15s ease;
-          min-height: 42px;
+          min-height: 46px;
         }
         .btn-generate-bill:hover {
           background: #a93226;
@@ -2448,13 +2439,13 @@ export default function Billing() {
         .billing-receipt-bottom-wrapper {
           width: 100%;
           box-sizing: border-box;
-          margin-top: 6px;
+          margin-top: 8px;
         }
         .live-receipt-card {
           background: var(--surface);
           border: 1.5px solid var(--border);
-          border-radius: 12px;
-          padding: 16px 14px;
+          border-radius: 14px;
+          padding: 18px 16px;
           box-shadow: 0 4px 18px rgba(0,0,0,0.05);
           box-sizing: border-box;
           width: 100%;
@@ -2462,14 +2453,14 @@ export default function Billing() {
         }
         @media (min-width: 768px) {
           .live-receipt-card {
-            border-radius: 14px;
-            padding: 22px 24px;
+            border-radius: 16px;
+            padding: 24px 28px;
           }
         }
         .receipt-bottom-grid {
           display: grid;
           grid-template-columns: 1.3fr 1fr;
-          gap: 24px;
+          gap: 28px;
           align-items: start;
           width: 100%;
           box-sizing: border-box;
@@ -2477,7 +2468,7 @@ export default function Billing() {
         @media (max-width: 850px) {
           .receipt-bottom-grid {
             grid-template-columns: 1fr;
-            gap: 16px;
+            gap: 18px;
           }
         }
         .receipt-preview-main {
@@ -2489,75 +2480,75 @@ export default function Billing() {
         .receipt-preview-side {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
           width: 100%;
           box-sizing: border-box;
           background: var(--bg);
-          padding: 16px;
-          border-radius: 10px;
+          padding: 18px;
+          border-radius: 12px;
           border: 1px solid var(--border);
         }
         .receipt-top-brand {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 14px;
         }
         .brand-badge {
-          font-size: 0.82rem;
+          font-size: 0.92rem;
           font-weight: 800;
           color: #c0392b;
           letter-spacing: 0.5px;
         }
         .receipt-inv-num {
-          font-size: 0.85rem;
+          font-size: 0.92rem;
           font-weight: 800;
           color: var(--text-muted);
         }
         .receipt-shop-meta h3 {
-          font-size: 1.15rem;
+          font-size: 1.3rem;
           font-weight: 800;
           margin: 0 0 4px;
           color: var(--text);
         }
         .receipt-shop-meta p {
-          font-size: 0.85rem;
+          font-size: 0.92rem;
           color: var(--text-muted);
           margin: 0;
         }
         .receipt-shop-meta small {
-          font-size: 0.78rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
         }
         .receipt-divider {
           height: 1px;
           background: var(--border);
-          margin: 12px 0;
+          margin: 14px 0;
         }
         .receipt-customer-details {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 0.85rem;
+          gap: 6px;
+          font-size: 0.92rem;
         }
         .meta-lbl {
           color: var(--text-muted);
           display: inline-block;
-          width: 75px;
+          width: 85px;
           font-weight: 600;
         }
         .receipt-items-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          max-height: 180px;
+          gap: 10px;
+          max-height: 220px;
           overflow-y: auto;
         }
         .receipt-item-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          font-size: 0.85rem;
+          font-size: 0.95rem;
         }
         .it-left {
           display: flex;
@@ -2570,7 +2561,7 @@ export default function Billing() {
         }
         .it-qty {
           color: var(--text-muted);
-          font-size: 0.78rem;
+          font-size: 0.85rem;
         }
         .it-amt {
           font-weight: 800;
@@ -2579,8 +2570,8 @@ export default function Billing() {
         .receipt-calc-table {
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          font-size: 0.88rem;
+          gap: 8px;
+          font-size: 0.95rem;
           width: 100%;
           box-sizing: border-box;
         }
@@ -2593,46 +2584,46 @@ export default function Billing() {
         .tax-row { color: #8e44ad; font-weight: 700; }
         .grand-total-row {
           border-top: 1.5px dashed var(--border);
-          padding-top: 8px;
-          margin-top: 4px;
+          padding-top: 10px;
+          margin-top: 6px;
           font-weight: 800;
-          font-size: 1.1rem;
+          font-size: 1.25rem;
           color: var(--text);
         }
         .grand-amount {
           color: #c0392b;
-          font-size: 1.35rem;
+          font-size: 1.6rem;
         }
         .receipt-payment-tag {
           display: flex;
           align-items: center;
           justify-content: space-between;
           background: var(--bg);
-          padding: 8px 12px;
+          padding: 10px 14px;
           border-radius: 8px;
-          font-size: 0.82rem;
-          margin: 12px 0 14px;
+          font-size: 0.9rem;
+          margin: 14px 0 16px;
           box-sizing: border-box;
           width: 100%;
         }
         .badge-paid {
           background: #eafaf1;
           color: #27ae60;
-          padding: 2px 6px;
+          padding: 3px 8px;
           border-radius: 4px;
           font-weight: 700;
         }
         .badge-pending {
           background: #fef9e7;
           color: #d35400;
-          padding: 2px 6px;
+          padding: 3px 8px;
           border-radius: 4px;
           font-weight: 700;
         }
         .receipt-actions-grid {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
           width: 100%;
           box-sizing: border-box;
         }
@@ -2640,15 +2631,15 @@ export default function Billing() {
           background: #2c3e50;
           color: white;
           border: none;
-          padding: 10px 14px;
+          padding: 12px 16px;
           border-radius: 8px;
           font-weight: 700;
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           width: 100%;
           box-sizing: border-box;
         }
@@ -2656,14 +2647,14 @@ export default function Billing() {
           background: #25D366;
           color: white;
           text-decoration: none;
-          padding: 10px 14px;
+          padding: 12px 16px;
           border-radius: 8px;
           font-weight: 700;
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 8px;
           text-align: center;
           width: 100%;
           box-sizing: border-box;
@@ -2682,29 +2673,29 @@ export default function Billing() {
         .stat-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 16px;
+          border-radius: 14px;
+          padding: 18px 20px;
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 16px;
         }
         .stat-icon-wrap {
-          width: 44px;
-          height: 44px;
-          border-radius: 10px;
+          width: 50px;
+          height: 50px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
         }
         .stat-label {
-          font-size: 12px;
+          font-size: 13.5px;
           color: var(--text-muted);
           display: block;
         }
         .stat-value {
-          font-size: 20px;
+          font-size: 24px;
           font-weight: 800;
-          margin: 2px 0 0;
+          margin: 3px 0 0;
           color: var(--text);
         }
 
@@ -2712,8 +2703,8 @@ export default function Billing() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 14px;
-          margin-bottom: 16px;
+          gap: 16px;
+          margin-bottom: 18px;
           flex-wrap: wrap;
         }
         .history-search-input {
@@ -2725,30 +2716,30 @@ export default function Billing() {
         }
         .history-search-input svg {
           position: absolute;
-          left: 12px;
+          left: 14px;
           color: var(--text-muted);
         }
         .history-search-input input {
           width: 100%;
-          padding: 10px 12px 10px 36px;
-          border-radius: 8px;
+          padding: 12px 14px 12px 42px;
+          border-radius: 10px;
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--text);
-          font-size: 13.5px;
+          font-size: 15px;
         }
         .history-filter-pills {
           display: flex;
-          gap: 6px;
+          gap: 8px;
           flex-wrap: wrap;
         }
         .hist-filter {
           background: var(--surface);
           border: 1px solid var(--border);
           color: var(--text);
-          padding: 6px 12px;
+          padding: 8px 16px;
           border-radius: 20px;
-          font-size: 12.5px;
+          font-size: 14px;
           font-weight: 600;
           cursor: pointer;
         }
@@ -2762,32 +2753,32 @@ export default function Billing() {
         .invoices-table-card {
           background: var(--surface);
           border: 1px solid var(--border);
-          border-radius: 12px;
+          border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.04);
         }
         .invoices-history-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: 14.5px;
         }
         .invoices-history-table th {
           background: var(--surface-2);
-          padding: 12px 14px;
+          padding: 14px 16px;
           text-align: left;
           font-weight: 700;
           color: var(--text-muted);
           border-bottom: 1px solid var(--border);
         }
         .invoices-history-table td {
-          padding: 12px 14px;
+          padding: 14px 16px;
           border-bottom: 1px solid var(--border);
           vertical-align: middle;
         }
         .cell-subtext {
           display: block;
           color: var(--text-muted);
-          font-size: 11px;
+          font-size: 12px;
         }
         .customer-name-bold {
           display: block;
@@ -2795,14 +2786,14 @@ export default function Billing() {
           color: var(--text);
         }
         .customer-phone-link {
-          font-size: 11.5px;
+          font-size: 13px;
           color: #c0392b;
           text-decoration: none;
           font-weight: 600;
         }
         .vehicle-no-badge {
           display: block;
-          font-size: 11px;
+          font-size: 12px;
           color: var(--text-muted);
           font-weight: 600;
         }

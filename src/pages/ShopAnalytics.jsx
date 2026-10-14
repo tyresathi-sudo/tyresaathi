@@ -396,9 +396,10 @@ export default function ShopAnalytics() {
 
       <style>{`
         .analytics-page-container {
-          max-width: 1280px;
-          margin: 0 auto;
-          padding: 16px 20px 80px 20px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 12px 0 80px 0;
           font-family: 'Inter', system-ui, -apple-system, sans-serif;
           color: var(--text, #0f172a);
         }

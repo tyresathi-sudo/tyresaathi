@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Share2 } from "lucide-react";
+import { shareApp } from "../utils/nativeBridge.js";
 
 export default function Footer() {
   return (
@@ -37,8 +38,18 @@ export default function Footer() {
           <Link to="/support">Support</Link>
         </div>
 
-        {/* Safe Harbor Pill */}
+        {/* Safe Harbor Pill & Share App Action */}
         <div className="footer-right-sec">
+          <button
+            type="button"
+            onClick={shareApp}
+            className="footer-badge-link"
+            title="Share TyreSaathi App (Indus Appstore)"
+            style={{ cursor: "pointer", border: "1px solid rgba(59, 130, 246, 0.3)", background: "rgba(59, 130, 246, 0.08)", color: "var(--text)" }}
+          >
+            <Share2 size={13} color="#3b82f6" />
+            <span>Share App</span>
+          </button>
           <Link to="/settings" className="footer-badge-link" title="Open Legal & Settings">
             <ShieldCheck size={14} color="#27ae60" />
             <span>Verified Legal & IP Compliance</span>
@@ -56,7 +67,8 @@ export default function Footer() {
           font-size: 13px;
         }
         .footer-inner-wrap {
-          max-width: 1280px;
+          width: 100%;
+          max-width: 100%;
           margin: 0 auto;
           display: flex;
           align-items: center;

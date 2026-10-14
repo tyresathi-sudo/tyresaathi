@@ -1,0 +1,62 @@
+[
+  {
+    "invoiceNo": "TS-INV-2026-001",
+    "date": "2026-10-11",
+    "customerName": "Ramesh Dewangan",
+    "customerPhone": "9826123456",
+    "vehicleName": "Hyundai Creta",
+    "vehicleNumber": "CG04-HA-2244",
+    "items": [
+      { "name": "Apollo Alnac 4G", "qty": 2, "tyreSize": "215/60 R17", "serialNo": "DOT-APL-26-4401", "amount": 14400 },
+      { "name": "Wheel Balancing & Nitrogen", "qty": 1, "amount": 400 }
+    ],
+    "subtotal": 14800,
+    "discount": 500,
+    "taxAmount": 715,
+    "grandTotal": 15015,
+    "paymentMode": "UPI",
+    "paymentStatus": "PAID",
+    "shopName": "Tyre Saathi (Raipur)",
+    "notes": "3 Years Unconditional Manufacturer Warranty Registered"
+  },
+  {
+    "invoiceNo": "TS-INV-2026-002",
+    "date": "2026-10-10",
+    "customerName": "Sunil Kashyap",
+    "customerPhone": "9406123456",
+    "vehicleName": "Maruti Swift",
+    "vehicleNumber": "CG04-MB-8899",
+    "items": [
+      { "name": "MRF ZVTV", "qty": 4, "tyreSize": "165/80 R14", "serialNo": "DOT-MRF-26-3812", "amount": 15200 },
+      { "name": "Laser Alignment", "qty": 1, "amount": 350 }
+    ],
+    "subtotal": 15550,
+    "discount": 600,
+    "taxAmount": 747,
+    "grandTotal": 15697,
+    "paymentMode": "CASH",
+    "paymentStatus": "PAID",
+    "shopName": "Bharat super tyre (Raipur)",
+    "notes": "5 Years Standard Manufacturer Warranty"
+  },
+  {
+    "invoiceNo": "TS-INV-2026-003",
+    "date": "2026-10-09",
+    "customerName": "Vikram Choudhary",
+    "customerPhone": "9711223344",
+    "vehicleName": "Tata Ace Gold",
+    "vehicleNumber": "WB74-T-1200",
+    "items": [
+      { "name": "JK Tyre Jet R Xtra", "qty": 2, "tyreSize": "145 R12 LT", "serialNo": "DOT-JK-26-1102", "amount": 5800 },
+      { "name": "Heavy Duty Rim Inspection", "qty": 1, "amount": 200 }
+    ],
+    "subtotal": 6000,
+    "discount": 200,
+    "taxAmount": 290,
+    "grandTotal": 6090,
+    "paymentMode": "UPI",
+    "paymentStatus": "PAID",
+    "shopName": "New Tegiya Tyre Retreading (Jaigaon)",
+    "notes": "Commercial vehicle load warranty card issued"
+  }
+]

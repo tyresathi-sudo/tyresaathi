@@ -1,0 +1,110 @@
+[
+  {
+    "uid": "3zsdrGjuhRQYtkweTVSq1WCgnsP2",
+    "name": "MDHAMID Raja",
+    "email": "mdaamid1213@gmail.com",
+    "phone": "7869916626",
+    "role": "shop_owner",
+    "shopName": "Bharat super tyre",
+    "shopApproved": true,
+    "city": "Raipur",
+    "address": "Main Road, Near Bus Stand, Raipur, Chhattisgarh",
+    "createdAt": "06-Sep-2026, 04:31 PM"
+  },
+  {
+    "uid": "NLyEx4CUKmdyVXMGtYosp8Zc3RS2",
+    "name": "Indus test",
+    "email": "t55912047@gmail.com",
+    "phone": "9620611176",
+    "role": "customer",
+    "shopName": "—",
+    "shopApproved": false,
+    "city": "Bengaluru",
+    "address": "Bengaluru, Karnataka",
+    "createdAt": "28-Sep-2026, 05:46 PM"
+  },
+  {
+    "uid": "OnkIqE2RgPcA7BiXa6AYAEoq0Bn2",
+    "name": "UCAN MAIL",
+    "email": "ucanmail195@gmail.com",
+    "phone": "9910281345",
+    "role": "customer",
+    "shopName": "—",
+    "shopApproved": false,
+    "city": "Delhi NCR",
+    "address": "Connaught Place, New Delhi, Delhi NCR",
+    "createdAt": "11-Aug-2026, 12:04 AM"
+  },
+  {
+    "uid": "bNuUMqGLPPIhjGzrobEXuOB4Nd12",
+    "name": "AHAMAD RAJA",
+    "email": "tyresathi@gmail.com",
+    "phone": "8877277757",
+    "role": "admin",
+    "shopName": "Tyre Saathi",
+    "shopApproved": true,
+    "city": "Raipur",
+    "address": "Ring Road No. 1, Raipur, Chhattisgarh",
+    "createdAt": "29-Aug-2026, 08:38 PM"
+  },
+  {
+    "uid": "bi33kj9KpRPAvhwQIA6HZWLhUPq2",
+    "name": "MD ASADULLAH",
+    "email": "mdasdullahanshari816@gmail.com",
+    "phone": "9593651752",
+    "role": "shop_owner",
+    "shopName": "R k tyre repairing shop",
+    "shopApproved": true,
+    "city": "Jaigaon",
+    "address": "Jaigaon old Balaji truck parking bhulan Chowpatti, West Bengal",
+    "createdAt": "20-Sep-2026, 10:58 AM"
+  },
+  {
+    "uid": "kuywPgYEYRV9TJqn74mx6cs11r52",
+    "name": "Sultan ansari",
+    "email": "mohammadsultan63786@gmail.com",
+    "phone": "6263834871",
+    "role": "shop_owner",
+    "shopName": "Simana Tyre",
+    "shopApproved": true,
+    "city": "Raipur",
+    "address": "Dhaneli nala, vidhansabha road raipur, Chhattisgarh",
+    "createdAt": "03-Oct-2026, 10:17 AM"
+  },
+  {
+    "uid": "xj0Mi7mMuUcSNYHrzLmA9CjstUN2",
+    "name": "Azhar Ali",
+    "email": "ajharali9875@gmail.com",
+    "phone": "9875373296",
+    "role": "shop_owner",
+    "shopName": "Nidigonda puncture shop",
+    "shopApproved": true,
+    "city": "Nidigonda",
+    "address": "Nidigonda Main Highway Road, Telangana",
+    "createdAt": "20-Sep-2026, 09:10 AM"
+  },
+  {
+    "uid": "ywvoUgz5GwgR4ZUT1ij6x3v4q4P2",
+    "name": "Mohammad Raja",
+    "email": "mohammadraja2977@gmail.com",
+    "phone": "9174535553",
+    "role": "shop_owner",
+    "shopName": "New Tegiya Tyre Retreading",
+    "shopApproved": true,
+    "city": "Jaigaon",
+    "address": "Jaigaon Commercial Bypass, West Bengal",
+    "createdAt": "20-Sep-2026, 07:38 AM"
+  },
+  {
+    "uid": "zmoo56tLv7gvZi4yNWI6YMONFcA3",
+    "name": "Lzh",
+    "email": "wange9han@gmail.com",
+    "phone": "9561138184",
+    "role": "shop_owner",
+    "shopName": "Lzh",
+    "shopApproved": true,
+    "city": "Hong Kong",
+    "address": "Hong Kong, International",
+    "createdAt": "29-Sep-2026, 09:02 AM"
+  }
+]

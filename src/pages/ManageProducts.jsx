@@ -695,9 +695,10 @@ export default function ManageProducts() {
       {/* Scoped Styles for ManageProducts */}
       <style>{`
         .manage-products-page {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 24px 16px 80px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 10px 0 60px;
           font-family: inherit;
         }
 
@@ -708,7 +709,7 @@ export default function ManageProducts() {
           padding: 14px 22px;
           border-radius: 10px;
           font-weight: 600;
-          font-size: 14px;
+          font-size: 15px;
           box-shadow: 0 8px 30px rgba(0,0,0,0.2);
           z-index: 9999;
           animation: slideInDown 0.3s ease;
@@ -727,7 +728,7 @@ export default function ManageProducts() {
           background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
           color: #ffffff;
           border-radius: 18px;
-          padding: 28px 32px;
+          padding: clamp(20px, 2.4vw, 32px);
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -735,6 +736,7 @@ export default function ManageProducts() {
           gap: 20px;
           box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
           margin-bottom: 24px;
+          width: 100%;
         }
 
         .badge-pill {
@@ -743,16 +745,16 @@ export default function ManageProducts() {
           gap: 6px;
           background: rgba(255, 255, 255, 0.12);
           color: #93c5fd;
-          padding: 4px 12px;
+          padding: 5px 14px;
           border-radius: 20px;
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
           text-transform: uppercase;
           margin-bottom: 10px;
         }
 
         .header-title {
-          font-size: 24px;
+          font-size: clamp(1.4rem, 2.2vw, 1.85rem);
           font-weight: 800;
           margin: 0 0 8px 0;
           letter-spacing: -0.5px;
@@ -760,16 +762,16 @@ export default function ManageProducts() {
 
         .header-desc {
           margin: 0;
-          font-size: 13.5px;
+          font-size: 0.95rem;
           color: #cbd5e1;
-          max-width: 650px;
+          max-width: 750px;
           line-height: 1.5;
         }
 
         .header-actions {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
         }
 
         .refresh-btn {
@@ -779,9 +781,9 @@ export default function ManageProducts() {
           background: rgba(255,255,255,0.1);
           color: #fff;
           border: 1px solid rgba(255,255,255,0.2);
-          padding: 10px 16px;
+          padding: 12px 18px;
           border-radius: 10px;
-          font-size: 13.5px;
+          font-size: 14.5px;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s ease;
@@ -794,9 +796,9 @@ export default function ManageProducts() {
           gap: 8px;
           background: #c0392b;
           color: #fff;
-          padding: 11px 20px;
+          padding: 12px 22px;
           border-radius: 10px;
-          font-size: 14px;
+          font-size: 15px;
           font-weight: 700;
           text-decoration: none;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.4);
@@ -804,7 +806,7 @@ export default function ManageProducts() {
         }
         .add-new-btn:hover {
           background: #a93226;
-          transform: translateY(-1px);
+          transform: translateY(-2px);
         }
 
         .spin-icon {
@@ -818,16 +820,17 @@ export default function ManageProducts() {
         /* Stats Grid */
         .stats-overview-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 18px;
           margin-bottom: 24px;
+          width: 100%;
         }
 
         .stat-card {
           background: var(--surface, #ffffff);
           border: 1.5px solid var(--border, #e2e8f0);
-          border-radius: 14px;
-          padding: 18px 20px;
+          border-radius: 16px;
+          padding: 20px 22px;
           display: flex;
           align-items: center;
           gap: 16px;
@@ -837,7 +840,7 @@ export default function ManageProducts() {
         .stat-card:hover {
           border-color: #3b82f6;
           transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+          box-shadow: 0 6px 18px rgba(0,0,0,0.06);
         }
         .stat-card-active {
           border-color: #2563eb;
@@ -845,9 +848,9 @@ export default function ManageProducts() {
         }
 
         .stat-icon-wrap {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -856,7 +859,7 @@ export default function ManageProducts() {
 
         .stat-number {
           display: block;
-          font-size: 22px;
+          font-size: 26px;
           font-weight: 800;
           line-height: 1.1;
           color: var(--text, #0f172a);
@@ -864,7 +867,7 @@ export default function ManageProducts() {
 
         .stat-label {
           display: block;
-          font-size: 12.5px;
+          font-size: 13.5px;
           color: var(--text-muted, #64748b);
           margin-top: 4px;
           font-weight: 600;
@@ -874,20 +877,21 @@ export default function ManageProducts() {
         .filter-controls-card {
           background: var(--surface, #ffffff);
           border: 1px solid var(--border, #e2e8f0);
-          border-radius: 14px;
-          padding: 16px 20px;
+          border-radius: 16px;
+          padding: 18px 22px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 16px;
+          gap: 18px;
           margin-bottom: 24px;
+          width: 100%;
         }
 
         .search-input-box {
           position: relative;
           flex: 1;
-          min-width: 260px;
+          min-width: 280px;
         }
 
         .search-icon-muted {
@@ -900,12 +904,12 @@ export default function ManageProducts() {
 
         .filter-search-field {
           width: 100%;
-          padding: 10px 38px 10px 42px;
+          padding: 12px 40px 12px 46px;
           border-radius: 10px;
           border: 1.5px solid var(--border, #cbd5e1);
           background: var(--bg, #f8fafc);
           color: var(--text, #0f172a);
-          font-size: 13.5px;
+          font-size: 15px;
           outline: none;
           transition: border-color 0.2s;
         }
@@ -916,7 +920,7 @@ export default function ManageProducts() {
 
         .clear-search-btn {
           position: absolute;
-          right: 12px;
+          right: 14px;
           top: 50%;
           transform: translateY(-50%);
           background: none;
@@ -928,7 +932,7 @@ export default function ManageProducts() {
         .filter-tabs-row {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 16px;
           flex-wrap: wrap;
         }
 
@@ -939,18 +943,18 @@ export default function ManageProducts() {
         }
 
         .filter-label {
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           color: var(--text-muted, #64748b);
         }
 
         .filter-select {
-          padding: 9px 14px;
-          border-radius: 8px;
+          padding: 11px 16px;
+          border-radius: 10px;
           border: 1.5px solid var(--border, #cbd5e1);
           background: var(--surface, #fff);
           color: var(--text, #0f172a);
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 600;
           outline: none;
           cursor: pointer;
@@ -958,22 +962,23 @@ export default function ManageProducts() {
 
         /* Products Grid */
         .table-top-meta {
-          font-size: 13px;
+          font-size: 14px;
           color: var(--text-muted, #64748b);
-          margin-bottom: 14px;
+          margin-bottom: 16px;
         }
 
         .inventory-cards-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
           gap: 22px;
+          width: 100%;
         }
 
         .inventory-product-card {
           background: var(--surface, #ffffff);
           border: 1.5px solid var(--border, #e2e8f0);
           border-radius: 16px;
-          padding: 20px;
+          padding: 22px;
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -1073,7 +1078,7 @@ export default function ManageProducts() {
         }
 
         .product-category-name {
-          font-size: 12.5px;
+          font-size: 13.5px;
           font-weight: 800;
           color: #c0392b;
           text-transform: uppercase;
@@ -1081,7 +1086,7 @@ export default function ManageProducts() {
         }
 
         .product-name-heading {
-          font-size: 16.5px;
+          font-size: 1.2rem;
           font-weight: 800;
           color: var(--text, #0f172a);
           margin: 4px 0 8px 0;
@@ -1097,11 +1102,11 @@ export default function ManageProducts() {
         }
 
         .spec-chip {
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 600;
           background: var(--bg, #f1f5f9);
           color: var(--text, #334155);
-          padding: 3px 9px;
+          padding: 4px 10px;
           border-radius: 6px;
         }
 
@@ -1109,42 +1114,42 @@ export default function ManageProducts() {
           background: var(--bg, #f8fafc);
           border: 1.5px solid var(--border, #e2e8f0);
           border-radius: 12px;
-          padding: 12px 16px;
+          padding: 14px 18px;
           display: flex;
           align-items: center;
           justify-content: space-between;
         }
 
         .price-label {
-          font-size: 12px;
+          font-size: 13px;
           font-weight: 700;
           color: var(--text-muted, #64748b);
           display: block;
-          margin-bottom: 2px;
+          margin-bottom: 3px;
         }
 
         .price-numbers {
           display: flex;
           align-items: baseline;
-          gap: 8px;
+          gap: 10px;
         }
 
         .offer-price-val {
-          font-size: 18.5px;
+          font-size: 1.55rem;
           font-weight: 800;
           color: #27ae60;
         }
 
         .mrp-price-val {
-          font-size: 13.5px;
+          font-size: 1rem;
           color: #94a3b8;
           text-decoration: line-through;
         }
 
         .stock-badge {
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
-          padding: 4px 10px;
+          padding: 5px 12px;
           border-radius: 8px;
           display: inline-block;
         }
@@ -1158,7 +1163,7 @@ export default function ManageProducts() {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding-top: 8px;
+          padding-top: 10px;
           border-top: 1px solid var(--border, #f1f5f9);
         }
 
@@ -1168,9 +1173,9 @@ export default function ManageProducts() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          padding: 9px 12px;
+          padding: 10px 14px;
           border-radius: 10px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           cursor: pointer;
           border: none;
@@ -1192,9 +1197,9 @@ export default function ManageProducts() {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 9px 14px;
+          padding: 10px 15px;
           border-radius: 10px;
-          font-size: 13px;
+          font-size: 14px;
           font-weight: 700;
           cursor: pointer;
           border: 1.5px solid var(--border, #cbd5e1);
@@ -1217,7 +1222,7 @@ export default function ManageProducts() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 9px 12px;
+          padding: 10px 14px;
           border-radius: 10px;
           border: 1.5px solid var(--border, #fee2e2);
           background: #fef2f2;

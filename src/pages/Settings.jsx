@@ -914,83 +914,86 @@ export default function Settings() {
 
       <style>{`
         .settings-page-container {
-          max-width: 1140px;
-          margin: 0 auto;
-          padding: 16px 12px 60px 12px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 10px 0 60px;
           color: #0f172a;
         }
         .settings-header-row {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 16px;
+          gap: 14px;
+          margin-bottom: 20px;
         }
         @media (max-width: 640px) {
           .settings-header-row { 
             flex-direction: column; 
-            gap: 10px; 
+            gap: 12px; 
           }
         }
         .settings-title {
-          font-size: 1.25rem;
+          font-size: clamp(1.4rem, 2.2vw, 1.85rem);
           font-weight: 800;
           color: #0f172a;
-          margin: 0 0 4px;
+          margin: 0 0 6px;
           display: flex;
           align-items: center;
           gap: 8px;
           line-height: 1.25;
         }
         .settings-sub {
-          font-size: 0.75rem;
+          font-size: 0.95rem;
           color: #64748b;
           margin: 0;
-          line-height: 1.4;
+          line-height: 1.45;
         }
         .btn-save-all-top {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 7px 14px;
-          border-radius: 8px;
+          padding: 10px 18px;
+          border-radius: 10px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           white-space: nowrap;
-          transition: background 0.2s;
+          transition: background 0.2s, transform 0.15s ease;
         }
         .btn-save-all-top:hover {
           background: #a93226;
+          transform: translateY(-1px);
         }
         .settings-success-alert {
           background: #f0fdf4;
           border: 1px solid #bbf7d0;
           color: #166534;
-          padding: 8px 12px;
-          border-radius: 8px;
+          padding: 12px 16px;
+          border-radius: 10px;
           font-weight: 600;
-          font-size: 0.78rem;
+          font-size: 0.92rem;
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 14px;
+          gap: 8px;
+          margin-bottom: 18px;
         }
 
         /* Layout Grid */
         .settings-layout-grid {
           display: grid;
-          grid-template-columns: 220px 1fr;
-          gap: 14px;
+          grid-template-columns: 260px 1fr;
+          gap: 22px;
           align-items: start;
+          width: 100%;
         }
         @media (max-width: 860px) {
           .settings-layout-grid { 
             grid-template-columns: 1fr; 
-            gap: 12px; 
+            gap: 14px; 
           }
         }
 
@@ -998,7 +1001,7 @@ export default function Settings() {
         .settings-nav-sidebar {
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 6px;
         }
         @media (max-width: 860px) {
           .settings-nav-sidebar {
@@ -1014,7 +1017,7 @@ export default function Settings() {
           }
           .nav-tab-btn {
             flex-shrink: 0;
-            padding: 7px 12px !important;
+            padding: 8px 14px !important;
             border-radius: 20px !important;
           }
           .tab-btn-text small {
@@ -1027,10 +1030,10 @@ export default function Settings() {
         .nav-tab-btn {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 9px 12px;
-          border-radius: 10px;
-          border: 1px solid #e2e8f0;
+          gap: 10px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1.5px solid #e2e8f0;
           background: #ffffff;
           color: #334155;
           text-align: left;
@@ -1046,33 +1049,33 @@ export default function Settings() {
           border-color: #c0392b;
         }
         .tab-btn-active small {
-          color: rgba(255,255,255,0.8) !important;
+          color: rgba(255,255,255,0.85) !important;
         }
         .tab-btn-text strong {
           display: block;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
         }
         .tab-btn-text small {
-          font-size: 0.6875rem;
+          font-size: 0.8rem;
           color: #64748b;
         }
 
         .quick-help-link-box {
           background: #f8fafc;
           border: 1px dashed #cbd5e1;
-          border-radius: 10px;
-          padding: 10px 12px;
-          margin-top: 10px;
+          border-radius: 12px;
+          padding: 14px 16px;
+          margin-top: 12px;
           display: flex;
-          gap: 8px;
-          font-size: 0.75rem;
+          gap: 10px;
+          font-size: 0.88rem;
         }
         .quick-help-link-box strong {
           display: block;
-          margin-bottom: 1px;
+          margin-bottom: 2px;
         }
         .quick-help-link-box p {
-          margin: 0 0 3px;
+          margin: 0 0 4px;
           color: #64748b;
         }
         .link-to-support {
@@ -1084,22 +1087,22 @@ export default function Settings() {
         /* Content Card */
         .settings-content-card {
           background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          padding: 16px 14px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+          border: 1.5px solid #e2e8f0;
+          border-radius: 16px;
+          padding: clamp(20px, 2.4vw, 30px);
+          box-shadow: 0 4px 18px rgba(0,0,0,0.04);
         }
         .sec-header {
-          margin-bottom: 14px;
+          margin-bottom: 18px;
         }
         .sec-header h3 {
-          font-size: 1rem;
+          font-size: 1.2rem;
           font-weight: 800;
           color: #0f172a;
-          margin: 0 0 3px;
+          margin: 0 0 4px;
         }
         .sec-header p {
-          font-size: 0.75rem;
+          font-size: 0.9rem;
           color: #64748b;
           margin: 0;
         }
@@ -1108,7 +1111,7 @@ export default function Settings() {
         .settings-form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 16px;
         }
         @media (max-width: 600px) {
           .settings-form-grid { grid-template-columns: 1fr; }
@@ -1116,25 +1119,26 @@ export default function Settings() {
         .set-field-group {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
         .full-width {
           grid-column: 1 / -1;
         }
         .set-field-group label {
-          font-size: 0.75rem;
+          font-size: 0.92rem;
           font-weight: 700;
           color: #334155;
         }
         .set-field-group input,
         .set-field-group select,
         .set-field-group textarea {
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid #cbd5e1;
-          font-size: 0.8125rem;
+          padding: 11px 14px;
+          border-radius: 10px;
+          border: 1.5px solid #cbd5e1;
+          font-size: 0.98rem;
           outline: none;
           background: #ffffff;
+          transition: border-color 0.2s;
         }
         .set-field-group input:focus,
         .set-field-group select:focus,
@@ -1146,35 +1150,35 @@ export default function Settings() {
         .toggles-list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
         .toggle-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 12px;
+          padding: 14px 18px;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          gap: 10px;
+          border-radius: 12px;
+          gap: 12px;
         }
         .toggle-info strong {
           display: block;
-          font-size: 0.8125rem;
-          margin-bottom: 2px;
+          font-size: 0.95rem;
+          margin-bottom: 3px;
         }
         .toggle-info p {
           margin: 0;
-          font-size: 0.71875rem;
+          font-size: 0.85rem;
           color: #64748b;
-          line-height: 1.35;
+          line-height: 1.4;
         }
 
         .switch {
           position: relative;
           display: inline-block;
-          width: 40px;
-          height: 22px;
+          width: 44px;
+          height: 24px;
           flex-shrink: 0;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -1184,118 +1188,118 @@ export default function Settings() {
           top: 0; left: 0; right: 0; bottom: 0;
           background-color: #cbd5e1;
           transition: .3s;
-          border-radius: 22px;
+          border-radius: 24px;
         }
         .slider:before {
           position: absolute;
           content: "";
-          height: 16px; width: 16px;
+          height: 18px; width: 18px;
           left: 3px; bottom: 3px;
           background-color: white;
           transition: .3s;
           border-radius: 50%;
         }
         input:checked + .slider { background-color: #27ae60; }
-        input:checked + .slider:before { transform: translateX(18px); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
         /* Security */
         .security-box-card {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
         }
         .sec-item-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 12px;
+          padding: 14px 18px;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
-          gap: 10px;
+          border-radius: 12px;
+          gap: 12px;
           flex-wrap: wrap;
         }
         .sec-item-row strong {
           display: block;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
         }
         .sec-item-row p {
-          margin: 2px 0 0;
-          font-size: 0.71875rem;
+          margin: 3px 0 0;
+          font-size: 0.85rem;
           color: #64748b;
         }
         .btn-sec-action {
-          padding: 6px 12px;
-          border-radius: 6px;
+          padding: 8px 16px;
+          border-radius: 8px;
           border: 1px solid #cbd5e1;
           background: white;
           color: #334155;
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
         }
         .btn-danger-del {
-          padding: 6px 12px;
-          border-radius: 6px;
+          padding: 8px 16px;
+          border-radius: 8px;
           border: 1px solid #fecaca;
           background: #fee2e2;
           color: #dc2626;
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           font-weight: 700;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
         }
 
         /* Play Store Privacy Card */
         .playstore-privacy-card {
           background: #f0fdf4;
           border: 1.5px solid #86efac;
-          border-radius: 12px;
-          padding: 14px;
+          border-radius: 14px;
+          padding: 18px;
         }
         .playstore-privacy-header {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
-          margin-bottom: 10px;
+          gap: 12px;
+          margin-bottom: 12px;
         }
         .privacy-url-input-row {
           display: flex;
-          gap: 8px;
+          gap: 10px;
         }
         .privacy-url-input {
           flex: 1;
-          padding: 7px 10px;
-          border-radius: 6px;
+          padding: 10px 14px;
+          border-radius: 8px;
           border: 1px solid #86efac;
           background: white;
           font-family: monospace;
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           color: #166534;
         }
         .btn-copy-privacy-url {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 7px 12px;
+          gap: 6px;
+          padding: 10px 16px;
           background: #16a34a;
           color: white;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 0.75rem;
+          font-size: 0.88rem;
           cursor: pointer;
         }
         .btn-open-privacy-link {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          font-size: 0.75rem;
+          gap: 6px;
+          font-size: 0.88rem;
           font-weight: 700;
           color: #15803d;
           text-decoration: none;
@@ -1304,32 +1308,32 @@ export default function Settings() {
         .legal-info-card {
           background: #faf5ff;
           border: 1px solid #e9d5ff;
-          border-radius: 10px;
-          padding: 12px;
+          border-radius: 12px;
+          padding: 16px;
         }
         .legal-card-header {
           display: flex;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 4px;
-          font-size: 0.8125rem;
+          gap: 8px;
+          margin-bottom: 6px;
+          font-size: 0.95rem;
         }
         .legal-card-desc {
-          font-size: 0.71875rem;
+          font-size: 0.85rem;
           color: #475569;
-          margin: 0 0 6px;
-          line-height: 1.4;
+          margin: 0 0 8px;
+          line-height: 1.45;
         }
         .legal-card-link {
-          font-size: 0.71875rem;
+          font-size: 0.88rem;
           font-weight: 700;
           color: #7c3aed;
           text-decoration: none;
         }
 
         .settings-bottom-actions {
-          margin-top: 16px;
-          padding-top: 14px;
+          margin-top: 20px;
+          padding-top: 18px;
           border-top: 1px solid #f1f5f9;
           display: flex;
           justify-content: flex-end;
@@ -1338,14 +1342,20 @@ export default function Settings() {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
+          padding: 12px 24px;
+          border-radius: 10px;
           font-weight: 700;
-          font-size: 0.8125rem;
+          font-size: 0.95rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.25);
+          transition: background 0.2s, transform 0.15s ease;
+        }
+        .btn-save-settings:hover {
+          background: #a93226;
+          transform: translateY(-1px);
         }
 
         /* Delete Modal */
@@ -1361,32 +1371,32 @@ export default function Settings() {
         }
         .delete-modal-box-st {
           background: white;
-          border-radius: 14px;
-          max-width: 380px;
+          border-radius: 16px;
+          max-width: 420px;
           width: 100%;
-          padding: 18px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+          padding: 22px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.25);
         }
         .btn-cancel-modal-st {
           flex: 1;
-          padding: 8px;
-          border-radius: 6px;
+          padding: 10px;
+          border-radius: 8px;
           border: 1px solid #cbd5e1;
           background: white;
           color: #475569;
           font-weight: 700;
-          font-size: 0.78rem;
+          font-size: 0.88rem;
           cursor: pointer;
         }
         .btn-confirm-delete-st {
           flex: 1;
-          padding: 8px;
-          border-radius: 6px;
+          padding: 10px;
+          border-radius: 8px;
           border: none;
           background: #dc2626;
           color: white;
           font-weight: 700;
-          font-size: 0.78rem;
+          font-size: 0.88rem;
         }
       `}</style>
     </div>

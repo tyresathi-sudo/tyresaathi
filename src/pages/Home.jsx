@@ -227,25 +227,40 @@ export default function Home() {
       />
 
       {/* 🏍️ 2.5 Vehicle Categories Row */}
-      <section className="home-section">
-        <div className="section-header-row">
+      <section className="home-section vehicle-categories-section">
+        {/* Section Header */}
+        <div className="section-header-row mb-6">
           <div>
-            <h2 className="section-main-title">Shop by Vehicle Category</h2>
-            <p className="section-sub-title">Choose your vehicle type to see compatible tyres and sizes</p>
+            <h2 className="section-main-title text-2xl font-bold tracking-tight">
+              Shop by Vehicle Category
+            </h2>
+            <p className="section-sub-title text-sm mt-1">
+              Choose your vehicle type to see compatible tyres and sizes
+            </p>
           </div>
         </div>
 
-        <div className="categories-card-grid">
+        {/* Grid Container (4 columns on desktop, 3 on tablet, 2 on mobile) */}
+        <div className="vehicle-category-grid">
           {TYRE_CATEGORIES.map((cat) => (
             <Link
               key={cat.id}
               to={`/search?category=${cat.id}`}
-              className="cat-box-card"
+              className="vehicle-category-card"
             >
-              <span className="cat-box-emoji">{cat.icon}</span>
-              <h3 className="cat-box-name">{cat.name}</h3>
-              <span className="cat-browse-link">
-                View Tyres <ChevronRight size={14} />
+              {/* Icon */}
+              <div className="vehicle-card-icon">{cat.icon}</div>
+              <div className="vehicle-card-info">
+                <h3 className="vehicle-card-title">
+                  {cat.name}
+                </h3>
+                <p className="vehicle-card-subtitle">
+                  {cat.subtitle || "All models & sizes"}
+                </p>
+              </div>
+              {/* Action Link */}
+              <span className="vehicle-card-action">
+                View Tyres &rarr;
               </span>
             </Link>
           ))}
@@ -394,26 +409,36 @@ export default function Home() {
 
       <style>{`
         .home-page-container {
-          max-width: 1350px;
-          margin: 0 auto;
-          padding: 4px 4px 30px;
+          width: 100%;
+          max-width: 100%;
+          margin: 0;
+          padding: 0 0 32px 0;
         }
 
-        /* Hero Banner */
+        /* 🌟 Full-Width Automotive Dashboard Hero Banner */
         .hero-banner-section {
-          background: linear-gradient(135deg, #1e1e24 0%, #2c3e50 100%);
+          width: 100%;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #090d16 100%);
+          background-image: 
+            radial-gradient(circle at 90% 12%, rgba(192, 57, 43, 0.22) 0%, transparent 50%),
+            radial-gradient(circle at 10% 88%, rgba(255, 107, 53, 0.12) 0%, transparent 40%),
+            linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #090d16 100%);
           color: white;
-          border-radius: 14px;
-          padding: 24px 16px;
-          margin-top: 6px;
-          margin-bottom: 24px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+          border-radius: 18px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: clamp(22px, 3.2vw, 42px) clamp(16px, 2.5vw, 36px);
+          margin-top: 0;
+          margin-bottom: 26px;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
+          position: relative;
+          overflow: hidden;
         }
-        @media (min-width: 640px) {
-          .hero-banner-section {
-            padding: 36px 28px;
-            border-radius: 16px;
-          }
+
+        .hero-content {
+          width: 100%;
+          max-width: 100%;
+          position: relative;
+          z-index: 2;
         }
 
         /* Quick Dashboard Widget for Logged-in Shop Owner */
@@ -469,40 +494,41 @@ export default function Home() {
         }
         .hero-heading {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: 1.65rem;
+          font-size: clamp(1.8rem, 3.2vw, 3rem);
           font-weight: 800;
-          line-height: 1.15;
+          line-height: 1.12;
           margin: 0 0 12px;
           letter-spacing: 0.5px;
-        }
-        @media (min-width: 640px) {
-          .hero-heading { font-size: 2.5rem; }
         }
         .highlight-text {
           color: #ffc145;
         }
         .hero-description {
-          font-size: 0.95rem;
-          color: #d1d5db;
+          font-size: clamp(0.92rem, 1.1vw, 1.05rem);
+          color: #cbd5e1;
           line-height: 1.5;
-          margin: 0 0 22px;
-          max-width: 780px;
+          margin: 0 0 24px;
+          max-width: 900px;
         }
         .hero-search-card {
-          background: rgba(255, 255, 255, 0.96);
-          border-radius: 12px;
-          padding: 16px 18px;
+          background: rgba(255, 255, 255, 0.98);
+          border-radius: 14px;
+          padding: 16px 20px;
           display: flex;
-          gap: 14px;
+          gap: 16px;
           align-items: flex-end;
-          color: #222;
-          box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+          color: #0f172a;
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
           margin-bottom: 20px;
+          width: 100%;
+          backdrop-filter: blur(8px);
         }
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .hero-search-card {
             flex-direction: column;
             align-items: stretch;
+            gap: 12px;
+            padding: 14px;
           }
         }
         .search-field-unit {
