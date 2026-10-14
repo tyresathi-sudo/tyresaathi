@@ -1,0 +1,93 @@
+================================================================================
+           TYRESAATHI - MASTER RESPONSIVE & TYPOGRAPHY SIZE CHART (PC vs MOBILE)
+================================================================================
+Last Updated: October 2026
+App / Website: TyreSaathi (India's Verified Tyre & Service Network)
+
+--------------------------------------------------------------------------------
+1. SCREEN BREAKPOINTS (MEDIA QUERIES)
+--------------------------------------------------------------------------------
+Device Category          Screen Width (px)      CSS Media Query                Behavior
+--------------------------------------------------------------------------------
+Mobile (Phones)          < 640px (or < 768px)   @media (max-width: 640px)      Single-column, Bottom Nav Bar, compact padding, tap targets >= 42px
+Tablet / Small Laptop    640px - 1024px         @media (min-width: 640px)      2-column grids, responsive collapsible sidebar
+Desktop / PC (Large)     >= 1024px              @media (min-width: 1024px)     100% Full Width, Auto-fill cards grid, permanent sidebar, fluid spacing
+
+--------------------------------------------------------------------------------
+2. TYPOGRAPHY SIZE CHART (FONT SCALING)
+--------------------------------------------------------------------------------
+Element / Text Type          PC / Desktop Size        Mobile Size              Weight          Line Height
+--------------------------------------------------------------------------------
+Page Title (H1)              24px - 30px (clamp)      19px - 22px (1.25-1.4r)  800 (ExtraBold) 1.2 - 1.25
+Section Headings (H2)        18px - 20px (1.15-1.25r) 15px - 16px (0.95-1.0r) 700 - 800       1.3
+Card Title / Service (H3)    17px - 19px (1.05-1.20r) 14px - 15px (0.90-0.95r) 800 (Bold)      1.3
+Price (Selling / MRP)        24px - 26px              19px - 21px              800 - 900       1.1
+Body / Description Text      15px - 16px (0.92-0.98r) 13px - 14px (0.82-0.88r) 500 - 600       1.5 - 1.65
+Secondary / Subtext / Dates  13px - 14px (0.82-0.88r) 11px - 12px (0.72-0.78r) 500 (Medium)   1.35 - 1.45
+Badges / Status Chips / Tags 12px - 13px (0.75-0.82r) 10.5px - 11.5px (0.70r) 700 - 800       1.0
+Primary Button Text          14.5px - 15px            13px - 14px              800 (ExtraBold) 1.0
+
+--------------------------------------------------------------------------------
+3. PAGE CONTAINERS & SPACING (FULL WIDTH vs SAFE PADDING)
+--------------------------------------------------------------------------------
+Component                    PC / Desktop Sizing                 Mobile Sizing
+--------------------------------------------------------------------------------
+Page Container Width         width: 100%; max-width: 100%;       width: 100%; max-width: 100%;
+Page Outer Padding           8px 0px 60px                        4px 0px 60px
+Card Inner Padding           18px - 24px                         12px - 14px
+Card Border Radius           14px - 16px                         12px
+Gap Between Cards            18px - 22px                         12px - 14px
+
+--------------------------------------------------------------------------------
+4. COMPONENT-WISE GRIDS & LAYOUT RULES
+--------------------------------------------------------------------------------
+A. LEFT SIDEBAR & DRAWER:
+   - Desktop Width: 240px - 260px (Docked left)
+   - Mobile Width: 280px (Slide-out drawer overlay)
+   - Active Indicator (Selected Box):
+     * Background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)
+     * Text Color: #ffffff (Bold 800)
+     * Icon Badge: rgba(255, 255, 255, 0.22) frosted white
+     * Padding: 8px 12px | Border Radius: 10px
+     * Shadow: 0 4px 14px rgba(192, 57, 43, 0.35)
+
+B. SEARCH TYRE CATALOG (/search):
+   - Desktop Grid: repeat(auto-fill, minmax(290px, 1fr)) (3 to 4 cards per row)
+   - Mobile Grid: 1fr (Single column)
+   - Image Height: Desktop 240px | Mobile 200px
+
+C. CUSTOMER SERVICE BOOKINGS (/bookings):
+   - Desktop Grid: repeat(auto-fill, minmax(420px, 1fr)) (2 cards per row)
+   - Mobile Grid: 1fr (Single column stacked)
+   - Status Filter Tabs: Desktop row wrapped | Mobile horizontal scrollable
+
+D. MANAGE PRODUCTS & INVENTORY (/shop/products):
+   - Stats Cards: Desktop 4-column (1fr 1fr 1fr 1fr) | Mobile 2x2 compact grid
+   - Filter Controls: Desktop horizontal flex row | Mobile stacked 2-column dropdowns
+
+E. SUPPORT & HELPDESK TICKETS (/support):
+   - Channels Grid (WhatsApp / Helpline): Desktop 1fr 1fr | Mobile 1fr
+   - Ticket Cards: Desktop spacious row layout | Mobile compact stacked meta badges
+
+F. SETTINGS & PREFERENCES (/settings):
+   - Layout: Desktop 260px sidebar + 1fr form grid | Mobile horizontal pill tabs + 1-column form
+
+G. LEGAL PAGES (Privacy Policy, Terms of Service, Disclaimer):
+   - Container: width: 100%; max-width: 100%;
+   - Top-Right Close (X) Button:
+     * Desktop: 44px x 44px circular (top: 18px; right: 18px;)
+     * Mobile: 38px x 38px circular (top: 14px; right: 14px;)
+
+--------------------------------------------------------------------------------
+5. TOUCH TARGETS & ACTION BUTTONS (PLAY STORE COMPLIANT)
+--------------------------------------------------------------------------------
+Control Type                 PC Dimensions                       Mobile Dimensions
+--------------------------------------------------------------------------------
+Primary Action Button        padding: 10px 18px (Height: 42px)   padding: 10px 14px (Height: 42px - 44px)
+Top-Right Close (X) Button   44px x 44px circular                38px x 38px circular
+Call / WhatsApp Quick Pills  padding: 8px 14px                   padding: 8px 10px (50%-50% split)
+Bottom Navigation Bar        Hidden on PC                        Height: 60px (Fixed at bottom)
+
+================================================================================
+                      FILE GENERATED FOR LOCAL REFERENCE
+================================================================================
