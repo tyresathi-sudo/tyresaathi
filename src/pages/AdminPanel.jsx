@@ -684,6 +684,7 @@ export default function AdminPanel() {
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
   const [bookingSearch, setBookingSearch] = useState("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
