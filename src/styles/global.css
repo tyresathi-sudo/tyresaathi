@@ -412,27 +412,27 @@ a {
 .vehicle-category-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 @media (min-width: 640px) {
   .vehicle-category-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    gap: 14px;
   }
 }
 
 @media (min-width: 1024px) {
   .vehicle-category-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
   }
 }
 
 @media (min-width: 1400px) {
   .vehicle-category-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 
@@ -440,8 +440,8 @@ a {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 10.5rem;
-  padding: 1.25rem;
+  min-height: 9.2rem;
+  padding: 1rem 0.85rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -478,40 +478,51 @@ a {
 }
 
 .vehicle-card-title {
-  font-size: 1rem; /* text-base */
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.25;
   transition: color 0.2s ease;
 }
 
+@media (min-width: 640px) {
+  .vehicle-card-title {
+    font-size: 1.05rem;
+  }
+}
+
 .vehicle-category-card:hover .vehicle-card-title {
-  color: #dc2626; /* group-hover:text-red-600 */
+  color: #dc2626;
 }
 
 .vehicle-card-subtitle {
-  font-size: 0.75rem; /* text-xs */
+  font-size: 0.72rem;
   color: var(--text-muted);
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.3;
+}
+
+@media (min-width: 640px) {
+  .vehicle-card-subtitle {
+    font-size: 0.78rem;
+  }
 }
 
 .vehicle-card-action {
-  font-size: 0.75rem; /* text-xs */
-  font-weight: 600;
-  color: var(--text-muted);
-  opacity: 0.8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #dc2626;
+  opacity: 1;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  margin-top: 0.5rem;
-  transition: color 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  margin-top: 0.4rem;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .vehicle-category-card:hover .vehicle-card-action {
-  color: #dc2626; /* group-hover:text-red-600 */
-  opacity: 1;
+  color: #b91c1c;
   transform: translateX(4px);
 }
 

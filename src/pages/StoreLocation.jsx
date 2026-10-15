@@ -54,10 +54,52 @@ export default function StoreLocation() {
   const initialShopName = searchParams.get("shopName") || "";
   const initialShopId = searchParams.get("shopId") || "";
 
-  const [shopsList, setShopsList] = useState([]);
+  const [shopsList, setShopsList] = useState(() => {
+    return (SAMPLE_SHOPS || []).map((s) => {
+      const catCode = s.categoryCode || "CAT_PUNCTURE_REPAIR";
+      const catMeta = getCategoryByCode(catCode);
+      const resolvedCoords = resolveShopCoordinates({
+        ...s,
+        name: s.name || s.shopName,
+        city: s.city,
+        address: s.address,
+        lat: s.lat,
+        lng: s.lng
+      });
+      return {
+        ...s,
+        categoryCode: catCode,
+        categoryName: s.categoryName || catMeta.name,
+        categoryHindi: catMeta.hindiName,
+        categoryTarget: catMeta.target,
+        categoryIcon: catMeta.icon,
+        categoryBadgeColor: catMeta.badgeColor,
+        categoryBadgeBg: catMeta.badgeBg,
+        ownerName: s.ownerName || s.name,
+        rating: s.rating || 4.8,
+        reviewsCount: s.reviewsCount || 10,
+        services: s.services || catMeta.services,
+        servicesOffered: s.servicesOffered || s.services || catMeta.services,
+        timing: s.timing || "Mon - Sun: 08:30 AM - 09:30 PM",
+        lat: resolvedCoords.lat,
+        lng: resolvedCoords.lng,
+        hasRealGps: resolvedCoords.hasExactGps,
+        isCityMatch: resolvedCoords.isCityMatch,
+        photoURL: s.photoURL || "",
+      };
+    });
+  });
   const [allProducts, setAllProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState(initialShopName);
-  const [selectedShop, setSelectedShop] = useState(null);
+  const [selectedShop, setSelectedShop] = useState(() => {
+    if (initialShopId) {
+      return (SAMPLE_SHOPS || []).find(s => s.id === initialShopId) || SAMPLE_SHOPS[0] || null;
+    }
+    if (initialShopName) {
+      return (SAMPLE_SHOPS || []).find(s => s.name?.toLowerCase().includes(initialShopName.toLowerCase())) || SAMPLE_SHOPS[0] || null;
+    }
+    return SAMPLE_SHOPS[0] || null;
+  });
   const [filterCity, setFilterCity] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
 
@@ -259,26 +301,39 @@ export default function StoreLocation() {
           }
         }
 
-        // Fallback default demo shops if none
+        // Fallback default verified partner shops if none from Firestore
         if (loadedShops.length === 0) {
-          loadedShops = SAMPLE_SHOPS.map((s) => {
-            const catMeta = getCategoryByCode("CAT_PUNCTURE_REPAIR");
+          loadedShops = (SAMPLE_SHOPS || []).map((s) => {
+            const catCode = s.categoryCode || "CAT_PUNCTURE_REPAIR";
+            const catMeta = getCategoryByCode(catCode);
+            const resolvedCoords = resolveShopCoordinates({
+              ...s,
+              name: s.name || s.shopName,
+              city: s.city,
+              address: s.address,
+              lat: s.lat,
+              lng: s.lng
+            });
             return {
               ...s,
-              categoryCode: "CAT_PUNCTURE_REPAIR",
-              categoryName: catMeta.name,
+              categoryCode: catCode,
+              categoryName: s.categoryName || catMeta.name,
               categoryHindi: catMeta.hindiName,
+              categoryTarget: catMeta.target,
               categoryIcon: catMeta.icon,
               categoryBadgeColor: catMeta.badgeColor,
               categoryBadgeBg: catMeta.badgeBg,
-              ownerName: s.name,
-              rating: 0,
-              reviewsCount: 0,
-              services: catMeta.services,
-              timing: "Mon - Sun: 09:00 AM - 09:00 PM",
-              lat: null,
-              lng: null,
-              hasRealGps: false,
+              ownerName: s.ownerName || s.name,
+              rating: s.rating || 4.8,
+              reviewsCount: s.reviewsCount || 10,
+              services: s.services || catMeta.services,
+              servicesOffered: s.servicesOffered || s.services || catMeta.services,
+              timing: s.timing || "Mon - Sun: 08:30 AM - 09:30 PM",
+              lat: resolvedCoords.lat,
+              lng: resolvedCoords.lng,
+              hasRealGps: resolvedCoords.hasExactGps,
+              isCityMatch: resolvedCoords.isCityMatch,
+              photoURL: s.photoURL || "",
             };
           });
         }
@@ -297,6 +352,43 @@ export default function StoreLocation() {
         }
       } catch (err) {
         console.warn("Firestore shops load fallback:", err);
+        // Ensure default partner shops are retained even on permission-denied
+        setShopsList((prev) => {
+          if (prev && prev.length > 0) return prev;
+          return (SAMPLE_SHOPS || []).map((s) => {
+            const catCode = s.categoryCode || "CAT_PUNCTURE_REPAIR";
+            const catMeta = getCategoryByCode(catCode);
+            const resolvedCoords = resolveShopCoordinates({
+              ...s,
+              name: s.name || s.shopName,
+              city: s.city,
+              address: s.address,
+              lat: s.lat,
+              lng: s.lng
+            });
+            return {
+              ...s,
+              categoryCode: catCode,
+              categoryName: s.categoryName || catMeta.name,
+              categoryHindi: catMeta.hindiName,
+              categoryTarget: catMeta.target,
+              categoryIcon: catMeta.icon,
+              categoryBadgeColor: catMeta.badgeColor,
+              categoryBadgeBg: catMeta.badgeBg,
+              ownerName: s.ownerName || s.name,
+              rating: s.rating || 4.8,
+              reviewsCount: s.reviewsCount || 10,
+              services: s.services || catMeta.services,
+              servicesOffered: s.servicesOffered || s.services || catMeta.services,
+              timing: s.timing || "Mon - Sun: 08:30 AM - 09:30 PM",
+              lat: resolvedCoords.lat,
+              lng: resolvedCoords.lng,
+              hasRealGps: resolvedCoords.hasExactGps,
+              isCityMatch: resolvedCoords.isCityMatch,
+              photoURL: s.photoURL || "",
+            };
+          });
+        });
       }
     }
     loadData();
@@ -486,13 +578,15 @@ export default function StoreLocation() {
       serviceName: bookingService || "Tyre Service",
       customerName: bookingCustomerName.trim(),
       customerPhone: bookingCustomerPhone.trim(),
+      customerEmail: currentUser?.email || "",
       vehicleType: bookingVehicleType,
       vehicleNumber: bookingVehicleNumber.trim(),
       date: bookingDate,
       timeSlot: bookingTimeSlot,
       notes: bookingNotes.trim(),
-      status: "confirmed",
+      status: "pending",
       userId: currentUser?.uid || "guest",
+      customerId: currentUser?.uid || "guest",
       createdAt: new Date().toISOString(),
     };
 
@@ -506,8 +600,9 @@ export default function StoreLocation() {
     }
 
     try {
-      const existing = JSON.parse(localStorage.getItem("tyresaathi_user_bookings") || "[]");
-      localStorage.setItem("tyresaathi_user_bookings", JSON.stringify([newBookingRecord, ...existing]));
+      const userKey = currentUser?.uid ? `tyresaathi_bookings_${currentUser.uid}` : "tyresaathi_guest_bookings";
+      const existing = JSON.parse(localStorage.getItem(userKey) || "[]");
+      localStorage.setItem(userKey, JSON.stringify([newBookingRecord, ...existing.filter(b => b.id !== newBookingRecord.id)]));
     } catch (err) {}
 
     // Send in-app notification (Strictly targeted to Customer and Shop Owner)

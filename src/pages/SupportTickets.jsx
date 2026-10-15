@@ -109,11 +109,11 @@ export const getShopTicketStorageKey = (user, profile) => {
   if (profile?.shopName && profile.shopName.trim() && profile.shopName !== "TyreSaathi Partner Hub") {
     return `tyresaathi_tickets_shop_${profile.shopName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
   }
-  return "tyresaathi_user_tickets";
+  return "tyresaathi_guest_tickets";
 };
 
 export default function SupportTickets() {
-  const { user, profile, isVendor } = useAuth();
+  const { user, profile, isVendor, isAdmin } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -135,33 +135,40 @@ export default function SupportTickets() {
         const snap = await getDocs(q);
         if (!snap.empty) {
           let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          if (user?.email) {
-            const userSpecific = list.filter(t => 
-              (t.userId && t.userId === user.uid) ||
-              (t.userEmail && t.userEmail.toLowerCase() === user.email.toLowerCase()) ||
-              (profile?.phone && t.userPhone === profile.phone)
-            );
-            if (userSpecific.length > 0) {
-              list = userSpecific;
-            }
+          if (!isAdmin) {
+            // Strictly filter tickets for the logged-in user or shop
+            const myUid = user?.uid;
+            const myEmail = (user?.email || "").toLowerCase().trim();
+            const myPhone = (profile?.phone || user?.phoneNumber || "").replace(/[^0-9]/g, "").slice(-10);
+
+            list = list.filter(t => {
+              const tUid = t?.userId;
+              const tEmail = (t?.userEmail || "").toLowerCase().trim();
+              const tPhone = (t?.userPhone || "").replace(/[^0-9]/g, "").slice(-10);
+
+              const matchesId = Boolean(myUid && tUid && tUid === myUid);
+              const matchesEmail = Boolean(myEmail && tEmail && tEmail === myEmail);
+              const matchesPhone = Boolean(myPhone && tPhone && myPhone === tPhone);
+
+              return matchesId || matchesEmail || matchesPhone;
+            });
           }
           const normalized = normalizeTicketList(list);
           setTickets(normalized);
           localStorage.setItem(storageKey, JSON.stringify(normalized));
         } else {
-          // Check localStorage
-          const local = localStorage.getItem(storageKey) || localStorage.getItem("tyresaathi_user_tickets");
+          // Check localStorage strictly for this user's storageKey
+          const local = localStorage.getItem(storageKey);
           if (local) {
             const normalized = normalizeTicketList(JSON.parse(local));
             setTickets(normalized);
-            localStorage.setItem(storageKey, JSON.stringify(normalized));
           } else {
             setTickets([]);
           }
         }
       } catch (err) {
         console.warn("Firestore tickets load fallback:", err);
-        const local = localStorage.getItem(storageKey) || localStorage.getItem("tyresaathi_user_tickets");
+        const local = localStorage.getItem(storageKey);
         if (local) {
           const normalized = normalizeTicketList(JSON.parse(local));
           setTickets(normalized);
@@ -173,7 +180,7 @@ export default function SupportTickets() {
       }
     }
     loadTickets();
-  }, [user, profile]);
+  }, [user, profile, isAdmin]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -257,10 +264,6 @@ export default function SupportTickets() {
     setTickets((prev) => {
       const updated = [newTicket, ...prev];
       localStorage.setItem(storageKey, JSON.stringify(updated));
-      try {
-        const globalLocal = JSON.parse(localStorage.getItem("tyresaathi_user_tickets") || "[]");
-        localStorage.setItem("tyresaathi_user_tickets", JSON.stringify([newTicket, ...globalLocal.filter(t => t.id !== newTicket.id)]));
-      } catch (e) {}
       return updated;
     });
     setSubmitting(false);

@@ -494,107 +494,129 @@ export default function Home() {
         }
         .hero-heading {
           font-family: 'Barlow Condensed', sans-serif;
-          font-size: clamp(1.8rem, 3.2vw, 3rem);
+          font-size: clamp(22px, 3.5vw, 34px);
           font-weight: 800;
-          line-height: 1.12;
-          margin: 0 0 12px;
+          line-height: 1.18;
+          margin: 0 0 10px;
           letter-spacing: 0.5px;
         }
         .highlight-text {
           color: #ffc145;
         }
         .hero-description {
-          font-size: clamp(0.92rem, 1.1vw, 1.05rem);
+          font-size: clamp(13px, 1.2vw, 15.5px);
           color: #cbd5e1;
+          font-weight: 400;
           line-height: 1.5;
-          margin: 0 0 24px;
+          margin: 0 0 20px;
           max-width: 900px;
         }
         .hero-search-card {
-          background: rgba(255, 255, 255, 0.98);
+          background: rgba(15, 23, 42, 0.82);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           border-radius: 14px;
-          padding: 16px 20px;
+          padding: 18px 22px;
           display: flex;
           gap: 16px;
           align-items: flex-end;
-          color: #0f172a;
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.24);
-          margin-bottom: 20px;
+          color: #f8fafc;
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+          margin-bottom: 22px;
           width: 100%;
-          backdrop-filter: blur(8px);
         }
         @media (max-width: 900px) {
           .hero-search-card {
             flex-direction: column;
             align-items: stretch;
-            gap: 12px;
-            padding: 14px;
+            gap: 14px;
+            padding: 16px 14px;
           }
         }
         .search-field-unit {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 7px;
         }
         .search-field-unit label {
-          font-size: 0.78rem;
-          font-weight: 800;
-          color: #475569;
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #d1d5db;
           text-transform: uppercase;
-          letter-spacing: 0.4px;
+          letter-spacing: 0.6px;
         }
         .search-field-unit input,
         .search-field-unit select {
-          padding: 11px 14px;
-          border-radius: 8px;
+          padding: 12px 16px;
+          border-radius: 9px;
           border: 1.5px solid #cbd5e1;
-          font-size: 0.92rem;
+          font-size: 15.5px;
           outline: none;
-          color: #1e293b;
-          background: white;
+          color: #0f172a;
+          background: #ffffff;
           font-weight: 500;
+          box-sizing: border-box;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .search-field-unit input:focus,
+        .search-field-unit select:focus {
+          border-color: #c0392b;
+          box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.25);
+        }
+        .search-field-unit input::placeholder {
+          color: #94a3b8;
+          font-size: 14.5px;
         }
         .vehicle-pills-selector {
           display: flex;
-          gap: 6px;
-          flex-wrap: wrap;
+          gap: 8px;
+          flex-wrap: nowrap;
         }
         .veh-type-pill {
           flex: 1;
-          background: #f1f5f9;
-          border: 1.5px solid #cbd5e1;
-          border-radius: 8px;
-          padding: 9px 10px;
-          font-size: 0.84rem;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1.5px solid rgba(255, 255, 255, 0.22);
+          border-radius: 9px;
+          padding: 11px 12px;
+          font-size: 15px;
           font-weight: 700;
-          color: #334155;
+          color: #f8fafc;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 4px;
+          gap: 6px;
           transition: all 0.15s ease;
           white-space: nowrap;
+          min-height: 48px;
+        }
+        @media (max-width: 480px) {
+          .veh-type-pill {
+            font-size: 14px;
+            padding: 10px 6px;
+            gap: 4px;
+          }
         }
         .veh-type-pill:hover {
-          border-color: #c0392b;
-          background: #fff;
+          border-color: #ff6b35;
+          background: rgba(255, 255, 255, 0.2);
         }
         .veh-type-pill-active {
           background: #c0392b !important;
-          border-color: #c0392b !important;
+          border-color: #e74c3c !important;
           color: #ffffff !important;
-          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.35);
+          box-shadow: 0 4px 14px rgba(192, 57, 43, 0.45);
         }
         .hero-search-btn {
           background: #c0392b;
           color: white;
           border: none;
-          padding: 12px 24px;
-          border-radius: 8px;
+          padding: 12px 26px;
+          border-radius: 9px;
           font-weight: 800;
-          font-size: 0.95rem;
+          font-size: 15.5px;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -602,23 +624,31 @@ export default function Home() {
           gap: 8px;
           white-space: nowrap;
           transition: all 0.2s ease;
+          min-height: 48px;
         }
         .hero-search-btn:hover {
           background: #a93226;
           transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(192, 57, 43, 0.35);
         }
         .hero-features-strip {
           display: flex;
-          gap: 18px;
+          gap: 22px;
           flex-wrap: wrap;
-          font-size: 0.85rem;
-          color: #e5e7eb;
-          font-weight: 600;
+          font-size: 14px;
+          color: #e2e8f0;
+          font-weight: 500;
+        }
+        @media (max-width: 640px) {
+          .hero-features-strip {
+            gap: 12px;
+            font-size: 13.5px;
+          }
         }
         .feature-item {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 7px;
         }
 
         /* Home Sections */

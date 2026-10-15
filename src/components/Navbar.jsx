@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
+  Home,
   Phone,
   Search,
   ShoppingCart,
@@ -33,6 +34,9 @@ export default function Navbar({ onMenuClick }) {
   const { theme, toggleTheme } = useTheme();
   const { user, profile, logout, isVendor, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -210,7 +214,7 @@ export default function Navbar({ onMenuClick }) {
           </button>
 
           {/* Logo Section */}
-          <Link to="/" className="site-brand-logo">
+          <Link to={isAdminRoute ? "/admin" : "/"} className="site-brand-logo">
             <img
               src="/logo.png"
               alt="TyreSaathi Logo"
@@ -219,7 +223,9 @@ export default function Navbar({ onMenuClick }) {
             />
             <div className="logo-text-group">
               <span className="brand-primary-name">TYRE<span className="brand-highlight">SAATHI</span></span>
-              <span className="brand-tagline">India's Trusted Tyre & Service Network</span>
+              <span className="brand-tagline">
+                {isAdminRoute ? "🛡️ Master Admin Console" : "India's Trusted Tyre & Service Network"}
+              </span>
             </div>
           </Link>
 
@@ -337,37 +343,59 @@ export default function Navbar({ onMenuClick }) {
 
           {/* Mobile Right Action Group (Clean, balanced app-bar buttons) */}
           <div className="mobile-right-actions">
-            <NotificationBell />
+            {isAdminRoute ? (
+              <>
+                <Link
+                  to="/"
+                  className="admin-nav-exit-btn"
+                  title="Exit Admin Panel to Main Store"
+                >
+                  <Home size={14} />
+                  <span>Main App</span>
+                </Link>
+                <NotificationBell />
+                <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
+                  {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+                <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
+                  <User size={18} />
+                </Link>
+              </>
+            ) : (
+              <>
+                <NotificationBell />
 
-            {/* 📤 Mobile One-Tap Share Button */}
-            <button
-              className="mobile-icon-btn mobile-share-icon-btn"
-              onClick={shareApp}
-              title="Share TyreSaathi App"
-              aria-label="Share TyreSaathi App"
-            >
-              <Share2 size={18} />
-            </button>
+                {/* 📤 Mobile One-Tap Share Button */}
+                <button
+                  className="mobile-icon-btn mobile-share-icon-btn"
+                  onClick={shareApp}
+                  title="Share TyreSaathi App"
+                  aria-label="Share TyreSaathi App"
+                >
+                  <Share2 size={18} />
+                </button>
 
-            <button
-              className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`}
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              title="Search Tyres"
-              aria-label="Search"
-            >
-              <Search size={19} />
-            </button>
-            {isVendor && (
-              <Link to="/shop/add-product" className="mobile-icon-btn mobile-add-btn" title="Add Product" aria-label="Add Product">
-                <PlusCircle size={19} color="#c0392b" />
-              </Link>
+                <button
+                  className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`}
+                  onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                  title="Search Tyres"
+                  aria-label="Search"
+                >
+                  <Search size={19} />
+                </button>
+                {isVendor && (
+                  <Link to="/shop/add-product" className="mobile-icon-btn mobile-add-btn" title="Add Product" aria-label="Add Product">
+                    <PlusCircle size={19} color="#c0392b" />
+                  </Link>
+                )}
+                <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
+                  {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+                <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
+                  <User size={18} />
+                </Link>
+              </>
             )}
-            <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
-              <User size={18} />
-            </Link>
           </div>
         </div>
 
@@ -594,6 +622,27 @@ export default function Navbar({ onMenuClick }) {
         .mobile-icon-btn:active {
           background: var(--surface-2);
           transform: scale(0.92);
+        }
+        .admin-nav-exit-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(192, 57, 43, 0.08);
+          border: 1px solid rgba(192, 57, 43, 0.25);
+          color: #c0392b;
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          flex-shrink: 0;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+        }
+        .admin-nav-exit-btn:active {
+          background: #c0392b;
+          color: #ffffff;
+          transform: scale(0.94);
         }
         .mobile-icon-active {
           background: rgba(192, 57, 43, 0.12) !important;

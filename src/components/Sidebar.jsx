@@ -12,6 +12,25 @@ import { shareApp } from "../utils/nativeBridge.js";
 import { db } from "../firebase.js";
 import { collection, onSnapshot } from "firebase/firestore";
 
+function NavLabelContent({ label, active }) {
+  const match = typeof label === "string" ? label.match(/^(.*?)\s*\((.*?)\)$/) : null;
+  if (match) {
+    const titleEn = match[1].trim();
+    const titleHi = match[2].trim();
+    return (
+      <div className="nav-text-col">
+        <span className="nav-title-en">{titleEn}</span>
+        <span className={`nav-title-hi ${active ? "nav-title-hi-active" : ""}`}>{titleHi}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="nav-text-col">
+      <span className="nav-title-en">{label}</span>
+    </div>
+  );
+}
+
 export default function Sidebar({ open, onClose }) {
   const { user, profile, isAdmin, isVendor, logout } = useAuth();
   const [liveShopRating, setLiveShopRating] = useState({ rating: 0, reviewsCount: 0 });
@@ -162,11 +181,15 @@ export default function Sidebar({ open, onClose }) {
             className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
             onClick={onClose}
           >
-            <div className="nav-icon-badge" style={{ color: "#c0392b", backgroundColor: "#fdedec" }}>
-              <Home size={16} />
-            </div>
-            <span className="nav-link-text">Home (मुख्य पृष्ठ)</span>
-            <ChevronRight size={14} className="nav-chevron" />
+            {({ isActive }) => (
+              <>
+                <div className="nav-icon-badge" style={{ color: "#c0392b", backgroundColor: "#fdedec" }}>
+                  <Home size={19} />
+                </div>
+                <NavLabelContent label="Home (मुख्य पृष्ठ)" active={isActive} />
+                <ChevronRight size={16} className="nav-chevron" />
+              </>
+            )}
           </NavLink>
 
           {/* 1. MANAGE BUSINESS (Shop Owners & Admin Only) */}
@@ -180,11 +203,15 @@ export default function Sidebar({ open, onClose }) {
                   className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
                   onClick={onClose}
                 >
-                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                    <Icon size={16} />
-                  </div>
-                  <span className="nav-link-text">{label}</span>
-                  <ChevronRight size={14} className="nav-chevron" />
+                  {({ isActive }) => (
+                    <>
+                      <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                        <Icon size={19} />
+                      </div>
+                      <NavLabelContent label={label} active={isActive} />
+                      <ChevronRight size={16} className="nav-chevron" />
+                    </>
+                  )}
                 </NavLink>
               ))}
             </>
@@ -201,11 +228,15 @@ export default function Sidebar({ open, onClose }) {
                   className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
                   onClick={onClose}
                 >
-                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                    <Icon size={16} />
-                  </div>
-                  <span className="nav-link-text">{label}</span>
-                  <ChevronRight size={14} className="nav-chevron" />
+                  {({ isActive }) => (
+                    <>
+                      <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                        <Icon size={19} />
+                      </div>
+                      <NavLabelContent label={label} active={isActive} />
+                      <ChevronRight size={16} className="nav-chevron" />
+                    </>
+                  )}
                 </NavLink>
               ))}
             </>
@@ -222,11 +253,15 @@ export default function Sidebar({ open, onClose }) {
               className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
               onClick={onClose}
             >
-              <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                <Icon size={16} />
-              </div>
-              <span className="nav-link-text">{label}</span>
-              <ChevronRight size={14} className="nav-chevron" />
+              {({ isActive }) => (
+                <>
+                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                    <Icon size={19} />
+                  </div>
+                  <NavLabelContent label={label} active={isActive} />
+                  <ChevronRight size={16} className="nav-chevron" />
+                </>
+              )}
             </NavLink>
           ))}
 
@@ -239,11 +274,15 @@ export default function Sidebar({ open, onClose }) {
               className={({ isActive }) => "sidebar-link-modern" + (isActive ? " link-active" : "")}
               onClick={onClose}
             >
-              <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
-                <Icon size={16} />
-              </div>
-              <span className="nav-link-text">{label}</span>
-              <ChevronRight size={14} className="nav-chevron" />
+              {({ isActive }) => (
+                <>
+                  <div className="nav-icon-badge" style={{ color: color, backgroundColor: bg }}>
+                    <Icon size={19} />
+                  </div>
+                  <NavLabelContent label={label} active={isActive} />
+                  <ChevronRight size={16} className="nav-chevron" />
+                </>
+              )}
             </NavLink>
           ))}
 
@@ -257,9 +296,9 @@ export default function Sidebar({ open, onClose }) {
             title="Share TyreSaathi App via WhatsApp, SMS, etc."
           >
             <div className="nav-icon-badge" style={{ color: "#2563eb", backgroundColor: "#eff6ff" }}>
-              <Share2 size={16} />
+              <Share2 size={19} />
             </div>
-            <span className="nav-link-text">Share TyreSaathi App</span>
+            <NavLabelContent label="Share TyreSaathi App" />
             <span className="sidebar-share-pill">Indus App</span>
           </button>
 
@@ -272,10 +311,10 @@ export default function Sidebar({ open, onClose }) {
             onClick={onClose}
           >
             <div className="nav-icon-badge" style={{ color: "#25D366", backgroundColor: "#f0fdf4" }}>
-              <MessageCircle size={16} />
+              <MessageCircle size={19} />
             </div>
-            <span className="nav-link-text">WhatsApp Support</span>
-            <ChevronRight size={14} className="nav-chevron" />
+            <NavLabelContent label="WhatsApp Support (24x7 सहायता)" />
+            <ChevronRight size={16} className="nav-chevron" />
           </a>
 
           {/* Logout Button if user is logged in */}
@@ -289,9 +328,9 @@ export default function Sidebar({ open, onClose }) {
               className="sidebar-link-modern btn-sidebar-logout"
             >
               <div className="nav-icon-badge" style={{ color: "#e11d48", backgroundColor: "#fff1f2" }}>
-                <LogOut size={16} />
+                <LogOut size={19} />
               </div>
-              <span className="nav-link-text">Logout</span>
+              <NavLabelContent label="Logout (लॉगआउट)" />
             </button>
           )}
         </nav>
@@ -317,7 +356,8 @@ export default function Sidebar({ open, onClose }) {
           top: 0;
           left: 0;
           bottom: 0;
-          width: 310px;
+          width: 290px;
+          max-width: 86vw;
           background: #ffffff;
           border-right: 1px solid #e2e8f0;
           z-index: 1050;
@@ -478,32 +518,31 @@ export default function Sidebar({ open, onClose }) {
 
         .sidebar-nav { 
           flex: 1; 
-          padding: 6px 10px; 
+          padding: 8px 10px; 
           display: flex; 
           flex-direction: column; 
-          gap: 2px;
+          gap: 3px;
           overflow-y: auto;
         }
 
         .nav-section-label {
-          font-size: 0.72rem;
+          font-size: 12.5px;
           font-weight: 800;
           color: #64748b;
           text-transform: uppercase;
-          letter-spacing: 0.8px;
-          padding: 6px 8px 2px;
+          letter-spacing: 0.9px;
+          padding: 10px 10px 4px;
         }
 
         .sidebar-link-modern {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 7px 10px;
-          border-radius: 10px;
-          color: #334155;
+          gap: 12px;
+          padding: 8px 12px;
+          min-height: 44px;
+          border-radius: 12px;
+          color: #1e293b;
           text-decoration: none;
-          font-weight: 700;
-          font-size: 0.88rem;
           transition: all 0.15s ease;
           border: none;
           background: transparent;
@@ -516,29 +555,54 @@ export default function Sidebar({ open, onClose }) {
           color: #0f172a;
         }
         .nav-icon-badge {
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
+          width: 34px;
+          height: 34px;
+          border-radius: 9px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
-        .nav-link-text {
+        .nav-text-col {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
           flex: 1;
         }
+        .nav-title-en {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #1e293b;
+          line-height: 1.25;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .nav-title-hi {
+          font-size: 11.5px;
+          font-weight: 500;
+          color: #64748b;
+          line-height: 1.2;
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
         .nav-chevron {
-          color: #cbd5e1;
+          color: #94a3b8;
+          flex-shrink: 0;
         }
         .link-active { 
           background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%) !important; 
           color: #ffffff !important; 
-          font-weight: 800;
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.35);
         }
-        .link-active .nav-link-text {
+        .link-active .nav-title-en {
           color: #ffffff !important;
-          font-weight: 800;
+          font-weight: 700;
+        }
+        .link-active .nav-title-hi {
+          color: #fecaca !important;
         }
         .link-active .nav-icon-badge {
           background: rgba(255, 255, 255, 0.22) !important;
@@ -588,14 +652,16 @@ export default function Sidebar({ open, onClose }) {
           font-weight: 700;
         }
         .sidebar-share-pill {
-          font-size: 10px;
+          font-size: 10.5px;
           font-weight: 800;
           color: #2563eb;
           background: #eff6ff;
           border: 1px solid #bfdbfe;
           padding: 2px 7px;
-          border-radius: 10px;
+          border-radius: 8px;
           letter-spacing: 0.3px;
+          flex-shrink: 0;
+          white-space: nowrap;
         }
 
         .live-vendor-star-wrap {

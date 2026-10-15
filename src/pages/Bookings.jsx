@@ -28,7 +28,7 @@ import {
   MessageCircle,
   BarChart3
 } from "lucide-react";
-import { SHOP_PRIMARY_CATEGORIES, SERVICE_TYPES, getCategoryByCode } from "../config/tyreCatalog";
+import { SHOP_PRIMARY_CATEGORIES, SERVICE_TYPES, getCategoryByCode, SAMPLE_SHOPS } from "../config/tyreCatalog";
 import { exportBookingsToExcel } from "../utils/excelExport";
 import { logBookingToSheet } from "../utils/googleSheets";
 import { triggerHaptic, showNativeToast, scheduleServiceReminder } from "../utils/nativeBridge.js";
@@ -45,7 +45,24 @@ export default function Bookings() {
 
   const { user, profile, isVendor, isAdmin, isShopOwner } = useAuth();
   const [bookings, setBookings] = useState([]);
-  const [availableShops, setAvailableShops] = useState([]);
+  const [availableShops, setAvailableShops] = useState(() => {
+    return (SAMPLE_SHOPS || []).map((s) => {
+      const catCode = s.categoryCode || "CAT_PUNCTURE_REPAIR";
+      const catObj = getCategoryByCode(catCode);
+      return {
+        id: s.id || s.uid,
+        name: s.name || s.shopName,
+        phone: s.phone || "8877277757",
+        categoryCode: catCode,
+        categoryName: s.categoryName || catObj.name,
+        city: s.city || "Authorized Location",
+        address: s.address || (s.city ? `${s.city}, India` : "TyreSaathi Partner Hub"),
+        services: s.services || catObj.services,
+        rating: s.rating || 4.8,
+        reviewsCount: s.reviewsCount || 10
+      };
+    });
+  });
   const [activeTab, setActiveTab] = useState("all");
   const [modalOpen, setModalOpen] = useState(Boolean(paramOpen || paramShopName));
   const [loading, setLoading] = useState(false);
@@ -126,26 +143,32 @@ export default function Bookings() {
           }
         }
       } catch (e) {
-        console.warn("Could not load real shops from Firestore:", e);
+        console.warn("Could not load real shops from Firestore, using verified partner shops:", e);
       }
     }
     loadRealShops();
-  }, []);
+  }, [paramShopId, paramShopName]);
 
   // New Booking Form State
-  const [newBooking, setNewBooking] = useState({
-    serviceId: paramService || SERVICE_TYPES[0]?.id || "puncture",
-    serviceName: paramService ? (SERVICE_TYPES.find(s => s.id === paramService)?.name || paramService) : (SERVICE_TYPES[0]?.name || "Tubeless Puncture Repair"),
-    shopId: paramShopId || "",
-    shopName: paramShopName || profile?.shopName || "TyreSaathi Partner Hub",
-    shopPhone: paramShopPhone || profile?.phone || "",
-    customerName: profile?.name || "",
-    customerPhone: profile?.phone || "",
-    vehicleType: "Car / SUV",
-    vehicleNumber: "",
-    date: new Date().toISOString().split("T")[0],
-    timeSlot: "10:00 AM - 11:00 AM",
-    notes: "",
+  const [newBooking, setNewBooking] = useState(() => {
+    const initShop = (paramShopId ? availableShops.find(s => s.id === paramShopId) : null) || 
+      (paramShopName ? availableShops.find(s => s.name?.toLowerCase() === paramShopName.toLowerCase()) : null) || 
+      availableShops[0] || null;
+
+    return {
+      serviceId: paramService || SERVICE_TYPES[0]?.id || "puncture",
+      serviceName: paramService ? (SERVICE_TYPES.find(s => s.id === paramService)?.name || paramService) : (SERVICE_TYPES[0]?.name || "Tubeless Puncture Repair"),
+      shopId: paramShopId || initShop?.id || "",
+      shopName: paramShopName || profile?.shopName || initShop?.name || "TyreSaathi Partner Hub",
+      shopPhone: paramShopPhone || profile?.phone || initShop?.phone || "",
+      customerName: profile?.name || "",
+      customerPhone: profile?.phone || "",
+      vehicleType: "Car / SUV",
+      vehicleNumber: "",
+      date: new Date().toISOString().split("T")[0],
+      timeSlot: "10:00 AM - 11:00 AM",
+      notes: "",
+    };
   });
 
   // Sync if URL search params change
@@ -163,28 +186,31 @@ export default function Bookings() {
     }
   }, [paramShopName, paramShopId, paramShopPhone, paramService]);
 
+  const getBookingStorageKey = () => user?.uid ? `tyresaathi_bookings_${user.uid}` : "tyresaathi_guest_bookings";
+
   // Fetch real bookings from Firestore if available
   useEffect(() => {
     async function loadBookings() {
+      const storageKey = getBookingStorageKey();
       try {
         const snap = await getDocs(collection(db, "bookings"));
         if (!snap.empty) {
           const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
           setBookings(fetched);
         } else {
-          const local = localStorage.getItem("tyresaathi_user_bookings");
+          const local = localStorage.getItem(storageKey);
           if (local) setBookings(JSON.parse(local));
           else setBookings([]);
         }
       } catch (e) {
         console.warn("Using local bookings state:", e);
-        const local = localStorage.getItem("tyresaathi_user_bookings");
+        const local = localStorage.getItem(storageKey);
         if (local) setBookings(JSON.parse(local));
         else setBookings([]);
       }
     }
     loadBookings();
-  }, []);
+  }, [user?.uid]);
 
   // Update Status (Accept / Reject / Complete)
   const handleUpdateStatus = async (bookingId, newStatus) => {
@@ -264,7 +290,9 @@ export default function Bookings() {
     const bookingData = {
       ...newBooking,
       customerId: user?.uid || "guest_cust",
-      customerEmail: user?.email || "customer@tyresaathi.com",
+      userId: user?.uid || "guest_cust",
+      customerEmail: user?.email || (profile?.email || ""),
+      customerPhone: newBooking.customerPhone || profile?.phone || "",
       status: "pending",
       createdAt: new Date().toISOString(),
     };
@@ -286,6 +314,11 @@ export default function Bookings() {
         service: bookingData.serviceType || "",
         customerName: bookingData.customerName,
       });
+      try {
+        const storageKey = getBookingStorageKey();
+        const local = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        localStorage.setItem(storageKey, JSON.stringify([finalBooking, ...local.filter(b => b.id !== finalBooking.id)]));
+      } catch (e) {}
     } catch (err) {
       console.warn("Local fallback save for booking:", err);
       const fallbackBooking = { id: finalBookingId, ...bookingData };
@@ -297,6 +330,11 @@ export default function Bookings() {
         service: bookingData.serviceType || "",
         customerName: bookingData.customerName,
       });
+      try {
+        const storageKey = getBookingStorageKey();
+        const local = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        localStorage.setItem(storageKey, JSON.stringify([fallbackBooking, ...local.filter(b => b.id !== fallbackBooking.id)]));
+      } catch (e) {}
     } finally {
       // 🔔 1. Notify the Shop Owner in real-time
       const shopPhoneClean = (bookingData.shopPhone || "").replace(/\D/g, "").slice(-10);
@@ -363,30 +401,43 @@ export default function Bookings() {
 
   // Filter bookings based on role:
   // - Admin: Master view (all bookings)
-  // - Shop Owner: STRICTLY bookings for their own registered shop
-  // - Customer: STRICTLY their own bookings
+  // - Shop Owner: STRICTLY bookings for their own registered shop OR their personal bookings
+  // - Customer: STRICTLY their own bookings (matching UID, email, or verified phone)
   const visibleBookings = bookings.filter((b) => {
     if (isAdmin) return true;
+
+    const myUid = user?.uid;
+    const myEmail = (user?.email || "").toLowerCase().trim();
+    const myPhone = (profile?.phone || user?.phoneNumber || "").replace(/[^0-9]/g, "").slice(-10);
+
+    const bCustId = b?.customerId || b?.userId;
+    const bCustEmail = (b?.customerEmail || "").toLowerCase().trim();
+    const bCustPhone = (b?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+
+    const isMyCustomerBooking = 
+      Boolean(myUid && bCustId && bCustId === myUid) ||
+      Boolean(myEmail && bCustEmail && bCustEmail === myEmail) ||
+      Boolean(myPhone && bCustPhone && myPhone === bCustPhone);
+
     if (isVendor || isShopOwner) {
-      const myUid = user?.uid;
       const myShopName = (profile?.shopName || "").toLowerCase().trim();
-      const myPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
       const bShopId = b?.shopId;
       const bShopName = (b?.shopName || "").toLowerCase().trim();
       const bShopPhone = (b?.shopPhone || "").replace(/[^0-9]/g, "").slice(-10);
 
       const isForMyShop = 
-        (bShopId && myUid && bShopId === myUid) ||
-        (myPhone && bShopPhone && myPhone === bShopPhone) ||
-        (myShopName && bShopName && myShopName === bShopName);
+        Boolean(bShopId && myUid && bShopId === myUid) ||
+        Boolean(myPhone && bShopPhone && myPhone === bShopPhone) ||
+        Boolean(myShopName && bShopName && (bShopName === myShopName || bShopName.includes(myShopName) || myShopName.includes(bShopName)));
 
-      const isMyCustomerBooking = b.customerId === user?.uid || b.customerEmail === user?.email;
       return isForMyShop || isMyCustomerBooking;
     }
-    // Regular customer
-    const myPhone = (profile?.phone || "").replace(/[^0-9]/g, "").slice(-10);
-    const bCustPhone = (b?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
-    return b.customerId === user?.uid || b.customerEmail === user?.email || (myPhone && bCustPhone && myPhone === bCustPhone);
+
+    // Regular customer / New user
+    // Strictly isolate: If user has no match, never leak other users' bookings!
+    if (!user && !myPhone) return false;
+
+    return isMyCustomerBooking;
   });
 
   const filteredBookings = visibleBookings.filter((b) => {

@@ -62,7 +62,8 @@ import {
   ChevronRight,
   ArrowLeft,
   LayoutGrid,
-  MoreHorizontal
+  MoreHorizontal,
+  Home
 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -281,6 +282,7 @@ export function formatSafeDate(rawDate, fallback = "Recent") {
 
 export function formatSafeText(val, fallback = "—") {
   if (val === null || val === undefined) return fallback;
+  if (typeof val === "string" && !val.trim()) return fallback;
   if (typeof val === "object") {
     if (typeof val.seconds === "number" || typeof val.toDate === "function" || val instanceof Date) {
       return formatSafeDate(val, fallback);
@@ -682,9 +684,15 @@ export default function AdminPanel() {
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
   const [bookingSearch, setBookingSearch] = useState("");
-  const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
+
+  useEffect(() => {
+    const handleToggle = () => setMobileSidebarOpen((prev) => !prev);
+    window.addEventListener("toggle_admin_sidebar", handleToggle);
+    return () => window.removeEventListener("toggle_admin_sidebar", handleToggle);
+  }, []);
 
   // 🎫 Support Ticket Resolver State
   const [replyTicketModal, setReplyTicketModal] = useState(null);
@@ -785,7 +793,6 @@ export default function AdminPanel() {
     const updated = [sample, ...tickets];
     setTickets(updated);
     try {
-      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(updated));
       localStorage.setItem("tyresaathi_admin_tickets", JSON.stringify(updated));
       await setDoc(doc(db, "support_tickets", sample.id), sample, { merge: true });
     } catch (e) {}
@@ -797,7 +804,6 @@ export default function AdminPanel() {
     if (window.confirm("Kya aap sabhi support tickets ko #TS-TCK-01 se re-index karke sequential karna chahte hain?")) {
       const normalized = normalizeTicketList(tickets);
       setTickets(normalized);
-      localStorage.setItem("tyresaathi_user_tickets", JSON.stringify(normalized));
       localStorage.setItem("tyresaathi_admin_tickets", JSON.stringify(normalized));
       setTicketSuccessMsg("✅ Sabhi tickets numbering #TS-TCK-01 series me re-index ho gayi hai!");
       setTimeout(() => setTicketSuccessMsg(""), 4000);
@@ -1898,10 +1904,18 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
   return (
     <div className={`admin-enterprise-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      {/* 📱 Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="admin-sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* 🏢 Left Enterprise Sidebar */}
-      <aside className="admin-enterprise-sidebar">
+      <aside className={`admin-enterprise-sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
         <div className="sidebar-brand-row">
-          <div className="sidebar-brand" onClick={() => setActiveTab("overview")} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="sidebar-brand" onClick={() => { setActiveTab("overview"); setMobileSidebarOpen(false); }} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }}>
             <img
               src="/logo.png"
               alt="TyreSaathi Official Logo"
@@ -1918,7 +1932,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                 flexShrink: 0
               }}
             />
-            {!sidebarCollapsed && (
+            {(!sidebarCollapsed || mobileSidebarOpen) && (
               <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
                 <span className="sidebar-brand-text" style={{ fontSize: "clamp(1.15rem, 1.4vw, 1.35rem)", fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
                   TYRE<span style={{ color: "#c0392b" }}>SAATHI</span>
@@ -1931,11 +1945,19 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           </div>
           <button
             type="button"
-            className="sidebar-toggle-btn"
+            className="sidebar-toggle-btn hide-on-mobile"
             onClick={() => setSidebarCollapsed((prev) => !prev)}
             title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+          <button
+            type="button"
+            className="admin-sidebar-mobile-close show-on-mobile-only"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close admin menu"
+          >
+            <X size={20} />
           </button>
         </div>
 
@@ -1944,7 +1966,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item item-dashboard ${activeTab === "overview" ? "active" : ""}`}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => { setActiveTab("overview"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><LayoutGrid size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Dashboard</span>}
@@ -1957,7 +1979,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "shops" ? "active" : ""}`}
-            onClick={() => setActiveTab("shops")}
+            onClick={() => { setActiveTab("shops"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Store size={18} /></span>
             {!sidebarCollapsed && (
@@ -1970,7 +1992,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "services" ? "active" : ""}`}
-            onClick={() => setActiveTab("services")}
+            onClick={() => { setActiveTab("services"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Tag size={18} /></span>
             {!sidebarCollapsed && (
@@ -1988,7 +2010,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "ads" ? "active" : ""}`}
-            onClick={() => setActiveTab("ads")}
+            onClick={() => { setActiveTab("ads"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Megaphone size={18} /></span>
             {!sidebarCollapsed && (
@@ -2006,7 +2028,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "bookings" ? "active" : ""}`}
-            onClick={() => setActiveTab("bookings")}
+            onClick={() => { setActiveTab("bookings"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Calendar size={18} /></span>
             {!sidebarCollapsed && (
@@ -2024,7 +2046,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "bank" ? "active" : ""}`}
-            onClick={() => setActiveTab("bank")}
+            onClick={() => { setActiveTab("bank"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><CreditCard size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Financials & UPI</span>}
@@ -2032,7 +2054,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "pricing" ? "active" : ""}`}
-            onClick={() => setActiveTab("pricing")}
+            onClick={() => { setActiveTab("pricing"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Crown size={18} /></span>
             {!sidebarCollapsed && (
@@ -2052,7 +2074,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "tickets" ? "active" : ""}`}
-            onClick={() => setActiveTab("tickets")}
+            onClick={() => { setActiveTab("tickets"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><LifeBuoy size={18} /></span>
             {!sidebarCollapsed && (
@@ -2070,7 +2092,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "traffic" ? "active" : ""}`}
-            onClick={() => setActiveTab("traffic")}
+            onClick={() => { setActiveTab("traffic"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><BarChart3 size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Traffic & Analytics</span>}
@@ -2078,7 +2100,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "excel" ? "active" : ""}`}
-            onClick={() => setActiveTab("excel")}
+            onClick={() => { setActiveTab("excel"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><FileSpreadsheet size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Excel Center</span>}
@@ -2086,7 +2108,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "staff" ? "active" : ""}`}
-            onClick={() => setActiveTab("staff")}
+            onClick={() => { setActiveTab("staff"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Users size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Staff & Access</span>}
@@ -2094,7 +2116,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <button
             type="button"
             className={`sidebar-nav-item ${activeTab === "updates" ? "active" : ""}`}
-            onClick={() => setActiveTab("updates")}
+            onClick={() => { setActiveTab("updates"); setMobileSidebarOpen(false); }}
           >
             <span className="sidebar-nav-icon"><Bell size={18} /></span>
             {!sidebarCollapsed && <span className="sidebar-nav-label">Push Updates</span>}
@@ -2102,13 +2124,24 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         </div>
 
         {/* Sidebar Footer User Info */}
-        {!sidebarCollapsed && (
+        {(!sidebarCollapsed || mobileSidebarOpen) && (
           <div className="sidebar-footer-user">
-            <span className="sidebar-user-avatar">ROOT</span>
-            <div className="sidebar-user-details">
-              <span className="sidebar-user-email">{user?.email || "tyresathi@gmail.com"}</span>
-              <span className="sidebar-user-badge">Super Admin</span>
+            <div className="sidebar-footer-user-row">
+              <span className="sidebar-user-avatar">ROOT</span>
+              <div className="sidebar-user-details">
+                <span className="sidebar-user-email">{user?.email || "tyresathi@gmail.com"}</span>
+                <span className="sidebar-user-badge">Super Admin</span>
+              </div>
             </div>
+            <Link
+              to="/"
+              className="sidebar-exit-store-link"
+              onClick={() => setMobileSidebarOpen(false)}
+              title="Exit Admin Panel & View Customer App"
+            >
+              <Home size={13} />
+              <span>← Exit to Main App</span>
+            </Link>
           </div>
         )}
       </aside>
@@ -2118,13 +2151,23 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         {/* Floating Return Bar when in other tabs */}
         {activeTab !== "overview" && (
           <div className="admin-subtab-top-bar">
-            <button
-              type="button"
-              onClick={() => setActiveTab("overview")}
-              className="btn-back-to-dashboard"
-            >
-              <ArrowLeft size={15} /> ← Back to Dashboard
-            </button>
+            <div className="admin-subtab-nav-actions">
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="btn-admin-mobile-sections show-on-mobile-only"
+                aria-label="Open Admin Sections Drawer"
+              >
+                <LayoutGrid size={15} /> <span>Sections</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("overview")}
+                className="btn-back-to-dashboard"
+              >
+                <ArrowLeft size={15} /> ← Back to Dashboard
+              </button>
+            </div>
             <div className="subtab-section-tag">
               <span>Current Section:</span>
               <strong>{activeTab.toUpperCase()}</strong>
@@ -2145,6 +2188,14 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           <div className="dark-dash-header">
             <div className="dark-dash-title-wrap">
               <div className="dark-dash-title-row">
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="btn-admin-mobile-sections show-on-mobile-only"
+                  aria-label="Open Admin Menu"
+                >
+                  <LayoutGrid size={15} /> <span>Menu</span>
+                </button>
                 <h1 className="dark-dash-title">Dashboard</h1>
                 <span className="dark-dash-live-badge">Live System</span>
               </div>
@@ -2273,7 +2324,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                     <circle cx="440" cy="22" r="5.5" fill="#c0392b" stroke="#ffffff" strokeWidth="2" filter="url(#glowBlue)" />
                   </svg>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "12px", borderTop: "1px solid #f1f5f9", paddingTop: "10px" }}>
+                <div className="dark-traffic-stat-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "12px", borderTop: "1px solid #f1f5f9", paddingTop: "10px" }}>
                   <div>
                     <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block" }}>Registered Users</span>
                     <strong style={{ fontSize: "1.1rem", color: "#0f172a" }}>{users.length}</strong>
@@ -2358,7 +2409,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                         <div className="dark-item-info">
                           <div className="dark-item-title">{shop.shopName || shop.name}</div>
                           <div className="dark-item-sub">
-                            {formatSafeText(shop.city, "India")} • 📞 {formatSafeText(shop.phone, "—")}
+                            {formatSafeText(shop.city?.trim() || (shop.address ? shop.address.split(",").slice(-2)[0]?.trim() : "") || shop.state, "Raipur")} • 📞 {formatSafeText(shop.phone, "—")}
                           </div>
                         </div>
                         <span className={`dark-pill-badge ${shop.shopApproved !== false ? "pill-confirmed" : "pill-pending"}`}>
@@ -7417,16 +7468,142 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           position: relative;
         }
 
-        @media (max-width: 768px) {
+        .admin-sidebar-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.72) !important;
+          backdrop-filter: blur(4px) !important;
+          -webkit-backdrop-filter: blur(4px) !important;
+          z-index: 99998 !important;
+          cursor: pointer;
+        }
+
+        .admin-sidebar-mobile-close {
+          display: none;
+        }
+
+        .btn-admin-mobile-sections {
+          display: none;
+        }
+
+        .sidebar-footer-user-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .sidebar-exit-store-link {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          margin-top: 8px;
+          padding: 7px 10px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          color: #475569;
+          text-decoration: none;
+          font-size: 11.5px;
+          font-weight: 700;
+          transition: all 0.15s ease;
+        }
+        .sidebar-exit-store-link:hover,
+        .sidebar-exit-store-link:active {
+          background: #fee2e2;
+          color: #c0392b;
+          border-color: #fca5a5;
+        }
+
+        @media (max-width: 900px) {
           .admin-enterprise-sidebar {
             position: fixed;
             left: 0;
             top: 0;
             bottom: 0;
-            z-index: 999;
+            width: 300px;
+            max-width: 86vw;
+            min-width: 0 !important;
+            z-index: 99999 !important;
+            transform: translateX(-100%);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 6px 0 32px rgba(0, 0, 0, 0.35);
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding-top: max(env(safe-area-inset-top, 0px), 8px);
+            padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+          }
+          .admin-enterprise-sidebar.mobile-open {
+            transform: translateX(0);
           }
           .admin-enterprise-main {
-            padding: 14px;
+            width: 100% !important;
+            max-width: 100vw !important;
+            flex: 1;
+            padding: 10px 8px 36px !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+          }
+          .admin-sidebar-mobile-close {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #0f172a;
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+          }
+          .admin-sidebar-mobile-close:hover,
+          .admin-sidebar-mobile-close:active {
+            background: #fee2e2;
+            color: #c0392b;
+            border-color: #fca5a5;
+            transform: scale(0.92);
+          }
+          .btn-admin-mobile-sections {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #c0392b;
+            color: #ffffff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+            white-space: nowrap;
+          }
+          .btn-admin-mobile-sections:hover {
+            background: #a93226;
+          }
+          .admin-subtab-nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+          }
+          .admin-subtab-top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+          }
+          .btn-back-to-dashboard {
+            font-size: 12px;
+            padding: 6px 10px;
+          }
+          .subtab-section-tag {
+            font-size: 12px;
           }
         }
 
@@ -10954,6 +11131,484 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         }
         .btn-quick-call:hover {
           background: #e2e8f0;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════
+           📱 ULTRA MOBILE RESPONSIVENESS OVERRIDES (MAX-WIDTH: 768px & 420px)
+           Permanently prevents horizontal overflow, cut-off cards & clipped badges
+        ══════════════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+          /* Root Admin Shell & Viewport Containment */
+          .admin-enterprise-shell {
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+          }
+
+          .admin-enterprise-main {
+            width: 100% !important;
+            max-width: 100vw !important;
+            padding: 10px 8px 48px !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+          }
+
+          .dark-enterprise-dashboard,
+          .admin-section-container,
+          .bookings-modern-container,
+          .admin-traffic-analytics-container,
+          .admin-excel-center,
+          .admin-page-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            gap: 12px !important;
+          }
+
+          /* 2-Column Cockpit Layout on mobile: Strict 1-column with 0-overflow */
+          .dark-cockpit-grid {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 12px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dark-cockpit-col {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            gap: 12px !important;
+            box-sizing: border-box !important;
+          }
+
+          /* Cockpit Cards: Compact padding, full containment */
+          .dark-card {
+            padding: 12px 10px !important;
+            border-radius: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+          }
+
+          /* Card Headers: Flexible title with ellipsis & compact action button */
+          .dark-card-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 6px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin-bottom: 10px !important;
+          }
+
+          .dark-card-title {
+            font-size: 0.95rem !important;
+            font-weight: 800 !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+
+          .dark-card-link {
+            font-size: 0.72rem !important;
+            font-weight: 750 !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+            gap: 2px !important;
+            padding: 3px 6px !important;
+            background: #eff6ff !important;
+            border-radius: 6px !important;
+          }
+
+          .dark-card-link svg {
+            width: 12px !important;
+            height: 12px !important;
+          }
+
+          /* Card Item List: Prevent badge clipping */
+          .dark-item-list {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dark-list-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 8px 6px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+          }
+
+          .dark-item-icon-box {
+            width: 32px !important;
+            height: 32px !important;
+            min-width: 32px !important;
+            border-radius: 8px !important;
+            flex-shrink: 0 !important;
+          }
+
+          .dark-item-icon-box svg {
+            width: 15px !important;
+            height: 15px !important;
+          }
+
+          .dark-item-info {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+          }
+
+          .dark-item-title {
+            font-size: 0.86rem !important;
+            font-weight: 750 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            line-height: 1.25 !important;
+          }
+
+          .dark-item-sub {
+            font-size: 0.72rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            line-height: 1.2 !important;
+            color: #64748b !important;
+            margin-top: 2px !important;
+          }
+
+          .dark-pill-badge {
+            font-size: 0.68rem !important;
+            font-weight: 800 !important;
+            padding: 3px 7px !important;
+            border-radius: 9999px !important;
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+          }
+
+          /* Traffic & Operations stats grid */
+          .dark-traffic-stat-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 4px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin-top: 8px !important;
+            padding-top: 8px !important;
+          }
+
+          .dark-traffic-stat-grid > div {
+            min-width: 0 !important;
+            text-align: center !important;
+            overflow: hidden !important;
+          }
+
+          .dark-traffic-stat-grid span {
+            font-size: 0.65rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            display: block !important;
+          }
+
+          .dark-traffic-stat-grid strong {
+            font-size: 0.95rem !important;
+            display: block !important;
+          }
+
+          /* KPI Grid */
+          .dark-kpi-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dark-kpi-card {
+            padding: 12px 10px !important;
+            border-radius: 12px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+
+          .dark-kpi-top {
+            margin-bottom: 6px !important;
+            gap: 4px !important;
+          }
+
+          .dark-kpi-label {
+            font-size: 0.78rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+
+          .dark-trend-badge {
+            font-size: 0.68rem !important;
+            padding: 2px 6px !important;
+          }
+
+          .dark-kpi-value {
+            font-size: 1.45rem !important;
+            margin-bottom: 4px !important;
+          }
+
+          .dark-kpi-sub {
+            font-size: 0.68rem !important;
+            line-height: 1.25 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+
+          /* Dashboard Header */
+          .dark-dash-header {
+            gap: 10px !important;
+            margin-bottom: 6px !important;
+          }
+
+          .dark-dash-title {
+            font-size: 1.35rem !important;
+          }
+
+          .dark-dash-subtitle {
+            font-size: 0.82rem !important;
+          }
+
+          .dark-dash-actions {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 8px !important;
+            width: 100% !important;
+          }
+
+          .dark-dash-search {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+          }
+
+          .dark-search-input {
+            padding: 8px 12px 8px 34px !important;
+            font-size: 0.82rem !important;
+          }
+
+          .dark-sync-btn {
+            padding: 8px 12px !important;
+            font-size: 0.82rem !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+          }
+
+          /* Subtab Top Bar */
+          .admin-subtab-top-bar {
+            padding: 8px 10px !important;
+            border-radius: 10px !important;
+            margin-bottom: 12px !important;
+            gap: 8px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+
+          .admin-subtab-nav-actions {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            gap: 6px !important;
+          }
+
+          .subtab-section-tag {
+            font-size: 0.78rem !important;
+          }
+
+          /* Tables Across All Tabs (Horizontal Scroll Safe) */
+          .table-responsive,
+          .admin-table-card,
+          .bookings-table-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            box-sizing: border-box !important;
+            border-radius: 10px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .bookings-enterprise-table,
+          .admin-data-table,
+          .traffic-table {
+            min-width: 580px !important;
+          }
+
+          .bookings-filter-bar {
+            padding: 10px 10px !important;
+            border-radius: 10px !important;
+            gap: 8px !important;
+          }
+
+          .bookings-search-input-box {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+
+          .bookings-actions-wrap {
+            width: 100% !important;
+            display: flex !important;
+            gap: 6px !important;
+          }
+
+          .bookings-actions-wrap button {
+            flex: 1 1 auto !important;
+            font-size: 0.74rem !important;
+            padding: 7px 8px !important;
+            justify-content: center !important;
+          }
+
+          .section-toolbar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
+          }
+
+          .section-toolbar .search-bar-wrap {
+            min-width: 100% !important;
+            width: 100% !important;
+          }
+
+          .btn-export-excel-action {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+
+          /* Command Bar */
+          .admin-command-bar {
+            padding: 14px 12px !important;
+            border-radius: 14px !important;
+            margin-bottom: 14px !important;
+          }
+
+          .command-bar-meta {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+
+          /* Traffic Suite */
+          .traffic-banner-header {
+            padding: 14px 12px !important;
+            border-radius: 12px !important;
+            gap: 10px !important;
+          }
+
+          .traffic-title {
+            font-size: 1.15rem !important;
+          }
+
+          .traffic-timeframe-controls {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+
+          .traffic-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+          }
+
+          .traffic-kpi-card {
+            padding: 12px 10px !important;
+          }
+
+          .traffic-charts-two-col {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+
+          .chart-card-box {
+            padding: 14px 12px !important;
+          }
+
+          /* Ads Grid */
+          .admin-ads-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          /* Excel Grid */
+          .excel-cards-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .excel-download-card {
+            padding: 12px 10px !important;
+          }
+
+          .btn-download-csv {
+            width: 100% !important;
+            justify-content: center !important;
+            font-size: 0.78rem !important;
+          }
+
+          /* Module shortcuts */
+          .admin-quick-links-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          /* Modals on Mobile */
+          .modal-backdrop {
+            padding: 10px !important;
+          }
+
+          .modal-card {
+            padding: 16px 12px !important;
+            max-height: 92vh !important;
+            width: 100% !important;
+            border-radius: 12px !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .dark-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .traffic-kpi-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .dark-card-title {
+            font-size: 0.88rem !important;
+          }
+
+          .dark-item-title {
+            font-size: 0.82rem !important;
+          }
+
+          .dark-item-sub {
+            font-size: 0.68rem !important;
+          }
         }
       `}</style>
     </div>
