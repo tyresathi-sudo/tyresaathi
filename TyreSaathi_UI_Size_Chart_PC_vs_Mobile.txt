@@ -14,18 +14,18 @@ Tablet / Small Laptop    640px - 1024px         @media (min-width: 640px)      2
 Desktop / PC (Large)     >= 1024px              @media (min-width: 1024px)     100% Full Width, Auto-fill cards grid, permanent sidebar, fluid spacing
 
 --------------------------------------------------------------------------------
-2. TYPOGRAPHY SIZE CHART (FONT SCALING)
+2. TYPOGRAPHY SIZE CHART (FONT SCALING) [-1px COMPACT PERFECTION]
 --------------------------------------------------------------------------------
 Element / Text Type          PC / Desktop Size        Mobile Size              Weight          Line Height
 --------------------------------------------------------------------------------
-Page Title (H1)              24px - 30px (clamp)      19px - 22px (1.25-1.4r)  800 (ExtraBold) 1.2 - 1.25
-Section Headings (H2)        18px - 20px (1.15-1.25r) 15px - 16px (0.95-1.0r) 700 - 800       1.3
-Card Title / Service (H3)    17px - 19px (1.05-1.20r) 14px - 15px (0.90-0.95r) 800 (Bold)      1.3
-Price (Selling / MRP)        24px - 26px              19px - 21px              800 - 900       1.1
-Body / Description Text      15px - 16px (0.92-0.98r) 13px - 14px (0.82-0.88r) 500 - 600       1.5 - 1.65
-Secondary / Subtext / Dates  13px - 14px (0.82-0.88r) 11px - 12px (0.72-0.78r) 500 (Medium)   1.35 - 1.45
-Badges / Status Chips / Tags 12px - 13px (0.75-0.82r) 10.5px - 11.5px (0.70r) 700 - 800       1.0
-Primary Button Text          14.5px - 15px            13px - 14px              800 (ExtraBold) 1.0
+Page Title (H1)              23px - 29px (clamp)      18px - 21px (1.18-1.35r) 800 (ExtraBold) 1.2 - 1.25
+Section Headings (H2)        17px - 19px (1.08-1.20r) 14px - 15px (0.88-0.95r) 700 - 800       1.3
+Card Title / Service (H3)    16px - 18px (1.00-1.12r) 13px - 14px (0.82-0.88r) 800 (Bold)      1.3
+Price (Selling / MRP)        23px - 25px              18px - 20px              800 - 900       1.1
+Body / Description Text      14px - 15px (0.88-0.94r) 12px - 13px (0.75-0.82r) 500 - 600       1.5 - 1.65
+Secondary / Subtext / Dates  12px - 13px (0.75-0.82r) 10px - 11px (0.65-0.72r) 500 (Medium)   1.35 - 1.45
+Badges / Status Chips / Tags 11px - 12px (0.70-0.75r) 9.5px - 10.5px (0.62r)  700 - 800       1.0
+Primary Button Text          13.5px - 14px            12px - 13px              800 (ExtraBold) 1.0
 
 --------------------------------------------------------------------------------
 3. PAGE CONTAINERS & SPACING (FULL WIDTH vs SAFE PADDING)
@@ -33,10 +33,10 @@ Primary Button Text          14.5px - 15px            13px - 14px              8
 Component                    PC / Desktop Sizing                 Mobile Sizing
 --------------------------------------------------------------------------------
 Page Container Width         width: 100%; max-width: 100%;       width: 100%; max-width: 100%;
-Page Outer Padding           8px 0px 60px                        4px 0px 60px
-Card Inner Padding           18px - 24px                         12px - 14px
-Card Border Radius           14px - 16px                         12px
-Gap Between Cards            18px - 22px                         12px - 14px
+Page Outer Padding           7px 0px 59px                        3px 0px 59px
+Card Inner Padding           17px - 23px                         11px - 13px
+Card Border Radius           13px - 15px                         11px
+Gap Between Cards            17px - 21px                         11px - 13px
 
 --------------------------------------------------------------------------------
 4. COMPONENT-WISE GRIDS & LAYOUT RULES
@@ -48,16 +48,16 @@ A. LEFT SIDEBAR & DRAWER:
      * Background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)
      * Text Color: #ffffff (Bold 800)
      * Icon Badge: rgba(255, 255, 255, 0.22) frosted white
-     * Padding: 8px 12px | Border Radius: 10px
+     * Padding: 7px 11px | Border Radius: 9px
      * Shadow: 0 4px 14px rgba(192, 57, 43, 0.35)
 
 B. SEARCH TYRE CATALOG (/search):
-   - Desktop Grid: repeat(auto-fill, minmax(290px, 1fr)) (3 to 4 cards per row)
+   - Desktop Grid: repeat(auto-fill, minmax(280px, 1fr)) (3 to 4 cards per row)
    - Mobile Grid: 1fr (Single column)
-   - Image Height: Desktop 240px | Mobile 200px
+   - Image Height: Desktop 230px | Mobile 190px
 
 C. CUSTOMER SERVICE BOOKINGS (/bookings):
-   - Desktop Grid: repeat(auto-fill, minmax(420px, 1fr)) (2 cards per row)
+   - Desktop Grid: repeat(auto-fill, minmax(410px, 1fr)) (2 cards per row)
    - Mobile Grid: 1fr (Single column stacked)
    - Status Filter Tabs: Desktop row wrapped | Mobile horizontal scrollable
 
@@ -75,18 +75,18 @@ F. SETTINGS & PREFERENCES (/settings):
 G. LEGAL PAGES (Privacy Policy, Terms of Service, Disclaimer):
    - Container: width: 100%; max-width: 100%;
    - Top-Right Close (X) Button:
-     * Desktop: 44px x 44px circular (top: 18px; right: 18px;)
-     * Mobile: 38px x 38px circular (top: 14px; right: 14px;)
+     * Desktop: 43px x 43px circular (top: 17px; right: 17px;)
+     * Mobile: 37px x 37px circular (top: 13px; right: 13px;)
 
 --------------------------------------------------------------------------------
 5. TOUCH TARGETS & ACTION BUTTONS (PLAY STORE COMPLIANT)
 --------------------------------------------------------------------------------
 Control Type                 PC Dimensions                       Mobile Dimensions
 --------------------------------------------------------------------------------
-Primary Action Button        padding: 10px 18px (Height: 42px)   padding: 10px 14px (Height: 42px - 44px)
-Top-Right Close (X) Button   44px x 44px circular                38px x 38px circular
-Call / WhatsApp Quick Pills  padding: 8px 14px                   padding: 8px 10px (50%-50% split)
-Bottom Navigation Bar        Hidden on PC                        Height: 60px (Fixed at bottom)
+Primary Action Button        padding: 9px 17px (Height: 41px)    padding: 9px 13px (Height: 41px - 43px)
+Top-Right Close (X) Button   43px x 43px circular                37px x 37px circular
+Call / WhatsApp Quick Pills  padding: 7px 13px                   padding: 7px 9px (50%-50% split)
+Bottom Navigation Bar        Hidden on PC                        Height: 59px (Fixed at bottom)
 
 ================================================================================
                       FILE GENERATED FOR LOCAL REFERENCE

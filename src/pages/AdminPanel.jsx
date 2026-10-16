@@ -91,6 +91,12 @@ import {
   getUpiQrCodeUrl, 
   DEFAULT_BANK_CONFIG 
 } from "../config/paymentConfig";
+import { 
+  getSupportContactConfig, 
+  saveSupportContactConfig, 
+  fetchLiveSupportContactConfig,
+  DEFAULT_SUPPORT_CONFIG 
+} from "../config/supportConfig";
 
 export const DEFAULT_SERVICE_CATEGORIES = [
   { id: "srv_puncture", category: "Puncture & Tube", name: "Tubeless Puncture Repair (पंचर रिपेयर)", rate: 200, type: "service", icon: "🛠️", description: "Tubeless tyre puncture repair with rubber strip plug", active: true },
@@ -683,6 +689,32 @@ export default function AdminPanel() {
 
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
+  const [userRoleFilterTab, setUserRoleFilterTab] = useState("all"); // 'all' | 'shops' | 'customers'
+  const [userCityFilter, setUserCityFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("all"); // 'all' | 'verified' | 'unverified'
+
+  // 📞 Live Support Helpline & WhatsApp Contact State
+  const [supportContact, setSupportContact] = useState(getSupportContactConfig);
+  const [supportSaving, setSupportSaving] = useState(false);
+  const [supportSuccessMsg, setSupportSuccessMsg] = useState("");
+
+  const handleSaveSupportContact = async (e) => {
+    if (e) e.preventDefault();
+    setSupportSaving(true);
+    setSupportSuccessMsg("");
+    try {
+      const res = await saveSupportContactConfig(supportContact);
+      if (res) {
+        setSupportSuccessMsg("✅ Support Mobile & WhatsApp number successfully update ho gaya hai! Ye live reflect hoga.");
+        setTimeout(() => setSupportSuccessMsg(""), 5000);
+      }
+    } catch (err) {
+      alert("Support number save karne me samasya aayi: " + err.message);
+    } finally {
+      setSupportSaving(false);
+    }
+  };
+
   const [bookingSearch, setBookingSearch] = useState("");
   const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1313,6 +1345,13 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
             ...data,
             highlights: Array.isArray(data.highlights) ? data.highlights : prev.highlights
           }));
+        }
+        if (d.id === "support_contact") {
+          const sData = d.data();
+          setSupportContact((prev) => ({ ...prev, ...sData }));
+          try {
+            localStorage.setItem("tyresaathi_support_contact_config", JSON.stringify(sData));
+          } catch {}
         }
       });
     } catch (e) {
@@ -3599,119 +3638,347 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       {/* ══════════════════════════════════════════════════════════════════
           TAB 2: SHOPS & USERS MANAGEMENT
       ══════════════════════════════════════════════════════════════════ */}
-      {activeTab === "shops" && (
-        <div className="admin-section-container">
-          <div className="section-toolbar">
-            <div className="search-bar-wrap">
-              <Search size={16} />
-              <input
-                type="text"
-                placeholder="Search by shop name, owner, city, email or phone..."
-                value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
-              />
+      {activeTab === "shops" && (() => {
+        const allShopsCount = (users || []).filter((u) => u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName)).length;
+        const allCustomersCount = (users || []).filter((u) => u.role !== "vendor" && u.role !== "shop_owner" && !u.shopName).length;
+
+        const filteredNetworkUsers = (users || []).filter((u) => {
+          // 1. Role Sub-Tab Filter
+          const isShop = u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName);
+          if (userRoleFilterTab === "shops" && !isShop) return false;
+          if (userRoleFilterTab === "customers" && isShop) return false;
+
+          // 2. City Filter
+          if (userCityFilter !== "all") {
+            const uCity = (u.city || u.location || "").toLowerCase().trim();
+            if (!uCity.includes(userCityFilter.toLowerCase().trim())) return false;
+          }
+
+          // 3. Status Filter (For shops)
+          if (userStatusFilter === "verified" && u.shopApproved !== true) return false;
+          if (userStatusFilter === "unverified" && u.shopApproved === true) return false;
+
+          // 4. Search Filter (Phone, Name, Shop, Email, City)
+          if (searchUser.trim()) {
+            const q = searchUser.toLowerCase().trim();
+            const matchesName = (u.name || "").toLowerCase().includes(q);
+            const matchesShop = (u.shopName || "").toLowerCase().includes(q);
+            const matchesEmail = (u.email || "").toLowerCase().includes(q);
+            const matchesPhone = (u.phone || u.phoneNumber || "").toLowerCase().includes(q);
+            const matchesCity = (u.city || u.location || "").toLowerCase().includes(q);
+            if (!matchesName && !matchesShop && !matchesEmail && !matchesPhone && !matchesCity) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        return (
+          <div className="admin-section-container" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* 🔀 3 SUB-TABS: ALL vs SHOPS vs CUSTOMERS (Traffic & Analytics style) */}
+            <div className="analytics-subnav-row" style={{ marginBottom: "0px" }}>
+              <button
+                type="button"
+                className={`subnav-pill ${userRoleFilterTab === "all" ? "subnav-pill-active subnav-all-active" : ""}`}
+                onClick={() => setUserRoleFilterTab("all")}
+              >
+                <LayoutGrid size={18} />
+                <span>All Network & Users (सभी यूज़र्स एवं दुकानें)</span>
+                <span className="subnav-badge" style={{ background: "#059669" }}>{users.length} Total</span>
+              </button>
+
+              <button
+                type="button"
+                className={`subnav-pill ${userRoleFilterTab === "shops" ? "subnav-pill-active subnav-shops-active" : ""}`}
+                onClick={() => setUserRoleFilterTab("shops")}
+              >
+                <Store size={18} />
+                <span>Partner Shops & Hubs (पार्टनर दुकानें)</span>
+                <span className="subnav-badge" style={{ background: "#d97706" }}>{allShopsCount} Shops</span>
+              </button>
+
+              <button
+                type="button"
+                className={`subnav-pill ${userRoleFilterTab === "customers" ? "subnav-pill-active subnav-customers-active" : ""}`}
+                onClick={() => setUserRoleFilterTab("customers")}
+              >
+                <Users size={18} />
+                <span>Registered Customers (ग्राहक)</span>
+                <span className="subnav-badge" style={{ background: "#2563eb" }}>{allCustomersCount} Customers</span>
+              </button>
             </div>
 
-            <button
-              className="btn-export-excel-action"
-              onClick={() => exportUsersToExcel(users)}
-            >
-              <FileSpreadsheet size={15} /> Export Shops to Excel
-            </button>
-          </div>
+            {/* Toolbar: Search, City Filter, Status Filter & Excel Export */}
+            <div className="section-toolbar" style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: 1, minWidth: "280px" }}>
+                <div className="search-bar-wrap" style={{ flex: 1, minWidth: "240px" }}>
+                  <Search size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search by name, shop name, phone, email, city..."
+                    value={searchUser}
+                    onChange={(e) => setSearchUser(e.target.value)}
+                  />
+                </div>
 
-          <div className="admin-table-card">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Shop & Owner Details</th>
-                  <th>Contact Info</th>
-                  <th>Location</th>
-                  <th>Role</th>
-                  <th>Partner Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users
-                  .filter((u) => {
-                    const q = searchUser.toLowerCase();
-                    return (
-                      (u.name || "").toLowerCase().includes(q) ||
-                      (u.email || "").toLowerCase().includes(q) ||
-                      (u.shopName || "").toLowerCase().includes(q) ||
-                      (u.city || u.location || "").toLowerCase().includes(q)
-                    );
-                  })
-                  .map((u) => (
-                    <tr key={u.uid}>
-                      <td>
-                        <strong className="shop-title-name">{u.shopName && u.shopName !== "—" ? u.shopName : u.name}</strong>
-                        <small className="user-subtext">Owner: {u.name || "User"}</small>
-                      </td>
-                      <td>
-                        <span>📞 {u.phone || "—"}</span>
-                        <small className="user-subtext">✉️ {u.email || "—"}</small>
-                      </td>
-                      <td>
-                        <span>{u.city || u.location || "Raipur"}</span>
-                        <small className="user-subtext">{u.address || `${u.city || "Raipur"}, India`}</small>
-                      </td>
-                      <td>
-                        <span className={`role-badge role-${u.role}`}>{u.role.toUpperCase()}</span>
-                      </td>
-                      <td>
-                        {u.role === "vendor" || u.role === "admin" ? (
-                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                            {u.shopApproved ? (
-                              <span className="badge-verified">✓ Verified Hub</span>
-                            ) : (
-                              <span className="badge-unverified">⏳ Pending Approval</span>
-                            )}
-                            <span style={{
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              padding: "2px 8px",
-                              borderRadius: "12px",
-                              display: "inline-block",
-                              width: "fit-content",
-                              background: u.subscriptionPlan === "elite_vip" ? "#fef3c7" : u.subscriptionPlan === "pro_partner" ? "#e0e7ff" : "#ecfdf5",
-                              color: u.subscriptionPlan === "elite_vip" ? "#92400e" : u.subscriptionPlan === "pro_partner" ? "#3730a3" : "#065f46",
-                              border: "1px solid currentColor"
-                            }}>
-                              {u.subscriptionPlan === "elite_vip" ? "👑 Elite VIP" : u.subscriptionPlan === "pro_partner" ? "⭐ Pro Partner" : "🟢 Lifetime Free (₹0)"}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-muted">Customer</span>
-                        )}
-                      </td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        {(u.role === "vendor" || u.role === "admin") && (
-                          <button
-                            className={`btn-approval-toggle ${u.shopApproved ? "btn-unapprove" : "btn-approve"}`}
-                            onClick={() => handleToggleShopApproval(u.uid)}
-                            style={{ marginRight: "6px" }}
-                          >
-                            {u.shopApproved ? "Revoke Verification" : "✅ Approve Shop"}
-                          </button>
-                        )}
-                        <button
-                          className="btn-icon-ad"
-                          onClick={() => handleDeleteUser(u.uid)}
-                          title="Delete User / Shop Record"
-                          style={{ verticalAlign: "middle" }}
-                        >
-                          <Trash2 size={15} color="#c0392b" />
-                        </button>
+                {/* City Filter */}
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Filter size={15} color="#64748b" />
+                  <select
+                    value={userCityFilter}
+                    onChange={(e) => setUserCityFilter(e.target.value)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      background: "#ffffff",
+                      color: "#0f172a"
+                    }}
+                  >
+                    <option value="all">🌐 All Cities (सभी शहर)</option>
+                    {POPULAR_CITIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter for Shops */}
+                {(userRoleFilterTab === "all" || userRoleFilterTab === "shops") && (
+                  <select
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "8px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      background: "#ffffff",
+                      color: "#0f172a"
+                    }}
+                  >
+                    <option value="all">⚡ All Status (सभी)</option>
+                    <option value="verified">✅ Verified Hubs Only</option>
+                    <option value="unverified">⏳ Pending Approval Only</option>
+                  </select>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="btn-export-excel-action"
+                onClick={() => exportUsersToExcel(filteredNetworkUsers)}
+              >
+                <FileSpreadsheet size={15} /> Export ({filteredNetworkUsers.length}) to Excel
+              </button>
+            </div>
+
+            {/* Table View */}
+            <div className="admin-table-card">
+              <table className="admin-data-table">
+                <thead>
+                  {userRoleFilterTab === "customers" ? (
+                    <tr>
+                      <th>Customer Details</th>
+                      <th>Contact Info</th>
+                      <th>Location</th>
+                      <th>Service Bookings</th>
+                      <th>Account Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : userRoleFilterTab === "shops" ? (
+                    <tr>
+                      <th>Shop & Owner Details</th>
+                      <th>Contact Info</th>
+                      <th>Location</th>
+                      <th>Category & Services</th>
+                      <th>Partner Status & Plan</th>
+                      <th>Actions</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th>Shop / Customer Details</th>
+                      <th>Contact Info</th>
+                      <th>Location</th>
+                      <th>Role</th>
+                      <th>Verification & Plan</th>
+                      <th>Actions</th>
+                    </tr>
+                  )}
+                </thead>
+                <tbody>
+                  {filteredNetworkUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: "center", padding: "36px 16px", color: "#64748b" }}>
+                        <div style={{ fontSize: "28px", marginBottom: "8px" }}>🔍</div>
+                        <strong style={{ fontSize: "15px", color: "#0f172a", display: "block" }}>No records match your filters</strong>
+                        <span>Try clearing your search query or city filter.</span>
                       </td>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredNetworkUsers.map((u) => {
+                      const isShop = u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName);
+                      const userPhone = u.phone || u.phoneNumber || "";
+                      const userBookingsCount = bookings.filter((b) => b.customerPhone === userPhone || b.userId === u.uid).length;
+
+                      return (
+                        <tr key={u.uid || `user_${u.phone || Math.random()}`}>
+                          <td>
+                            <strong className="shop-title-name">
+                              {isShop ? (u.shopName && u.shopName !== "—" ? u.shopName : u.name) : (u.name || "Customer")}
+                            </strong>
+                            <small className="user-subtext">
+                              {isShop ? `Owner: ${u.name || "Partner"}` : `ID: ${u.uid?.slice(0, 16) || "Mobile User"}`}
+                            </small>
+                          </td>
+                          <td>
+                            {userPhone ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <a
+                                  href={`tel:${userPhone}`}
+                                  style={{ color: "#0f172a", fontWeight: "700", textDecoration: "none" }}
+                                  title="Call user"
+                                >
+                                  📞 {userPhone}
+                                </a>
+                                <a
+                                  href={`https://wa.me/91${userPhone.replace(/\D/g, "").slice(-10)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Chat on WhatsApp"
+                                  style={{ color: "#25D366", fontSize: "14px", textDecoration: "none" }}
+                                >
+                                  💬
+                                </a>
+                              </div>
+                            ) : (
+                              <span>📞 —</span>
+                            )}
+                            <small className="user-subtext">✉️ {u.email || "—"}</small>
+                          </td>
+                          <td>
+                            <span>{u.city || u.location || "Raipur"}</span>
+                            <small className="user-subtext">{u.address || `${u.city || "Raipur"}, India`}</small>
+                          </td>
+
+                          {/* Dynamic 4th column */}
+                          {userRoleFilterTab === "customers" ? (
+                            <td>
+                              <span style={{ fontWeight: 750, color: "#2563eb" }}>
+                                📅 {userBookingsCount} {userBookingsCount === 1 ? "Booking" : "Bookings"}
+                              </span>
+                              <small className="user-subtext">Joined: {formatSafeDate(u.createdAt, "Recent")}</small>
+                            </td>
+                          ) : userRoleFilterTab === "shops" ? (
+                            <td>
+                              <span style={{ fontWeight: 650, color: "#334155" }}>
+                                🛠️ {u.shopCategory === "CAT_TYRE_SALES" ? "Tyre Dealer" : "Puncture & Service"}
+                              </span>
+                              <small className="user-subtext">{u.services?.length ? `${u.services.length} services` : "Standard Catalog"}</small>
+                            </td>
+                          ) : (
+                            <td>
+                              <span className={`role-badge role-${isShop ? "vendor" : "customer"}`}>
+                                {isShop ? "🏪 SHOP OWNER" : "👤 CUSTOMER"}
+                              </span>
+                            </td>
+                          )}
+
+                          {/* Dynamic 5th column */}
+                          <td>
+                            {isShop ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                {u.shopApproved ? (
+                                  <span className="badge-verified">✓ Verified Hub</span>
+                                ) : (
+                                  <span className="badge-unverified">⏳ Pending Approval</span>
+                                )}
+                                <span style={{
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  borderRadius: "12px",
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                  background: u.subscriptionPlan === "elite_vip" ? "#fef3c7" : u.subscriptionPlan === "pro_partner" ? "#e0e7ff" : "#ecfdf5",
+                                  color: u.subscriptionPlan === "elite_vip" ? "#92400e" : u.subscriptionPlan === "pro_partner" ? "#3730a3" : "#065f46",
+                                  border: "1px solid currentColor"
+                                }}>
+                                  {u.subscriptionPlan === "elite_vip" ? "👑 Elite VIP" : u.subscriptionPlan === "pro_partner" ? "⭐ Pro Partner" : "🟢 Lifetime Free (₹0)"}
+                                </span>
+                              </div>
+                            ) : (
+                              <span style={{
+                                background: "#f0fdf4",
+                                color: "#16a34a",
+                                border: "1px solid #bbf7d0",
+                                padding: "2px 8px",
+                                borderRadius: "10px",
+                                fontSize: "11.5px",
+                                fontWeight: "700"
+                              }}>
+                                👤 Verified Customer
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Dynamic 6th column: Actions */}
+                          <td style={{ whiteSpace: "nowrap" }}>
+                            {isShop && (
+                              <button
+                                type="button"
+                                className={`btn-approval-toggle ${u.shopApproved ? "btn-unapprove" : "btn-approve"}`}
+                                onClick={() => handleToggleShopApproval(u.uid)}
+                                style={{ marginRight: "6px" }}
+                              >
+                                {u.shopApproved ? "Revoke Verification" : "✅ Approve Shop"}
+                              </button>
+                            )}
+
+                            {userPhone && (
+                              <a
+                                href={`https://wa.me/91${userPhone.replace(/\D/g, "").slice(-10)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-icon-ad"
+                                title="Chat on WhatsApp"
+                                style={{
+                                  verticalAlign: "middle",
+                                  color: "#25D366",
+                                  marginRight: "6px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  textDecoration: "none"
+                                }}
+                              >
+                                <MessageCircle size={15} />
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              className="btn-icon-ad"
+                              onClick={() => handleDeleteUser(u.uid)}
+                              title="Delete Record"
+                              style={{ verticalAlign: "middle" }}
+                            >
+                              <Trash2 size={15} color="#c0392b" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════
           TAB: PLANS & PRICING MANAGER (DYNAMIC REVENUE & LAUNCH CONTROL)
@@ -5312,6 +5579,179 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
               <Check size={18} /> {ticketSuccessMsg}
             </div>
           )}
+
+          {/* 📞 Live Support Helpline & WhatsApp Configuration Manager (Point 7) */}
+          <div style={{
+            background: "#ffffff",
+            border: "1.5px solid #cbd5e1",
+            borderRadius: "14px",
+            padding: "16px 20px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.03)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "10px",
+                  background: "#fee2e2",
+                  color: "#c0392b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "18px"
+                }}>
+                  📞
+                </div>
+                <div>
+                  <h4 style={{ margin: "0 0 2px", fontSize: "15px", fontWeight: "800", color: "#0f172a" }}>
+                    Official Support Helpline & WhatsApp Number Settings
+                  </h4>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
+                    Aap yahan se Calling Helpline Number aur WhatsApp Number kabhi bhi badal sakte hain. Ye turant poori website aur app me live update ho jayega.
+                  </p>
+                </div>
+              </div>
+
+              {supportSuccessMsg && (
+                <div style={{
+                  background: "#dcfce7",
+                  color: "#15803d",
+                  border: "1px solid #86efac",
+                  padding: "6px 14px",
+                  borderRadius: "8px",
+                  fontSize: "12.5px",
+                  fontWeight: "750",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}>
+                  <Check size={16} /> {supportSuccessMsg}
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveSupportContact} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "12px", alignItems: "end" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "750", color: "#334155", marginBottom: "4px" }}>
+                  📞 Call Helpline Mobile Number:
+                </label>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={supportContact.phone}
+                  onChange={(e) => setSupportContact({ ...supportContact, phone: e.target.value })}
+                  placeholder="8877277757"
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13px",
+                    fontWeight: "750",
+                    color: "#0f172a",
+                    outline: "none"
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "750", color: "#334155", marginBottom: "4px" }}>
+                  💬 WhatsApp Support Number:
+                </label>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={supportContact.whatsapp}
+                  onChange={(e) => setSupportContact({ ...supportContact, whatsapp: e.target.value })}
+                  placeholder="8877277757"
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13px",
+                    fontWeight: "750",
+                    color: "#0f172a",
+                    outline: "none"
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "750", color: "#334155", marginBottom: "4px" }}>
+                  ✉️ Support Email Address:
+                </label>
+                <input
+                  type="email"
+                  value={supportContact.email}
+                  onChange={(e) => setSupportContact({ ...supportContact, email: e.target.value })}
+                  placeholder="tyresathi@gmail.com"
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#0f172a",
+                    outline: "none"
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "750", color: "#334155", marginBottom: "4px" }}>
+                  🕒 Operating Hours / Timings:
+                </label>
+                <input
+                  type="text"
+                  value={supportContact.helplineTiming}
+                  onChange={(e) => setSupportContact({ ...supportContact, helplineTiming: e.target.value })}
+                  placeholder="9:00 AM - 9:00 PM (Mon - Sun)"
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: "8px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#0f172a",
+                    outline: "none"
+                  }}
+                />
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={supportSaving}
+                  style={{
+                    width: "100%",
+                    padding: "10px 16px",
+                    background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: "800",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 8px rgba(37,99,235,0.3)"
+                  }}
+                >
+                  <Save size={15} />
+                  <span>{supportSaving ? "Saving..." : "Save Support Numbers"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
 
           <div className="section-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
             <div>
@@ -7412,11 +7852,14 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
         .sidebar-footer-user {
           display: flex;
-          align-items: center;
+          flex-direction: column;
+          align-items: stretch;
           gap: 10px;
           padding: 12px 14px;
           border-top: 1px solid #e2e8f0;
           background: #f8fafc;
+          width: 100%;
+          box-sizing: border-box;
         }
         .sidebar-user-avatar {
           width: 30px;
@@ -7491,28 +7934,34 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           display: flex;
           align-items: center;
           gap: 10px;
+          width: 100%;
+          min-width: 0;
         }
         .sidebar-exit-store-link {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          margin-top: 8px;
-          padding: 7px 10px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
+          gap: 7px;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 12px;
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
           border-radius: 8px;
-          color: #475569;
+          color: #334155;
           text-decoration: none;
-          font-size: 11.5px;
-          font-weight: 700;
+          font-size: 12px;
+          font-weight: 750;
+          white-space: nowrap;
           transition: all 0.15s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
         }
         .sidebar-exit-store-link:hover,
         .sidebar-exit-store-link:active {
           background: #fee2e2;
           color: #c0392b;
           border-color: #fca5a5;
+          transform: translateY(-1px);
         }
 
         @media (max-width: 900px) {
@@ -7835,15 +8284,15 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .dark-kpi-label {
-          font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+          font-size: clamp(0.90rem, 1.1vw, 1.05rem);
           font-weight: 750;
           color: #475569;
         }
         .dark-trend-badge {
-          font-size: clamp(0.76rem, 0.9vw, 0.85rem);
+          font-size: clamp(0.75rem, 0.9vw, 0.84rem);
           font-weight: 800;
           padding: 3px 10px;
           border-radius: 9999px;
@@ -7859,7 +8308,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           border: 1px solid #fecdd3;
         }
         .dark-kpi-value {
-          font-size: clamp(2rem, 3.2vw, 2.85rem);
+          font-size: clamp(1.95rem, 2.9vw, 2.55rem);
           font-weight: 900;
           color: #0f172a;
           letter-spacing: -0.025em;
@@ -9304,75 +9753,95 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         .admin-data-table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 0.75rem;
+          font-size: 14px;
         }
         .admin-data-table th {
-          background: var(--surface-2);
-          padding: 8px 10px;
+          background: #f8fafc;
+          padding: 13px 16px;
           text-align: left;
-          font-weight: 700;
-          color: var(--text-muted);
-          border-bottom: 1px solid var(--border);
-          font-size: 0.72rem;
+          font-weight: 750;
+          color: #475569;
+          border-bottom: 2px solid #e2e8f0;
+          font-size: 12.5px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          white-space: nowrap;
         }
         .admin-data-table td {
-          padding: 8px 10px;
-          border-bottom: 1px solid var(--border);
+          padding: 13px 16px;
+          border-bottom: 1px solid #e2e8f0;
           vertical-align: middle;
+          font-size: 14px;
+        }
+        .admin-data-table tbody tr:hover td {
+          background: #f8fafc;
         }
         .shop-title-name {
-          font-size: 0.8125rem;
-          color: var(--text);
+          font-size: 15px;
+          font-weight: 750;
+          color: #0f172a;
           display: block;
+          line-height: 1.35;
         }
         .user-subtext {
           display: block;
-          font-size: 0.6875rem;
-          color: var(--text-muted);
+          font-size: 12.5px;
+          color: #64748b;
+          margin-top: 3px;
+          line-height: 1.35;
         }
         .role-badge {
-          font-size: 0.6875rem;
+          font-size: 12px;
           font-weight: 800;
-          padding: 2px 5px;
-          border-radius: 4px;
+          padding: 4px 9px;
+          border-radius: 6px;
+          display: inline-block;
+          letter-spacing: 0.3px;
         }
-        .role-admin { background: #fdedec; color: #c0392b; }
-        .role-vendor { background: #ebf5fb; color: #2980b9; }
-        .role-customer { background: #f2f3f4; color: #7f8c8d; }
+        .role-admin { background: #fdedec; color: #c0392b; border: 1px solid #fca5a5; }
+        .role-vendor { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .role-customer { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
         .badge-verified {
-          background: #eafaf1;
-          color: #27ae60;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-weight: 700;
-          font-size: 0.6875rem;
+          background: #ecfdf5;
+          color: #059669;
+          padding: 4px 9px;
+          border-radius: 6px;
+          font-weight: 750;
+          font-size: 12px;
+          border: 1px solid #a7f3d0;
+          display: inline-block;
         }
         .badge-unverified {
-          background: #fef9e7;
-          color: #d35400;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-weight: 700;
-          font-size: 0.6875rem;
+          background: #fffbeb;
+          color: #d97706;
+          padding: 4px 9px;
+          border-radius: 6px;
+          font-weight: 750;
+          font-size: 12px;
+          border: 1px solid #fde68a;
+          display: inline-block;
         }
         .btn-approval-toggle {
           border: none;
-          padding: 5px 10px;
-          border-radius: 6px;
-          font-size: 0.72rem;
-          font-weight: 700;
+          padding: 7px 14px;
+          border-radius: 7px;
+          font-size: 12.5px;
+          font-weight: 750;
           cursor: pointer;
+          transition: all 0.15s ease;
         }
-        .btn-approve { background: #27ae60; color: white; }
-        .btn-unapprove { background: var(--surface-2); color: #c0392b; border: 1px solid var(--border); }
+        .btn-approve { background: #059669; color: white; }
+        .btn-approve:hover { background: #047857; }
+        .btn-unapprove { background: #ffffff; color: #c0392b; border: 1.5px solid #fca5a5; }
+        .btn-unapprove:hover { background: #fee2e2; }
 
         .reg-badge {
           background: var(--bg);
-          padding: 2px 5px;
-          border-radius: 4px;
-          font-weight: 700;
-          font-size: 0.6875rem;
+          padding: 3px 7px;
+          border-radius: 6px;
+          font-weight: 750;
+          font-size: 12px;
           display: inline-block;
           margin-top: 2px;
         }
@@ -9704,17 +10173,18 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
             padding: 9px 14px;
           }
           .admin-data-table {
-            font-size: 0.875rem;
+            font-size: 14px;
           }
           .admin-data-table th {
-            padding: 12px 18px;
-            font-size: 0.775rem;
+            padding: 13px 16px;
+            font-size: 13px;
           }
           .admin-data-table td {
-            padding: 14px 18px;
+            padding: 13px 16px;
+            font-size: 14px;
           }
           .user-subtext {
-            font-size: 0.75rem;
+            font-size: 12.5px;
           }
         }
 
@@ -10886,6 +11356,12 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         .subnav-customers-active {
           background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
           border-color: #1d4ed8 !important;
+          color: #ffffff !important;
+        }
+
+        .subnav-all-active {
+          background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+          border-color: #047857 !important;
           color: #ffffff !important;
         }
 

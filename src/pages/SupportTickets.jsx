@@ -25,6 +25,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore";
+import { getSupportContactConfig } from "../config/supportConfig";
 
 // High quality canvas image compressor (resizes to max 1200px and converts to compact JPEG)
 export const compressImage = (file, maxWidth = 1200, quality = 0.82) => {
@@ -124,6 +125,16 @@ export default function SupportTickets() {
   const [imagePreview, setImagePreview] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
   const [previewModalImg, setPreviewModalImg] = useState(null);
+  const [supportConfig, setSupportConfig] = useState(getSupportContactConfig);
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail) setSupportConfig(e.detail);
+      else setSupportConfig(getSupportContactConfig());
+    };
+    window.addEventListener("tyresaathi_support_config_updated", handleUpdate);
+    return () => window.removeEventListener("tyresaathi_support_config_updated", handleUpdate);
+  }, []);
 
   // Fetch tickets from Firestore or fallback
   useEffect(() => {
@@ -319,19 +330,19 @@ export default function SupportTickets() {
         <div className="channel-card wa-channel">
           <div className="channel-icon">💬</div>
           <div>
-            <h4>Instant WhatsApp Helpdesk (+91 88772 77757)</h4>
+            <h4>Instant WhatsApp Helpdesk (+91 {supportConfig.whatsapp || "88772 77757"})</h4>
             <p>Direct TyreSaathi official support executive se WhatsApp par chat karein.</p>
             <div style={{ display: "flex", gap: "10px", marginTop: "8px", flexWrap: "wrap" }}>
               <a
-                href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur help ki zaroorat hai.")}`}
+                href={`https://wa.me/91${supportConfig.whatsapp || "8877277757"}?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur help ki zaroorat hai.")}`}
                 target="_blank"
                 rel="noreferrer"
                 className="channel-link wa-link"
               >
-                💬 Chat on WhatsApp (8877277757) →
+                💬 Chat on WhatsApp ({supportConfig.whatsapp || "8877277757"}) →
               </a>
               <a
-                href="tel:8877277757"
+                href={`tel:${supportConfig.phone || "8877277757"}`}
                 className="channel-link phone-link"
                 style={{
                   background: "#2c3e50",
@@ -346,7 +357,7 @@ export default function SupportTickets() {
                   gap: "4px"
                 }}
               >
-                📞 Call: 8877277757
+                📞 Call: {supportConfig.phone || "8877277757"}
               </a>
             </div>
           </div>
@@ -357,7 +368,7 @@ export default function SupportTickets() {
           <div>
             <h4>TyreSaathi Resolution Guarantee</h4>
             <p>100% Genuine Tyres, Authorized Fitment & Quick Warranty Settlement.</p>
-            <span className="channel-badge">Support Hours: 24x7 Assistance (8877277757)</span>
+            <span className="channel-badge">Support Hours: {supportConfig.helplineTiming || "24x7 Assistance"} ({supportConfig.phone || "8877277757"})</span>
           </div>
         </div>
       </div>

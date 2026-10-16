@@ -197,19 +197,20 @@ export function AuthProvider({ children }) {
   // Phone OTP Login (For both Customer and Shop Owner)
   async function loginWithPhone(phone, userDocData) {
     const cleanPhone = String(phone).trim().replace(/\D/g, "").slice(-10);
+    const userId = userDocData?.uid || `phone_${cleanPhone}`;
     
     // Create an auth user representation
     const authUser = {
-      uid: userDocData?.uid || `phone_${cleanPhone}`,
+      uid: userId,
       email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
-      displayName: userDocData?.name || userDocData?.shopName || "TyreSaathi User",
+      displayName: userDocData?.name || userDocData?.shopName || `User ${cleanPhone.slice(-4)}`,
       phoneNumber: `+91${cleanPhone}`,
       photoURL: userDocData?.photoURL || "",
     };
 
     const sessionData = {
-      uid: userDocData?.uid || `phone_${cleanPhone}`,
-      name: userDocData?.name || userDocData?.shopName || "TyreSaathi User",
+      uid: userId,
+      name: userDocData?.name || userDocData?.shopName || `User ${cleanPhone.slice(-4)}`,
       email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
       phone: cleanPhone,
       role: userDocData?.role || ROLES.CUSTOMER,
@@ -218,9 +219,27 @@ export function AuthProvider({ children }) {
       shopType: userDocData?.shopType || "Puncture & Service",
       services: userDocData?.services || [],
       address: userDocData?.address || "",
-      city: userDocData?.city || "",
+      city: userDocData?.city || "Raipur",
       photoURL: userDocData?.photoURL || "",
+      updatedAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
     };
+
+    // 🚀 Persist to Firestore "users" collection so mobile user appears in Admin Panel immediately!
+    try {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          ...sessionData,
+          createdAt: serverTimestamp(),
+        }, { merge: true });
+      } else {
+        await setDoc(userRef, sessionData, { merge: true });
+      }
+    } catch (fsErr) {
+      console.warn("Could not save phone user to Firestore:", fsErr);
+    }
 
     setCurrentUser(authUser);
     setUserData(sessionData);

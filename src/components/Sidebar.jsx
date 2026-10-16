@@ -11,6 +11,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { shareApp } from "../utils/nativeBridge.js";
 import { db } from "../firebase.js";
 import { collection, onSnapshot } from "firebase/firestore";
+import { getSupportContactConfig } from "../config/supportConfig.js";
 
 function NavLabelContent({ label, active }) {
   const match = typeof label === "string" ? label.match(/^(.*?)\s*\((.*?)\)$/) : null;
@@ -83,7 +84,18 @@ export default function Sidebar({ open, onClose }) {
     }
   }, [user, isVendor, profile]);
 
-  const supportWhatsappUrl = "https://wa.me/918877277757?text=" + encodeURIComponent("Hello TyreSaathi Support, I need assistance with my account/shop.");
+  const [supportConfig, setSupportConfig] = useState(getSupportContactConfig);
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail) setSupportConfig(e.detail);
+      else setSupportConfig(getSupportContactConfig());
+    };
+    window.addEventListener("tyresaathi_support_config_updated", handleUpdate);
+    return () => window.removeEventListener("tyresaathi_support_config_updated", handleUpdate);
+  }, []);
+
+  const supportWhatsappUrl = `https://wa.me/91${supportConfig.whatsapp || "8877277757"}?text=` + encodeURIComponent("Hello TyreSaathi Support, I need assistance with my account/shop.");
 
   const shopNameDisplay = profile?.shopName || profile?.name || "TyreSaathi Partner";
   const userRoleDisplay = profile?.role === "shop_owner"
@@ -285,22 +297,6 @@ export default function Sidebar({ open, onClose }) {
               )}
             </NavLink>
           ))}
-
-          {/* 📤 Share TyreSaathi App Direct Action */}
-          <button
-            type="button"
-            className="sidebar-link-modern"
-            onClick={() => {
-              shareApp();
-            }}
-            title="Share TyreSaathi App via WhatsApp, SMS, etc."
-          >
-            <div className="nav-icon-badge" style={{ color: "#2563eb", backgroundColor: "#eff6ff" }}>
-              <Share2 size={19} />
-            </div>
-            <NavLabelContent label="Share TyreSaathi App" />
-            <span className="sidebar-share-pill">Indus App</span>
-          </button>
 
           {/* WhatsApp Support Direct Link */}
           <a

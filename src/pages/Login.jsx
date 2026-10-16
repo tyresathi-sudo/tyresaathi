@@ -242,6 +242,18 @@ export default function Login() {
 
     try {
       await loginWithPhone(phone, matchedUser);
+      try {
+        const cleanPhone = phone.trim().replace(/\D/g, "").slice(-10);
+        logUserActivityToSheet({
+          phone: cleanPhone,
+          email: matchedUser?.email || `${cleanPhone}@tyresaathi.in`,
+          name: matchedUser?.name || matchedUser?.shopName || `User ${cleanPhone.slice(-4)}`,
+          role: matchedUser?.role || "customer",
+          action: "phone_login",
+        });
+      } catch (sheetErr) {
+        console.warn("Phone login sheet logging notice:", sheetErr);
+      }
       navigate("/", { replace: true });
     } catch (err) {
       console.error("Phone login error:", err);

@@ -5,11 +5,22 @@ import Sidebar from "./Sidebar.jsx";
 import BottomNav from "./BottomNav.jsx";
 import Footer from "./Footer.jsx";
 import { MessageSquare } from "lucide-react";
+import { getSupportContactConfig } from "../config/supportConfig.js";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [supportConfig, setSupportConfig] = useState(getSupportContactConfig);
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail) setSupportConfig(e.detail);
+      else setSupportConfig(getSupportContactConfig());
+    };
+    window.addEventListener("tyresaathi_support_config_updated", handleUpdate);
+    return () => window.removeEventListener("tyresaathi_support_config_updated", handleUpdate);
+  }, []);
 
   // Prevent document window scrolling on admin routes so topbar and sidebar stay permanently frozen
   useEffect(() => {
@@ -60,7 +71,7 @@ export default function Layout() {
             width: 100% !important;
             max-width: 100vw !important;
             box-sizing: border-box !important;
-            z-index: 100 !important;
+            z-index: 1000 !important;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08) !important;
           }
           .admin-main-viewport {
@@ -74,7 +85,7 @@ export default function Layout() {
             padding: 0 !important;
             margin: 0 !important;
             position: relative;
-            z-index: 200;
+            z-index: 1 !important;
             box-sizing: border-box !important;
           }
         `}</style>
@@ -99,7 +110,7 @@ export default function Layout() {
 
       {/* 💬 Global Floating WhatsApp / Support Widget */}
       <a
-        href={`https://wa.me/918877277757?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur jaankari chahiye.")}`}
+        href={`https://wa.me/91${supportConfig.whatsapp || "8877277757"}?text=${encodeURIComponent("Hello TyreSaathi, mujhe support aur jaankari chahiye.")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="floating-whatsapp-btn"
