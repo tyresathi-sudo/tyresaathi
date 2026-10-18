@@ -44,11 +44,11 @@ export default function Home() {
         const cleaned = parsed.filter(
           (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
         );
-        return cleaned;
+        if (cleaned.length > 0) return cleaned;
       }
-      return [];
+      return INITIAL_SHOP_ADS;
     } catch {
-      return [];
+      return INITIAL_SHOP_ADS;
     }
   });
 

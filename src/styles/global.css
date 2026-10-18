@@ -51,7 +51,7 @@ html {
 
 @media (min-width: 768px) {
   html {
-    font-size: 16px; /* Tablet/Desktop screens (≥ 768px): Standard base font 16px */
+    font-size: 14.5px; /* Tablet/Desktop screens (≥ 768px): Crisp, compact desktop scaling */
   }
 }
 

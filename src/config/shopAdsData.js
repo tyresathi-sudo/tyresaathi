@@ -1,6 +1,25 @@
 // Configuration and default data for Shop Ads / Sponsored Promotions
 
-export const INITIAL_SHOP_ADS = [];
+export const INITIAL_SHOP_ADS = [
+  {
+    id: "ad_bharat_super_tyre",
+    shopName: "Bharat super tyre",
+    tagline: "Type puncture and fitting and lod tyre sale and purchase",
+    offerBadge: "20% OFF + FREE FITMENT",
+    description: "Specialized in quick tyre puncture repair, precision wheel fitting, and authentic new/used tyre sale & purchase.",
+    phone: "7869916626",
+    whatsapp: "7869916626",
+    city: "Raipur",
+    address: "block 10 Transport nagar, Raipur",
+    imageUrl: "",
+    gradient: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)",
+    badgeColor: "#ff4757",
+    isActive: true,
+    featured: true,
+    order: 1,
+    createdAt: "2026-10-18"
+  }
+];
 
 export const AD_THEMES = [
   { id: "blue", name: "Royal Blue", gradient: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)", badgeColor: "#ff4757" },
