@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { 
   Search, 
@@ -44,7 +44,18 @@ export default function Home() {
         const cleaned = parsed.filter(
           (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
         );
-        if (cleaned.length > 0) return cleaned;
+        if (cleaned.length > 0) {
+          const existingNames = new Set(cleaned.map((c) => c.shopName?.toLowerCase().trim()));
+          const missing = INITIAL_SHOP_ADS.filter((init) => !existingNames.has(init.shopName?.toLowerCase().trim()));
+          if (missing.length > 0) {
+            const merged = [...cleaned, ...missing].sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+            try {
+              localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(merged));
+            } catch {}
+            return merged;
+          }
+          return cleaned;
+        }
       }
       return INITIAL_SHOP_ADS;
     } catch {
@@ -52,28 +63,38 @@ export default function Home() {
     }
   });
 
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [featuredProducts, setFeaturedProducts] = useState(() => {
+    try {
+      const cached = localStorage.getItem("tyresaathi_featured_products");
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   useEffect(() => {
     async function fetchAdsAndProducts() {
       try {
-        const snap = await getDocs(collection(db, "shop_ads"));
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          setShopAds(list);
+        const [adsRes, prodRes] = await Promise.allSettled([
+          getDocs(collection(db, "shop_ads")),
+          getDocs(collection(db, "products"))
+        ]);
+
+        if (adsRes.status === "fulfilled" && !adsRes.value.empty) {
+          const list = adsRes.value.docs.map((d) => ({ id: d.id, ...d.data() }));
+          const existingNames = new Set(list.map((c) => c.shopName?.toLowerCase().trim()));
+          const missing = INITIAL_SHOP_ADS.filter((init) => !existingNames.has(init.shopName?.toLowerCase().trim()));
+          const merged = missing.length > 0 ? [...list, ...missing] : list;
+          merged.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+          setShopAds(merged);
           try {
-            localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(list));
+            localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(merged));
           } catch (e) {}
         }
-      } catch (err) {
-        console.warn("Firestore ads load notice:", err);
-      }
 
-      try {
-        const prodSnap = await getDocs(collection(db, "products"));
-        if (!prodSnap.empty) {
-          const prodList = prodSnap.docs
+        if (prodRes.status === "fulfilled" && !prodRes.value.empty) {
+          const prodList = prodRes.value.docs
             .map((d) => ({
               id: d.id,
               distanceKm: (1.2).toFixed(1),
@@ -82,12 +103,12 @@ export default function Home() {
             }))
             .filter((p) => p.published !== false);
           setFeaturedProducts(prodList);
-        } else {
-          setFeaturedProducts([]);
+          try {
+            localStorage.setItem("tyresaathi_featured_products", JSON.stringify(prodList));
+          } catch (e) {}
         }
-      } catch (prodErr) {
-        console.warn("Firestore products load notice:", prodErr);
-        setFeaturedProducts([]);
+      } catch (err) {
+        console.warn("Home data fetch notice:", err);
       } finally {
         setLoadingProducts(false);
       }
@@ -127,15 +148,16 @@ export default function Home() {
     navigate(url);
   };
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const activeAds = shopAds
-    .filter((a) => {
-      if (a.isActive === false) return false;
-      if (a.startDate && a.startDate > todayStr) return false;
-      if (a.endDate && a.endDate.trim() !== "" && a.endDate < todayStr) return false;
-      return true;
-    })
-    .sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+  const activeAds = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    return shopAds
+      .filter((a) => {
+        if (a.isActive === false) return false;
+        if (a.startDate && a.startDate > todayStr) return false;
+        return true;
+      })
+      .sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+  }, [shopAds]);
 
   return (
     <div className="home-page-container">

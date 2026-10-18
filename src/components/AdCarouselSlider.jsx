@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronLeft,
@@ -25,9 +25,13 @@ import { useAuth } from "../context/AuthContext";
 
 export default function AdCarouselSlider({ initialAds, onAdAdded }) {
   const { user, profile, isAdmin } = useAuth();
-  const [ads, setAds] = useState(Array.isArray(initialAds) ? initialAds : []);
+  const ads = useMemo(() => {
+    const list = Array.isArray(initialAds) ? [...initialAds] : [];
+    return list.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+  }, [initialAds]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -78,23 +82,17 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
     }
   };
 
-  // Sync ads if parent passes updated list (strictly sorted by continuous sequence order)
-  useEffect(() => {
-    const list = Array.isArray(initialAds) ? [...initialAds] : [];
-    list.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
-    setAds(list);
-  }, [initialAds]);
-
   // Auto slide every 4.5 seconds
   useEffect(() => {
-    if (ads.length <= 1 || isPaused) return;
+    if (ads.length <= 1) return;
 
     const interval = setInterval(() => {
+      if (isPausedRef.current) return;
       setCurrentIndex((prev) => (prev + 1) % ads.length);
     }, 4500);
 
     return () => clearInterval(interval);
-  }, [ads.length, isPaused]);
+  }, [ads.length]);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % ads.length);
@@ -161,7 +159,6 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       });
       const finalAd = { id: docRef.id, ...adData };
       const updatedList = [finalAd, ...ads];
-      setAds(updatedList);
       localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updatedList }));
       if (onAdAdded) onAdAdded(finalAd);
@@ -169,7 +166,6 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       console.warn("Firestore ad fallback:", err);
       const fallbackAd = { id: "ad-" + Date.now(), ...adData };
       const updatedList = [fallbackAd, ...ads];
-      setAds(updatedList);
       localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updatedList }));
       if (onAdAdded) onAdAdded(fallbackAd);
@@ -212,21 +208,31 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
       {/* Main Sliding Banner Frame */}
       <div
         className="ad-slider-viewport"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
+        onMouseEnter={() => { isPausedRef.current = true; }}
+        onMouseLeave={() => { isPausedRef.current = false; }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         <div
           className="ad-slider-track"
-          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          style={{
+            transform: `translate3d(-${(currentIndex * 100) / (ads.length || 1)}%, 0, 0)`,
+            width: `${(ads.length || 1) * 100}%`
+          }}
         >
           {ads.map((ad, idx) => (
-            <div key={ad.id || idx} className="ad-slide-item">
+            <div
+              key={ad.id || idx}
+              className="ad-slide-item"
+              style={{
+                width: `${100 / (ads.length || 1)}%`,
+                flex: `0 0 ${100 / (ads.length || 1)}%`
+              }}
+            >
               <div
                 className="ad-banner-card"
-                style={{ background: ad.gradient || "linear-gradient(135deg, #870000 0%, #190a05 100%)" }}
+                style={{ background: ad.gradient || "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
               >
                 {/* Top Row: Partner Badge & Offer Pill */}
                 <div className="banner-top-row">
@@ -321,15 +327,25 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
         {ads.length > 1 && (
           <>
             <button
+              type="button"
               className="slider-arrow arrow-left"
-              onClick={handlePrev}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handlePrev();
+              }}
               aria-label="Previous Offer"
             >
               <ChevronLeft size={22} />
             </button>
             <button
+              type="button"
               className="slider-arrow arrow-right"
-              onClick={handleNext}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNext();
+              }}
               aria-label="Next Offer"
             >
               <ChevronRight size={22} />
@@ -343,8 +359,13 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
             {ads.map((_, dotIdx) => (
               <button
                 key={dotIdx}
+                type="button"
                 className={`slider-dot ${currentIndex === dotIdx ? "dot-active" : ""}`}
-                onClick={() => setCurrentIndex(dotIdx)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentIndex(dotIdx);
+                }}
                 aria-label={`Go to slide ${dotIdx + 1}`}
               />
             ))}
@@ -632,13 +653,13 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
 
         .ad-slider-track {
           display: flex;
-          transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-          width: 100%;
+          transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+          will-change: transform;
         }
 
         .ad-slide-item {
-          flex: 0 0 100%;
-          min-width: 100%;
+          box-sizing: border-box;
+          min-width: 0;
         }
 
         .ad-banner-card {

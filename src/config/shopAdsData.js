@@ -2,6 +2,24 @@
 
 export const INITIAL_SHOP_ADS = [
   {
+    id: "ad_chand_babu_tyre",
+    shopName: "Chand Babu Tyre and Services",
+    tagline: "tyre and service",
+    offerBadge: "20% OFF + FREE FITMENT",
+    description: "Specialized in quick tyre repair, puncture fitting, and complete automotive tyre services.",
+    phone: "9135811550",
+    whatsapp: "9135811550",
+    city: "muzaffarpur",
+    address: "bariyarpur, petrol pump, muzaffarpur",
+    imageUrl: "",
+    gradient: "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)",
+    badgeColor: "#ff4757",
+    isActive: true,
+    featured: true,
+    order: 1,
+    createdAt: "2026-10-18"
+  },
+  {
     id: "ad_bharat_super_tyre",
     shopName: "Bharat super tyre",
     tagline: "Type puncture and fitting and lod tyre sale and purchase",
@@ -16,7 +34,7 @@ export const INITIAL_SHOP_ADS = [
     badgeColor: "#ff4757",
     isActive: true,
     featured: true,
-    order: 1,
+    order: 2,
     createdAt: "2026-10-18"
   }
 ];

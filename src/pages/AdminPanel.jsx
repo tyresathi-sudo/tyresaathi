@@ -657,15 +657,20 @@ export default function AdminPanel() {
         const cleaned = parsed.filter(
           (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
         );
-        return cleaned.map((a, idx) => ({
-          ...a,
-          order: typeof a.order === "number" ? a.order : idx + 1,
-          createdAt: a.createdAt || a.startDate || new Date().toISOString()
-        })).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+        if (cleaned.length > 0) {
+          const existingNames = new Set(cleaned.map((c) => c.shopName?.toLowerCase().trim()));
+          const missing = INITIAL_SHOP_ADS.filter((init) => !existingNames.has(init.shopName?.toLowerCase().trim()));
+          const merged = missing.length > 0 ? [...cleaned, ...missing] : cleaned;
+          return merged.map((a, idx) => ({
+            ...a,
+            order: typeof a.order === "number" ? a.order : idx + 1,
+            createdAt: a.createdAt || a.startDate || new Date().toISOString()
+          })).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+        }
       }
-      return [];
+      return INITIAL_SHOP_ADS;
     } catch {
-      return [];
+      return INITIAL_SHOP_ADS;
     }
   });
 
@@ -1516,13 +1521,13 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
   const [versionControl, setVersionControl] = useState({
     latestVersion: "1.2.5",
     buildNumber: 9,
-    downloadUrl: "https://indusapp.store/t5arj7n8",
-    releaseMessage: "TyreSaathi is now officially live on PhonePe Indus Appstore! Download or update for best tyre deals and services.",
+    downloadUrl: "https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.5/TyreSaathi.apk",
+    releaseMessage: "TyreSaathi Official Android App v1.2.5 (Build 9) is live! Download the latest update for 5-tab navigation, deleted accounts audit trail, and instant shop deals.",
     highlights: [
-      "⭐ Real-Time Customer Star Ratings & Review System",
-      "🔔 Live In-App Notifications for Bookings & Store Actions",
-      "🚀 Fast Store Directions & Nearest Tyre Hubs Finder",
-      "📊 Live Analytics & Google Sheet Auto-Sync"
+      "📱 Pixel-Perfect 5-Tab Bottom Navigation Bar (Home, Search, Stores, Invoices, Bookings)",
+      "🗑️ Dedicated Deleted Accounts History & Audit Trail in Master Admin",
+      "⭐ Live Shop Star Ratings & Verified Customer Reviews",
+      "🚀 Direct APK Download (Build 9) with high performance cloud sync"
     ],
     forceUpdate: false // false = allows 'Baad Me Karein (Skip)'
   });
@@ -1955,12 +1960,17 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     setAds((prev) => {
       const updated = prev.map((a) => {
         if (a.id === id) {
-          const nextActive = a.isActive === false ? true : false;
+          const scheduleInfo = getAdScheduleStatus(a);
+          let nextActive = true;
           let newStartDate = a.startDate || today;
           let newEndDate = a.endDate;
 
-          // If turning active and date is expired or in the past, auto-extend to +30 days
-          if (nextActive) {
+          if (scheduleInfo.status === "active") {
+            // Currently active -> Pause the ad
+            nextActive = false;
+          } else {
+            // Currently expired or paused -> Make active & extend dates if expired
+            nextActive = true;
             if (!newEndDate || newEndDate < today) {
               newStartDate = today;
               newEndDate = nextMonth;
