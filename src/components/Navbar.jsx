@@ -40,18 +40,9 @@ export default function Navbar({ onMenuClick }) {
 
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const megaMenuRef = useRef(null);
   const userDropdownRef = useRef(null);
-  const mobileSearchInputRef = useRef(null);
-
-  // Focus mobile search input when opened
-  useEffect(() => {
-    if (mobileSearchOpen && mobileSearchInputRef.current) {
-      mobileSearchInputRef.current.focus();
-    }
-  }, [mobileSearchOpen]);
 
   // Close dropdowns on click outside
   useEffect(() => {
@@ -357,9 +348,6 @@ export default function Navbar({ onMenuClick }) {
                 <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
                   {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
-                <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
-                  <User size={18} />
-                </Link>
               </>
             ) : (
               <>
@@ -375,51 +363,19 @@ export default function Navbar({ onMenuClick }) {
                   <Share2 size={18} />
                 </button>
 
-                <button
-                  className={`mobile-icon-btn ${mobileSearchOpen ? "mobile-icon-active" : ""}`}
-                  onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-                  title="Search Tyres"
-                  aria-label="Search"
-                >
-                  <Search size={19} />
-                </button>
                 {isVendor && (
                   <Link to="/shop/add-product" className="mobile-icon-btn mobile-add-btn" title="Add Product" aria-label="Add Product">
                     <PlusCircle size={19} color="#c0392b" />
                   </Link>
                 )}
+
                 <button className="mobile-icon-btn" onClick={toggleTheme} title="Toggle Theme" aria-label="Toggle Theme">
                   {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
-                <Link to="/profile" className="mobile-icon-btn" title="Profile" aria-label="Profile">
-                  <User size={18} />
-                </Link>
               </>
             )}
           </div>
         </div>
-
-        {/* 📱 Mobile Collapsible Search Row */}
-        {mobileSearchOpen && (
-          <div className="mobile-search-bar-wrap">
-            <form onSubmit={handleSearchSubmit} className="mobile-search-form">
-              <Search size={16} className="mobile-search-icon" />
-              <input
-                ref={mobileSearchInputRef}
-                type="text"
-                placeholder="Search tyres, sizes (e.g. 185/65 R15)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button type="button" className="mobile-search-clear" onClick={() => setSearchQuery("")}>
-                  <X size={15} />
-                </button>
-              )}
-              <button type="submit" className="mobile-search-submit">Search</button>
-            </form>
-          </div>
-        )}
       </div>
 
       <style>{`
