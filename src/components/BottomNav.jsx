@@ -1,13 +1,14 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { Home, Search, Store, Calendar, Menu } from "lucide-react";
+import { Home, Search, Store, Receipt, Calendar } from "lucide-react";
 import { triggerHaptic } from "../utils/nativeBridge.js";
 
-export default function BottomNav({ onMenuClick }) {
+export default function BottomNav() {
   const navLinks = [
     { to: "/", label: "Home", icon: Home, end: true },
     { to: "/search", label: "Search", icon: Search },
     { to: "/store-location", label: "Stores", icon: Store },
+    { to: "/billing", label: "Invoices", icon: Receipt },
     { to: "/bookings", label: "Bookings", icon: Calendar },
   ];
 
@@ -25,28 +26,12 @@ export default function BottomNav({ onMenuClick }) {
             className={({ isActive }) => "bottom-nav-btn" + (isActive ? " bottom-nav-btn-active" : "")}
           >
             <div className="icon-wrapper">
-              <Icon size={18} />
+              <Icon size={19} />
             </div>
             <span className="btn-label">{label}</span>
           </NavLink>
         );
       })}
-
-      {/* ☰ Menu Trigger Button */}
-      <button
-        type="button"
-        onClick={() => {
-          triggerHaptic("medium");
-          if (onMenuClick) onMenuClick();
-        }}
-        className="bottom-nav-btn"
-        aria-label="Open Navigation Menu"
-      >
-        <div className="icon-wrapper">
-          <Menu size={18} />
-        </div>
-        <span className="btn-label">Menu</span>
-      </button>
 
       <style>{`
         .bottom-nav {
@@ -55,62 +40,115 @@ export default function BottomNav({ onMenuClick }) {
           right: 0;
           bottom: 0;
           display: flex;
-          background: var(--surface);
-          border-top: 1px solid var(--border);
-          box-shadow: 0 -4px 18px rgba(0,0,0,0.06);
+          align-items: center;
+          justify-content: space-around;
+          background: #ffffff;
+          border-top: 1px solid #eef2f6;
+          box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.05);
           z-index: 1000;
-          padding-bottom: max(5px, env(safe-area-inset-bottom));
-          padding-top: 3px;
+          padding-top: 6px;
+          padding-bottom: max(6px, env(safe-area-inset-bottom));
         }
+
         .bottom-nav-btn {
           flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 1px;
-          padding: 3px 0 2px;
-          font-size: 10px;
-          font-weight: 700;
-          color: var(--text-muted);
+          gap: 3px;
+          padding: 2px 0 3px;
+          color: #334155;
           text-decoration: none;
           background: none;
           border: none;
           cursor: pointer;
           font-family: inherit;
-          transition: all 0.18s ease;
+          transition: transform 0.15s ease;
           position: relative;
+          -webkit-tap-highlight-color: transparent;
         }
+
         .icon-wrapper {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 22px;
-          border-radius: 11px;
-          transition: all 0.2s ease;
+          width: 46px;
+          height: 26px;
+          border-radius: 13px;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          background: transparent;
         }
+
+        .icon-wrapper svg {
+          stroke: #334155;
+          stroke-width: 2.1px;
+          transition: stroke 0.2s ease, stroke-width 0.2s ease;
+        }
+
+        .btn-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: #334155;
+          line-height: 1.2;
+          letter-spacing: -0.1px;
+          transition: color 0.2s ease;
+        }
+
         .bottom-nav-btn:active {
           transform: scale(0.92);
         }
-        .bottom-nav-btn-active {
-          color: #c0392b !important;
-        }
+
+        /* Active State matching screenshot pixel-for-pixel */
         .bottom-nav-btn-active .icon-wrapper {
-          background: color-mix(in srgb, #c0392b 12%, transparent);
+          background: #fdeeed;
         }
-        .bottom-nav-btn-active svg {
+
+        .bottom-nav-btn-active .icon-wrapper svg {
           stroke: #c0392b;
-          stroke-width: 2.2px;
+          stroke-width: 2.3px;
         }
-        .btn-label {
-          font-size: 10px;
-          line-height: 1.1;
-          letter-spacing: 0.1px;
+
+        .bottom-nav-btn-active .btn-label {
+          color: #c0392b;
+          font-weight: 750;
+        }
+
+        /* Dark Mode Compatibility */
+        [data-theme="dark"] .bottom-nav {
+          background: #0f172a;
+          border-top: 1px solid #1e293b;
+          box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.25);
+        }
+
+        [data-theme="dark"] .bottom-nav-btn {
+          color: #94a3b8;
+        }
+
+        [data-theme="dark"] .icon-wrapper svg {
+          stroke: #94a3b8;
+        }
+
+        [data-theme="dark"] .btn-label {
+          color: #94a3b8;
+        }
+
+        [data-theme="dark"] .bottom-nav-btn-active .icon-wrapper {
+          background: rgba(220, 38, 38, 0.18);
+        }
+
+        [data-theme="dark"] .bottom-nav-btn-active .icon-wrapper svg {
+          stroke: #f87171;
+        }
+
+        [data-theme="dark"] .bottom-nav-btn-active .btn-label {
+          color: #f87171;
         }
 
         @media (min-width: 900px) {
-          .bottom-nav { display: none !important; }
+          .bottom-nav { 
+            display: none !important; 
+          }
         }
       `}</style>
     </nav>

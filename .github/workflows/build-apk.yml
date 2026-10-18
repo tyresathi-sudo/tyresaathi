@@ -77,15 +77,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.2.4
-          name: "TyreSaathi Android App v1.2.4 (Official Release)"
+          tag_name: v1.2.5
+          name: "TyreSaathi Android App v1.2.5 (Official Release - Build 9)"
           body: |
-            ⚡ TyreSaathi Official Android APK Release v1.2.4
-            - 🧹 Clean Mobile Navigation & Header (Shifted About to Menu)
-            - 🏪 Center Store Navigation Tab in Bottom Bar
-            - 🧾 Fully Responsive Billing & Invoicing on Mobile & PC
-            - 📊 Clean Real-time Shop Analytics with Red Wave Trend
-            - 🚀 Enhanced Performance & Live Sync
+            ⚡ TyreSaathi Official Android APK Release v1.2.5 (Build 9)
+            - 🗑️ Dedicated Deleted Accounts History & Audit Trail in Master Admin
+            - 📱 Pixel-perfect 5-Tab Bottom Navigation Bar (Home, Search, Stores, Invoices, Bookings)
+            - 🔒 Secure User Account Deletion with mandatory departure reason & 1-click restore
+            - 📊 Full CSV Export for Deleted Accounts History & Support Records
+            - 🚀 Android Native Build Code 9 Performance & Live Cloud Sync
           draft: false
           prerelease: false
           files: output-apks/*.apk

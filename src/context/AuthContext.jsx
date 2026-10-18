@@ -12,6 +12,7 @@ import {
   deleteUser
 } from "firebase/auth";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { resolveShopCoordinates } from "../utils/geoService";
 
 export const ROLES = {
   CUSTOMER: "customer",
@@ -121,6 +122,18 @@ export function AuthProvider({ children }) {
         console.warn("Could not update displayName", e);
       }
     }
+
+    // Auto-resolve live GPS coordinates if not passed
+    let finalLat = (lat !== null && lat !== undefined && lat !== "" && !isNaN(Number(lat))) ? Number(lat) : null;
+    let finalLng = (lng !== null && lng !== undefined && lng !== "" && !isNaN(Number(lng))) ? Number(lng) : null;
+    if (!finalLat || !finalLng) {
+      const resolved = resolveShopCoordinates({ city, address, shopName, name });
+      if (resolved && resolved.lat && resolved.lng) {
+        finalLat = resolved.lat;
+        finalLng = resolved.lng;
+      }
+    }
+
     const userDocData = {
       uid: cred.user.uid,
       name: name || "",
@@ -132,8 +145,9 @@ export function AuthProvider({ children }) {
       photoURL: "",
       address: address || "",
       city: city || "",
-      lat: (lat !== null && lat !== undefined && lat !== "") ? Number(lat) : null,
-      lng: (lng !== null && lng !== undefined && lng !== "") ? Number(lng) : null,
+      lat: finalLat,
+      lng: finalLng,
+      hasRealGps: Boolean(finalLat && finalLng),
       openingHours: "09:00 AM - 09:00 PM",
       createdAt: serverTimestamp(),
     };
@@ -154,9 +168,28 @@ export function AuthProvider({ children }) {
   async function updateUserProfile(updates) {
     if (!currentUser) return;
     const uid = currentUser.uid;
+
+    let finalLat = updates.lat !== undefined ? updates.lat : userData?.lat;
+    let finalLng = updates.lng !== undefined ? updates.lng : userData?.lng;
+    if (!finalLat || !finalLng) {
+      const resolved = resolveShopCoordinates({
+        city: updates.city || userData?.city,
+        address: updates.address || userData?.address,
+        shopName: updates.shopName || userData?.shopName,
+        name: updates.name || userData?.name
+      });
+      if (resolved && resolved.lat && resolved.lng) {
+        finalLat = resolved.lat;
+        finalLng = resolved.lng;
+      }
+    }
+
     const merged = {
       ...(userData || {}),
       ...updates,
+      lat: finalLat !== undefined ? finalLat : null,
+      lng: finalLng !== undefined ? finalLng : null,
+      hasRealGps: Boolean(finalLat && finalLng),
       uid,
       email: updates.email || userData?.email || currentUser.email,
       updatedAt: serverTimestamp(),
@@ -278,17 +311,58 @@ export function AuthProvider({ children }) {
     return verifyPasswordResetCode(auth, oobCode);
   }
 
-  // Delete User Account and associated profile data (Google Play requirement)
-  async function deleteAccount() {
+  // Delete User Account and archive complete audit trail history (Google Play compliant + Admin Audit Trail)
+  async function deleteAccount(reason = "Account deleted by user via Settings") {
     if (!currentUser) return;
     const uid = currentUser.uid;
+    const isShop = userData?.role === "vendor" || userData?.role === "shop_owner" || Boolean(userData?.shopName);
+
+    // Create comprehensive deleted account history snapshot
+    const deletedRecord = {
+      uid,
+      accountType: isShop ? "shop" : "customer",
+      role: userData?.role || (isShop ? "vendor" : "customer"),
+      name: userData?.name || currentUser.displayName || "Unknown",
+      shopName: userData?.shopName || (isShop ? userData?.name : "") || "—",
+      phone: userData?.phone || userData?.phoneNumber || currentUser.phoneNumber || "—",
+      email: userData?.email || currentUser.email || "—",
+      city: userData?.city || userData?.location || "—",
+      address: userData?.address || "—",
+      state: userData?.state || "—",
+      pincode: userData?.pincode || "—",
+      subscriptionPlan: userData?.subscriptionPlan || "free",
+      joinedAt: userData?.createdAt || "—",
+      deletedAt: new Date().toISOString(),
+      deletedBy: "self",
+      deletedByRole: isShop ? "Shop Owner" : "Customer",
+      deletionReason: reason,
+      profileSnapshot: userData || {}
+    };
+
     try {
-      // 1. Delete Firestore user document
+      // 1. Archive to deleted_accounts collection in Firestore
+      await setDoc(doc(db, "deleted_accounts", uid), deletedRecord, { merge: true });
+    } catch (archiveErr) {
+      console.warn("Could not archive to deleted_accounts Firestore:", archiveErr);
+    }
+
+    // Also persist to local backup
+    try {
+      const local = localStorage.getItem("tyresaathi_deleted_accounts");
+      const existing = local ? JSON.parse(local) : [];
+      const updated = [deletedRecord, ...existing.filter((a) => a.uid !== uid)];
+      localStorage.setItem("tyresaathi_deleted_accounts", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("tyresaathi_account_deleted", { detail: deletedRecord }));
+    } catch (e) {}
+
+    try {
+      // 2. Delete Firestore active user document
       await deleteDoc(doc(db, "users", uid));
     } catch (err) {
       console.warn("Could not delete user firestore record:", err);
     }
-    // 2. Delete Firebase Auth Account
+
+    // 3. Delete Firebase Auth Account
     await deleteUser(currentUser);
     setUserData(null);
     setRole(ROLES.CUSTOMER);

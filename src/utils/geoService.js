@@ -196,6 +196,27 @@ export function resolveShopCoordinates(shop) {
     };
   }
 
+  // 1.5. Check TyreSaathi Verified Network Hubs
+  const checkText = `${shop.name || ""} ${shop.shopName || ""} ${shop.uid || shop.id || ""} ${shop.email || ""}`.toLowerCase();
+  if (checkText.includes("tegiya") || checkText.includes("mohammadraja2977") || checkText.includes("ywvougz5gwgr4zut1ij6x3v4q4p2")) {
+    return { lat: 21.3050, lng: 81.6480, hasExactGps: true, city: "Raipur", state: "Chhattisgarh" };
+  }
+  if (checkText.includes("bharat super") || checkText.includes("mdaamid1213") || checkText.includes("3zsdrgjuhrqytkwetvsq1wcgnsp2")) {
+    return { lat: 21.2514, lng: 81.6296, hasExactGps: true, city: "Raipur", state: "Chhattisgarh" };
+  }
+  if (checkText.includes("tyre saathi") || checkText.includes("bnuumqglppihjgzrobexuob4nd12")) {
+    return { lat: 21.2380, lng: 81.6400, hasExactGps: true, city: "Raipur", state: "Chhattisgarh" };
+  }
+  if (checkText.includes("simana") || checkText.includes("mohammadsultan63786") || checkText.includes("kuywpgeyeyrv9tjqn74mx6cs11r52")) {
+    return { lat: 21.2850, lng: 81.6700, hasExactGps: true, city: "Raipur", state: "Chhattisgarh" };
+  }
+  if (checkText.includes("r k tyre") || checkText.includes("mdasdullah") || checkText.includes("bi33kj9kprpavhwqia6hzwlhupq2")) {
+    return { lat: 26.8378, lng: 89.3804, hasExactGps: true, city: "Jaigaon", state: "West Bengal" };
+  }
+  if (checkText.includes("nidigonda") || checkText.includes("ajharali") || checkText.includes("xj0mi7mmuucsynhrzlma9cjstun2")) {
+    return { lat: 17.7200, lng: 79.2500, hasExactGps: true, city: "Nidigonda", state: "Telangana" };
+  }
+
   // 2. Lookup city name in Indian cities coordinate database
   const cityName = (shop.city || "").toLowerCase().trim();
   if (cityName && INDIAN_CITIES_COORDS[cityName]) {

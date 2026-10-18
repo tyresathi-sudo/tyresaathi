@@ -69,7 +69,7 @@ export async function sendInAppNotification({
 /**
  * Real-time listener for current user's notifications (Strict Privacy: Mobile, Email & Shop Filter)
  */
-export function listenUserNotifications(userId, userRole, onUpdate, profile = null, userObj = null) {
+export function listenUserNotifications(userId, userRole, onUpdate, profile = null, userObj = null, isAdminRoute = false) {
   try {
     const notifRef = collection(db, "notifications");
     
@@ -88,8 +88,59 @@ export function listenUserNotifications(userId, userRole, onUpdate, profile = nu
           const list = snapshot.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((n) => {
-              // 1. Master Admin sees all activity
-              if (isAdmin) return true;
+              // 1. 🛡️ ADMIN PANEL STRICT NOTIFICATIONS:
+              // In Admin Panel or as Admin, ONLY show issues/requests RAISED to Admin
+              // (Support Tickets, Shop Verification Requests, Partner Registrations, Admin Alerts).
+              // STRICTLY EXCLUDE individual shop bookings, customer routine statuses, and reviews!
+              if (isAdminRoute || (isAdmin && userRole === "admin")) {
+                const isRoutineBooking = 
+                  n.type === "booking_created" || 
+                  n.type === "booking_status" || 
+                  n.type === "booking" ||
+                  (n.title && n.title.toLowerCase().includes("booking") && !n.title.toLowerCase().includes("ticket"));
+
+                const isRoutineRating = n.type === "rating_received";
+
+                // Exclude shop-customer bookings & reviews
+                if (isRoutineBooking || isRoutineRating) {
+                  return false;
+                }
+
+                const isRaisedToAdmin =
+                  n.recipientRole === "admin" ||
+                  n.recipientId === "admin" ||
+                  n.type === "ticket_created" ||
+                  n.type === "support_ticket" ||
+                  n.type === "ticket_raised" ||
+                  n.type === "ticket" ||
+                  n.type === "helpdesk" ||
+                  n.type === "shop_registered" ||
+                  n.type === "vendor_registration" ||
+                  n.type === "verification_requested" ||
+                  n.type === "partner_applied" ||
+                  n.type === "admin_alert" ||
+                  n.type === "dispute" ||
+                  n.type === "system_alert" ||
+                  n.type === "subscription_purchased" ||
+                  Boolean(n.data?.ticketNo) ||
+                  (n.title && (
+                    n.title.toLowerCase().includes("ticket") ||
+                    n.title.toLowerCase().includes("support") ||
+                    n.title.toLowerCase().includes("verification") ||
+                    n.title.toLowerCase().includes("registration") ||
+                    n.title.toLowerCase().includes("approval") ||
+                    n.title.toLowerCase().includes("dispute")
+                  ));
+
+                if (isRaisedToAdmin) return true;
+
+                // Broadcast platform announcements meant for Admin or All
+                if (n.recipientId === "all" && (n.recipientRole === "all" || n.recipientRole === "admin")) {
+                  return n.type === "app_update" || n.type === "general" || n.type === "announcement";
+                }
+
+                return false;
+              }
 
               // Check if notification is a personal booking event
               const isBookingNotif = 

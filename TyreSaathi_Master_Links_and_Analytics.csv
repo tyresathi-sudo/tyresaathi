@@ -7,7 +7,7 @@ Indus Appstore Store Listing,Trademark & IP Disclaimer,https://tyresathi-93306.w
 Indus Appstore Store Listing,Developer / Support Email,tyresathi@gmail.com,Active,Primary developer contact email for app store console
 Indus Appstore Store Listing,Support Helpline & WhatsApp,+91 88772 77757,Active,Direct helpline number for customer & store verification
 Indus Appstore Store Listing,Support & Helpdesk Portal,https://tyresathi-93306.web.app/support,Live Production,Customer ticketing & grievance redressal portal
-Official App Package,Release Signed APK Download (v1.2.4),https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.4/TyreSaathi.apk,Active (Direct Download),Direct signed release APK ready to upload on Indus Appstore
+Official App Package,Release Signed APK Download (v1.2.5),https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.5/TyreSaathi.apk,Active (Direct Download),Direct signed release APK ready to upload on Indus Appstore
 Official App Package,Latest Release Hub,https://github.com/tyresathi-sudo/tyresaathi/releases/latest,Active,Official GitHub releases portal with release notes & tags
 CI/CD & Cloud Build,Automated APK Build Workflow,https://github.com/tyresathi-sudo/tyresaathi/actions,Automated,GitHub Actions CI/CD building signed APKs automatically
 Source Code Repository,GitHub Main Repository,https://github.com/tyresathi-sudo/tyresaathi,Active,"Complete source code, React PWA & Android Capacitor code"

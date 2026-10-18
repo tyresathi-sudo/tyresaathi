@@ -26,6 +26,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { getSupportContactConfig } from "../config/supportConfig";
+import { sendInAppNotification } from "../utils/notificationService";
 
 // High quality canvas image compressor (resizes to max 1200px and converts to compact JPEG)
 export const compressImage = (file, maxWidth = 1200, quality = 0.82) => {
@@ -267,6 +268,21 @@ export default function SupportTickets() {
       await addDoc(collection(db, "support_tickets"), {
         ...newTicket,
         timestamp: serverTimestamp(),
+      });
+      // 📢 Notify Master Admin of newly raised support ticket
+      sendInAppNotification({
+        recipientId: "admin",
+        recipientRole: "admin",
+        title: `🎫 New Ticket Raised: ${nextTicketNo}`,
+        message: `${newTicket.userName} raised a ${newTicket.priority.toUpperCase()} priority ticket: "${newTicket.subject}"`,
+        type: "ticket_created",
+        link: "/admin?tab=support",
+        data: {
+          ticketNo: nextTicketNo,
+          category: newTicket.category,
+          userName: newTicket.userName,
+          userPhone: newTicket.userPhone
+        }
       });
     } catch (err) {
       console.warn("Firestore support ticket fallback:", err);

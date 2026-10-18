@@ -128,12 +128,14 @@ export default function Home() {
   };
 
   const todayStr = new Date().toISOString().split("T")[0];
-  const activeAds = shopAds.filter((a) => {
-    if (a.isActive === false) return false;
-    if (a.startDate && a.startDate > todayStr) return false;
-    if (a.endDate && a.endDate.trim() !== "" && a.endDate < todayStr) return false;
-    return true;
-  });
+  const activeAds = shopAds
+    .filter((a) => {
+      if (a.isActive === false) return false;
+      if (a.startDate && a.startDate > todayStr) return false;
+      if (a.endDate && a.endDate.trim() !== "" && a.endDate < todayStr) return false;
+      return true;
+    })
+    .sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
 
   return (
     <div className="home-page-container">

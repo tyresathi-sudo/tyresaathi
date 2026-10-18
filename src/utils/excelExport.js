@@ -223,7 +223,7 @@ export function exportUsersToExcel(users) {
       else if (textToSearch.includes("bilaspur")) finalCity = "Bilaspur";
       else if (textToSearch.includes("bhilai")) finalCity = "Bhilai";
       else if (textToSearch.includes("durg")) finalCity = "Durg";
-      else if (textToSearch.includes("tegiya")) finalCity = "Jaigaon";
+      else if (textToSearch.includes("tegiya") || textToSearch.includes("mohammad raja")) finalCity = "Raipur";
       else if (textToSearch.includes("bharat super")) finalCity = "Raipur";
       else if (textToSearch.includes("tyre saathi")) finalCity = "Raipur";
     }
@@ -237,6 +237,22 @@ export function exportUsersToExcel(users) {
       finalAddress = `${finalCity}, India`;
     }
 
+    // Resolve exact GPS coordinates
+    const resolvedGeo = resolveShopCoordinates({
+      ...u,
+      name: u.shopName || u.name || "",
+      city: finalCity,
+      address: finalAddress,
+      lat: u.lat,
+      lng: u.lng
+    });
+    const lat = resolvedGeo?.lat || u.lat || "";
+    const lng = resolvedGeo?.lng || u.lng || "";
+    const coordsStr = (lat && lng) ? `${lat}, ${lng}` : "Live Mapped";
+    const mapLink = (lat && lng) 
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${finalAddress} ${finalCity}`)}`;
+
     return {
       uid: u.uid || u.id || "N/A",
       name: u.name || u.displayName || u.shopName || "User",
@@ -247,6 +263,8 @@ export function exportUsersToExcel(users) {
       shopApproved: u.shopApproved ? "TRUE" : "FALSE",
       city: finalCity,
       address: finalAddress,
+      gpsCoordinates: coordsStr,
+      mapLink: mapLink,
       createdAt: registeredDate || "28-Sep-2026, 05:47 PM"
     };
   });
@@ -261,6 +279,8 @@ export function exportUsersToExcel(users) {
     shopApproved: "Verified Partner",
     city: "City / Location",
     address: "Address",
+    gpsCoordinates: "Live GPS Coordinates",
+    mapLink: "Google Maps Turn-by-Turn Link",
     createdAt: "Registered Date"
   };
 
@@ -294,7 +314,7 @@ export function exportMasterLinksToExcel() {
     { category: "Indus Appstore Store Listing", name: "Developer / Support Email", url: "tyresathi@gmail.com", status: "Active", desc: "Primary developer contact email for app store console" },
     { category: "Indus Appstore Store Listing", name: "Support Helpline & WhatsApp", url: "+91 88772 77757", status: "Active", desc: "Direct helpline number for customer & store verification" },
     { category: "Indus Appstore Store Listing", name: "Support & Helpdesk Portal", url: "https://tyresathi-93306.web.app/support", status: "Live Production", desc: "Customer ticketing & grievance redressal portal" },
-    { category: "Official App Package", name: "Release Signed APK Download (v1.2.4)", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.4/TyreSaathi.apk", status: "Active (Direct Download)", desc: "Direct signed release APK ready to upload on Indus Appstore" },
+    { category: "Official App Package", name: "Release Signed APK Download (v1.2.5)", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/download/v1.2.5/TyreSaathi.apk", status: "Active (Direct Download)", desc: "Direct signed release APK ready to upload on Indus Appstore" },
     { category: "Official App Package", name: "Latest Release Hub", url: "https://github.com/tyresathi-sudo/tyresaathi/releases/latest", status: "Active", desc: "Official GitHub releases portal with release notes & tags" },
     { category: "CI/CD & Cloud Build", name: "Automated APK Build Workflow", url: "https://github.com/tyresathi-sudo/tyresaathi/actions", status: "Automated", desc: "GitHub Actions CI/CD building signed APKs automatically" },
     { category: "Source Code Repository", name: "GitHub Main Repository", url: "https://github.com/tyresathi-sudo/tyresaathi", status: "Active", desc: "Complete source code, React PWA & Android Capacitor code" },
@@ -320,5 +340,52 @@ export function exportMasterLinksToExcel() {
   };
 
   exportToCSV(masterLinksData, `TyreSaathi_Master_Links_and_Portals_${new Date().toISOString().split("T")[0]}.csv`, headers);
+}
+
+export function exportDeletedAccountsToExcel(deletedList) {
+  const formattedData = (deletedList || []).map((item, index) => {
+    let delDateStr = "";
+    if (item.deletedAt?.seconds) {
+      delDateStr = new Date(item.deletedAt.seconds * 1000).toLocaleString("en-IN");
+    } else if (item.deletedAt) {
+      delDateStr = new Date(item.deletedAt).toLocaleString("en-IN");
+    }
+
+    const isShop = item.accountType === "shop" || item.role === "vendor" || item.role === "shop_owner" || Boolean(item.shopName || item.profileSnapshot?.shopName);
+
+    return {
+      srNo: index + 1,
+      name: item.name || item.shopName || item.profileSnapshot?.name || item.profileSnapshot?.shopName || "N/A",
+      shopName: item.shopName || item.profileSnapshot?.shopName || "-",
+      accountType: isShop ? "Tyre Shop / Dealer" : "Customer / Retail User",
+      phone: item.phone || item.profileSnapshot?.phone || "N/A",
+      email: item.email || item.profileSnapshot?.email || "N/A",
+      city: item.city || item.profileSnapshot?.city || "-",
+      address: item.address || item.profileSnapshot?.address || "-",
+      deletedReason: item.deletedReason || item.reason || "Not Specified",
+      deletedBy: item.deletedBy === "admin" ? "Master Admin" : "Self Deletion (User Requested)",
+      deletedAt: delDateStr || "N/A",
+      plan: item.profileSnapshot?.plan || item.profileSnapshot?.subscriptionPlan || "Standard",
+      userId: item.originalUid || item.id || "N/A"
+    };
+  });
+
+  const headers = {
+    srNo: "S.No",
+    name: "Account / User Name",
+    shopName: "Shop / Business Name",
+    accountType: "Account Type (Shop/Customer)",
+    phone: "Phone Number",
+    email: "Email Address",
+    city: "City / Location",
+    address: "Full Address",
+    deletedReason: "Reason for Deletion",
+    deletedBy: "Terminated By",
+    deletedAt: "Deleted Timestamp",
+    plan: "Subscription Plan",
+    userId: "Original User ID"
+  };
+
+  exportToCSV(formattedData, `TyreSaathi_Deleted_Accounts_Audit_${new Date().toISOString().split("T")[0]}.csv`, headers);
 }
 

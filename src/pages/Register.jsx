@@ -4,7 +4,8 @@ import { useAuth, ROLES } from "../context/AuthContext.jsx";
 import { friendlyError } from "./Login.jsx";
 import { logUserActivityToSheet } from "../utils/googleSheets";
 import { MapPin, Navigation, CheckCircle2, AlertTriangle, Eye, EyeOff } from "lucide-react";
-import { getLiveUserLocation } from "../utils/geoService";
+import { getLiveUserLocation, resolveShopCoordinates } from "../utils/geoService";
+import { sendInAppNotification } from "../utils/notificationService";
 
 export default function Register() {
   const { user, register, loading: authLoading } = useAuth();
@@ -80,6 +81,21 @@ export default function Register() {
     setLoading(true);
     try {
       const cleanEmail = email.trim().toLowerCase();
+      let finalLat = lat;
+      let finalLng = lng;
+      if (!finalLat || !finalLng) {
+        const geo = resolveShopCoordinates({ 
+          city: city.trim(), 
+          address: address.trim(), 
+          shopName: shopName.trim(), 
+          name: name.trim() 
+        });
+        if (geo && geo.lat && geo.lng) {
+          finalLat = geo.lat;
+          finalLng = geo.lng;
+        }
+      }
+
       await register({
         name: name.trim(),
         phone: phone.trim(),
@@ -89,8 +105,8 @@ export default function Register() {
         shopName: shopName.trim(),
         city: city.trim(),
         address: address.trim(),
-        lat: lat || null,
-        lng: lng || null,
+        lat: finalLat || null,
+        lng: finalLng || null,
       });
 
       // Log new registration to Google Sheet
@@ -106,6 +122,29 @@ export default function Register() {
         });
       } catch (sheetErr) {
         console.warn("Sheet logging notice:", sheetErr);
+      }
+
+      // 📢 Notify Master Admin of new Partner Shop registration
+      if (role === ROLES.SHOP_OWNER) {
+        try {
+          sendInAppNotification({
+            recipientId: "admin",
+            recipientRole: "admin",
+            title: `🏪 New Shop Registered: ${shopName.trim()}`,
+            message: `${name.trim()} has registered a new partner shop in ${city.trim()}. Verification pending.`,
+            type: "shop_registered",
+            link: "/admin?tab=shops",
+            data: {
+              shopName: shopName.trim(),
+              ownerName: name.trim(),
+              city: city.trim(),
+              phone: phone.trim(),
+              email: cleanEmail
+            }
+          });
+        } catch (notifErr) {
+          console.warn("Notice sending admin notification for new shop:", notifErr);
+        }
       }
 
       navigate("/", { replace: true });

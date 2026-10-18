@@ -78,9 +78,11 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
     }
   };
 
-  // Sync ads if parent passes updated list
+  // Sync ads if parent passes updated list (strictly sorted by continuous sequence order)
   useEffect(() => {
-    setAds(Array.isArray(initialAds) ? initialAds : []);
+    const list = Array.isArray(initialAds) ? [...initialAds] : [];
+    list.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+    setAds(list);
   }, [initialAds]);
 
   // Auto slide every 4.5 seconds
@@ -233,6 +235,24 @@ export default function AdCarouselSlider({ initialAds, onAdAdded }) {
                       <ShieldCheck size={14} color="#2ed573" /> Verified TyreSaathi Hub
                     </span>
                     <span className="banner-city-tag">📍 {ad.city}</span>
+                    {ads.length > 1 && (
+                      <span
+                        style={{
+                          fontSize: "10.5px",
+                          fontWeight: 800,
+                          background: "rgba(0,0,0,0.4)",
+                          backdropFilter: "blur(4px)",
+                          padding: "2px 8px",
+                          borderRadius: "12px",
+                          border: "1px solid rgba(255,255,255,0.25)",
+                          color: "#fff",
+                          letterSpacing: "0.3px"
+                        }}
+                        title={`Slide ${idx + 1} of ${ads.length}`}
+                      >
+                        ⚡ Slide {idx + 1} of {ads.length}
+                      </span>
+                    )}
                   </div>
 
                   <span

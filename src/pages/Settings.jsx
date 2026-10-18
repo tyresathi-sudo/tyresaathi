@@ -54,6 +54,8 @@ export default function Settings() {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteReason, setDeleteReason] = useState("Closing shop / Business discontinued");
+  const [deleteCustomReason, setDeleteCustomReason] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [copiedPrivacyUrl, setCopiedPrivacyUrl] = useState(false);
 
@@ -150,8 +152,11 @@ export default function Settings() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      await deleteAccount();
-      alert("Your account and associated data have been permanently deleted.");
+      const finalReason = (deleteReason === "Other" || deleteReason === "Other (Please specify)")
+        ? (deleteCustomReason.trim() || "No custom reason provided")
+        : (deleteReason || "User opted for account closure");
+      await deleteAccount(finalReason);
+      alert("Your account and associated data have been permanently deleted and archived.");
       navigate("/login", { replace: true });
     } catch (err) {
       alert("Account deletion error: " + err.message + "\nPlease re-login and try again.");
@@ -859,6 +864,55 @@ export default function Settings() {
             <p style={{ fontSize: "12.5px", color: "#64748b", lineHeight: "1.5", textAlign: "center", margin: "0 0 14px" }}>
               Are you sure you want to permanently delete your account and associated records? This action cannot be undone.
             </p>
+
+            <div style={{ marginBottom: "14px", textAlign: "left" }}>
+              <label style={{ fontSize: "11.5px", fontWeight: "700", color: "#334155", display: "block", marginBottom: "5px" }}>
+                Reason for Leaving / खाता बंद करने का कारण:
+              </label>
+              <select
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: "6px",
+                  border: "1.5px solid #cbd5e1",
+                  fontSize: "12.5px",
+                  color: "#1e293b",
+                  background: "#f8fafc",
+                  outline: "none",
+                  fontWeight: "500"
+                }}
+              >
+                <option value="Closing shop / Business discontinued">Closing shop / Business discontinued (दुकान बंद हो गई)</option>
+                <option value="Switching to another software / platform">Switching to another software (दूसरा सॉफ्टवेयर उपयोग कर रहे हैं)</option>
+                <option value="High subscription cost / Pricing">Pricing / High subscription cost (खर्च अधिक है)</option>
+                <option value="Difficulty in using the platform">Difficulty in using the platform (उपयोग करने में कठिनाई)</option>
+                <option value="No longer need tyre management services">No longer need tyre services (सेवा की आवश्यकता नहीं)</option>
+                <option value="Privacy / Personal reasons">Privacy / Personal reasons (व्यक्तिगत कारण)</option>
+                <option value="Other">Other / अन्य कारण (कृपया नीचे लिखें)</option>
+              </select>
+
+              {(deleteReason === "Other" || deleteReason === "Other (Please specify)") && (
+                <textarea
+                  rows={2}
+                  placeholder="कृपया खाता हटाने का कारण बताएं (Describe reason)..."
+                  value={deleteCustomReason}
+                  onChange={(e) => setDeleteCustomReason(e.target.value)}
+                  style={{
+                    width: "100%",
+                    marginTop: "8px",
+                    padding: "8px 10px",
+                    borderRadius: "6px",
+                    border: "1.5px solid #cbd5e1",
+                    fontSize: "12px",
+                    color: "#1e293b",
+                    outline: "none",
+                    resize: "none"
+                  }}
+                />
+              )}
+            </div>
 
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "11.5px", fontWeight: "700", color: "#e74c3c", display: "block", marginBottom: "4px" }}>

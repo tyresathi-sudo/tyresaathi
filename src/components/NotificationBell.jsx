@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { 
   Bell, 
   Check, 
@@ -12,7 +12,10 @@ import {
   Clock, 
   X,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  LifeBuoy,
+  Store,
+  ShieldAlert
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { 
@@ -25,6 +28,9 @@ import { playNotificationSound, triggerNotificationVibration } from "../utils/so
 export default function NotificationBell() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
@@ -60,11 +66,12 @@ export default function NotificationBell() {
         prevCountRef.current = unreadList.length;
       },
       profile,
-      user
+      user,
+      isAdminRoute
     );
 
     return () => unsubscribe();
-  }, [userId, userRole, profile, user]);
+  }, [userId, userRole, profile, user, isAdminRoute]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -88,6 +95,10 @@ export default function NotificationBell() {
 
     if (notif.link) {
       navigate(notif.link);
+    } else if (notif.type === "ticket_created" || notif.type === "support_ticket" || notif.type === "ticket") {
+      navigate("/admin?tab=support");
+    } else if (notif.type === "shop_registered" || notif.type === "verification_requested" || notif.type === "vendor_registration") {
+      navigate("/admin?tab=shops");
     } else if (notif.type === "booking_created" || notif.type === "booking_status") {
       navigate("/bookings");
     } else if (notif.type === "rating_received") {
@@ -101,6 +112,18 @@ export default function NotificationBell() {
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case "ticket_created":
+      case "support_ticket":
+      case "ticket":
+        return <div className="notif-icon-box notif-icon-ticket" style={{ background: "#fef2f2", color: "#dc2626" }}><LifeBuoy size={16} /></div>;
+      case "shop_registered":
+      case "verification_requested":
+      case "vendor_registration":
+      case "partner_applied":
+        return <div className="notif-icon-box notif-icon-shop" style={{ background: "#fffbeb", color: "#d97706" }}><Store size={16} /></div>;
+      case "admin_alert":
+      case "dispute":
+        return <div className="notif-icon-box" style={{ background: "#fee2e2", color: "#b91c1c" }}><ShieldAlert size={16} /></div>;
       case "rating_received":
         return <div className="notif-icon-box notif-icon-star"><Star size={16} fill="#f59e0b" color="#f59e0b" /></div>;
       case "booking_created":
@@ -173,8 +196,10 @@ export default function NotificationBell() {
                 <Bell size={16} color="#ffffff" />
               </div>
               <div className="notif-title-texts">
-                <h4>Notifications</h4>
-                <span className="notif-header-sub">Updates, Bookings & Ratings</span>
+                <h4>{isAdminRoute ? "Admin Alerts Desk" : "Notifications"}</h4>
+                <span className="notif-header-sub">
+                  {isAdminRoute ? "Tickets Raised, Hub Approvals & Platform Alerts" : "Updates, Bookings & Ratings"}
+                </span>
               </div>
               {unreadCount > 0 && (
                 <span className="unread-pill">{unreadCount} New</span>
@@ -230,7 +255,11 @@ export default function NotificationBell() {
                   <Bell size={26} color="#94a3b8" />
                 </div>
                 <h5>{filterTab === "unread" ? "Koi Unread Notification Nahi Hai" : "Koi Nayi Notification Nahi Hai"}</h5>
-                <p>Nayi bookings, customer ratings aur system alerts yahan real-time dikhenge.</p>
+                <p>
+                  {isAdminRoute
+                    ? "Naye support tickets, shop verification requests aur admin alerts yahan real-time dikhenge."
+                    : "Nayi bookings, customer ratings aur system alerts yahan real-time dikhenge."}
+                </p>
               </div>
             ) : (
               <div className="notif-items-list">
@@ -262,20 +291,41 @@ export default function NotificationBell() {
 
           {/* Footer Quick Links */}
           <div className="notif-panel-footer">
-            <button 
-              type="button" 
-              className="btn-view-bookings"
-              onClick={() => { setIsOpen(false); navigate("/bookings"); }}
-            >
-              <Calendar size={13} /> View Bookings
-            </button>
-            <button 
-              type="button" 
-              className="btn-view-shops"
-              onClick={() => { setIsOpen(false); navigate("/store-location"); }}
-            >
-              <Star size={13} /> View Shops & Ratings
-            </button>
+            {isAdminRoute ? (
+              <>
+                <button 
+                  type="button" 
+                  className="btn-view-bookings"
+                  onClick={() => { setIsOpen(false); navigate("/admin?tab=support"); }}
+                >
+                  <LifeBuoy size={13} /> Support Desk
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-view-shops"
+                  onClick={() => { setIsOpen(false); navigate("/admin?tab=shops"); }}
+                >
+                  <Store size={13} /> Hubs & Verification
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  type="button" 
+                  className="btn-view-bookings"
+                  onClick={() => { setIsOpen(false); navigate("/bookings"); }}
+                >
+                  <Calendar size={13} /> View Bookings
+                </button>
+                <button 
+                  type="button" 
+                  className="btn-view-shops"
+                  onClick={() => { setIsOpen(false); navigate("/store-location"); }}
+                >
+                  <Star size={13} /> View Shops & Ratings
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

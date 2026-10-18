@@ -334,7 +334,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="sidebar-footer">
           <span className="footer-small-brand">TyreSaathi Hub</span>
           <span className="sidebar-version-pill">
-            <span className="version-status-dot" /> v1.2.4
+            <span className="version-status-dot" /> v1.2.5
           </span>
         </div>
       </aside>

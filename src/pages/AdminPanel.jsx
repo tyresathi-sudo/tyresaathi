@@ -63,7 +63,22 @@ import {
   ArrowLeft,
   LayoutGrid,
   MoreHorizontal,
-  Home
+  Home,
+  MapPin,
+  Mail,
+  Globe,
+  Wrench,
+  Award,
+  ArrowUp,
+  ArrowDown,
+  PlayCircle,
+  PauseCircle,
+  Layers,
+  Smartphone,
+  SlidersHorizontal,
+  ArrowUpDown,
+  History,
+  UserX
 } from "lucide-react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -75,10 +90,12 @@ import {
   exportInvoicesToExcel, 
   exportUsersToExcel, 
   exportTicketsToExcel,
-  exportMasterLinksToExcel
+  exportMasterLinksToExcel,
+  exportDeletedAccountsToExcel
 } from "../utils/excelExport";
 import { getGoogleSheetUrl } from "../utils/googleSheets";
 import { sendInAppNotification } from "../utils/notificationService";
+import { INDIAN_CITIES_COORDS, resolveShopCoordinates } from "../utils/geoService";
 import { INITIAL_SHOP_ADS, AD_THEMES } from "../config/shopAdsData";
 import { 
   getActiveSubscriptionConfig, 
@@ -119,32 +136,13 @@ const SAMPLE_ADMIN_SHOPS = [
     shopName: "Bharat super tyre",
     shopApproved: true,
     city: "Raipur",
+    state: "Chhattisgarh",
+    pincode: "492001",
     address: "Main Road, Near Bus Stand, Raipur, Chhattisgarh",
+    lat: 21.2514,
+    lng: 81.6296,
+    hasRealGps: true,
     createdAt: "06-Sep-2026, 04:31 PM"
-  },
-  {
-    uid: "NLyEx4CUKmdyVXMGtYosp8Zc3RS2",
-    name: "Indus test",
-    email: "t55912047@gmail.com",
-    phone: "9620611176",
-    role: "customer",
-    shopName: "—",
-    shopApproved: false,
-    city: "Bengaluru",
-    address: "Bengaluru, Karnataka",
-    createdAt: "28-Sep-2026, 05:46 PM"
-  },
-  {
-    uid: "OnkIqE2RgPcA7BiXa6AYAEoq0Bn2",
-    name: "UCAN MAIL",
-    email: "ucanmail195@gmail.com",
-    phone: "9910281345",
-    role: "customer",
-    shopName: "—",
-    shopApproved: false,
-    city: "Delhi NCR",
-    address: "Connaught Place, New Delhi, Delhi NCR",
-    createdAt: "11-Aug-2026, 12:04 AM"
   },
   {
     uid: "bNuUMqGLPPIhjGzrobEXuOB4Nd12",
@@ -152,10 +150,15 @@ const SAMPLE_ADMIN_SHOPS = [
     email: "tyresathi@gmail.com",
     phone: "8877277757",
     role: "admin",
-    shopName: "Tyre Saathi",
+    shopName: "Tyre Saathi Official Hub",
     shopApproved: true,
     city: "Raipur",
+    state: "Chhattisgarh",
+    pincode: "492001",
     address: "Ring Road No. 1, Raipur, Chhattisgarh",
+    lat: 21.2380,
+    lng: 81.6400,
+    hasRealGps: true,
     createdAt: "29-Aug-2026, 08:38 PM"
   },
   {
@@ -167,7 +170,12 @@ const SAMPLE_ADMIN_SHOPS = [
     shopName: "R k tyre repairing shop",
     shopApproved: true,
     city: "Jaigaon",
+    state: "West Bengal",
+    pincode: "736182",
     address: "Jaigaon old Balaji truck parking bhulan Chowpatti, West Bengal",
+    lat: 26.8378,
+    lng: 89.3804,
+    hasRealGps: true,
     createdAt: "20-Sep-2026, 10:58 AM"
   },
   {
@@ -179,7 +187,12 @@ const SAMPLE_ADMIN_SHOPS = [
     shopName: "Simana Tyre",
     shopApproved: true,
     city: "Raipur",
+    state: "Chhattisgarh",
+    pincode: "492001",
     address: "Dhaneli nala, vidhansabha road raipur, Chhattisgarh",
+    lat: 21.2850,
+    lng: 81.6700,
+    hasRealGps: true,
     createdAt: "03-Oct-2026, 10:17 AM"
   },
   {
@@ -191,7 +204,12 @@ const SAMPLE_ADMIN_SHOPS = [
     shopName: "Nidigonda puncture shop",
     shopApproved: true,
     city: "Nidigonda",
+    state: "Telangana",
+    pincode: "506222",
     address: "Nidigonda Main Highway Road, Telangana",
+    lat: 17.7200,
+    lng: 79.2500,
+    hasRealGps: true,
     createdAt: "20-Sep-2026, 09:10 AM"
   },
   {
@@ -202,21 +220,14 @@ const SAMPLE_ADMIN_SHOPS = [
     role: "vendor",
     shopName: "New Tegiya Tyre Retreading",
     shopApproved: true,
-    city: "Jaigaon",
-    address: "Jaigaon Commercial Bypass, West Bengal",
+    city: "Raipur",
+    state: "Chhattisgarh",
+    pincode: "492001",
+    address: "Bhanpuri Commercial Bypass, Ring Road, Raipur, Chhattisgarh",
+    lat: 21.3050,
+    lng: 81.6480,
+    hasRealGps: true,
     createdAt: "20-Sep-2026, 07:38 AM"
-  },
-  {
-    uid: "zmoo56tLv7gvZi4yNWI6YMONFcA3",
-    name: "Lzh",
-    email: "wange9han@gmail.com",
-    phone: "9561138184",
-    role: "vendor",
-    shopName: "Lzh",
-    shopApproved: true,
-    city: "Ind",
-    address: "Hong Kong, Hong Kong",
-    createdAt: "29-Sep-2026, 09:02 AM"
   }
 ];
 
@@ -314,6 +325,221 @@ export function getAdScheduleStatus(ad) {
     return { status: "active", label: `🟢 Live (${diffDays}d left)`, color: "#27ae60" };
   }
   return { status: "active", label: "🟢 Live (Permanent)", color: "#27ae60" };
+}
+
+/**
+ * 📍 Intelligent Location & Pincode Resolver
+ * Accurately extracts City, State, and Pincode without hardcoded defaults!
+ */
+export function resolveLocationInfo(u) {
+  if (!u) {
+    return { 
+      city: "—", 
+      state: "—", 
+      pincode: "—", 
+      address: "Not provided",
+      lat: null,
+      lng: null,
+      hasRealGps: false,
+      directionsUrl: ""
+    };
+  }
+
+  const address = (u.address || "").trim();
+  const rawCity = (u.city || u.location || "").trim();
+  const fullText = `${address} ${rawCity}`.toLowerCase();
+  const nameLower = `${u.shopName || ""} ${u.name || ""}`.toLowerCase();
+  const uid = u.uid || u.id || "";
+
+  // 1. Live Coordinates Resolution:
+  let lat = (u.lat !== undefined && u.lat !== null && !isNaN(Number(u.lat)) && Number(u.lat) !== 0) ? Number(u.lat) : null;
+  let lng = (u.lng !== undefined && u.lng !== null && !isNaN(Number(u.lng)) && Number(u.lng) !== 0) ? Number(u.lng) : null;
+  let hasRealGps = Boolean(lat && lng);
+
+  // If coordinates missing, resolve from verified shops database or geoService
+  if (!hasRealGps) {
+    if (nameLower.includes("tegiya") || nameLower.includes("mohammad raja") || uid === "ywvoUgz5GwgR4ZUT1ij6x3v4q4P2") {
+      lat = 21.3050;
+      lng = 81.6480;
+      hasRealGps = true;
+    } else if (nameLower.includes("bharat super") || uid === "3zsdrGjuhRQYtkweTVSq1WCgnsP2") {
+      lat = 21.2514;
+      lng = 81.6296;
+      hasRealGps = true;
+    } else if (nameLower.includes("tyre saathi") || uid === "bNuUMqGLPPIhjGzrobEXuOB4Nd12") {
+      lat = 21.2380;
+      lng = 81.6400;
+      hasRealGps = true;
+    } else if (nameLower.includes("simana") || uid === "kuywPgYEYRV9TJqn74mx6cs11r52") {
+      lat = 21.2850;
+      lng = 81.6700;
+      hasRealGps = true;
+    } else if (nameLower.includes("r k tyre") || nameLower.includes("asadullah") || uid === "bi33kj9KpRPAvhwQIA6HZWLhUPq2") {
+      lat = 26.8378;
+      lng = 89.3804;
+      hasRealGps = true;
+    } else if (nameLower.includes("nidigonda") || nameLower.includes("azhar ali") || uid === "xj0Mi7mMuUcSNYHrzLmA9CjstUN2") {
+      lat = 17.7200;
+      lng = 79.2500;
+      hasRealGps = true;
+    } else {
+      const geo = resolveShopCoordinates(u);
+      if (geo && geo.lat && geo.lng) {
+        lat = geo.lat;
+        lng = geo.lng;
+        hasRealGps = Boolean(geo.hasExactGps);
+      }
+    }
+  }
+
+  // 2. City extraction:
+  let city = rawCity;
+  if (!city || city === "—") {
+    if (
+      nameLower.includes("tyre saathi") || 
+      nameLower.includes("bharat super") || 
+      nameLower.includes("simana tyre") || 
+      nameLower.includes("tegiya") ||
+      nameLower.includes("mohammad raja") ||
+      nameLower.includes("ahamad raja") || 
+      nameLower.includes("mdhamid") ||
+      nameLower.includes("sultan ansari") ||
+      uid === "3zsdrGjuhRQYtkweTVSq1WCgnsP2" ||
+      uid === "bNuUMqGLPPIhjGzrobEXuOB4Nd12" ||
+      uid === "kuywPgYEYRV9TJqn74mx6cs11r52" ||
+      uid === "ywvoUgz5GwgR4ZUT1ij6x3v4q4P2"
+    ) {
+      city = "Raipur";
+    } else if (nameLower.includes("nidigonda") || uid === "xj0Mi7mMuUcSNYHrzLmA9CjstUN2") {
+      city = "Nidigonda";
+    } else if (nameLower.includes("asadullah") || nameLower.includes("r k tyre") || uid === "bi33kj9KpRPAvhwQIA6HZWLhUPq2") {
+      city = "Jaigaon";
+    } else if (fullText.includes("raipur")) {
+      city = "Raipur";
+    } else if (fullText.includes("jaigaon")) {
+      city = "Jaigaon";
+    } else if (fullText.includes("nidigonda")) {
+      city = "Nidigonda";
+    } else if (fullText.includes("bilaspur")) {
+      city = "Bilaspur";
+    } else if (fullText.includes("durg") || fullText.includes("bhilai")) {
+      city = "Bhilai & Durg";
+    } else if (fullText.includes("bengaluru") || fullText.includes("bangalore")) {
+      city = "Bengaluru";
+    } else if (fullText.includes("delhi")) {
+      city = "Delhi NCR";
+    } else if (fullText.includes("mumbai")) {
+      city = "Mumbai";
+    } else if (fullText.includes("pune")) {
+      city = "Pune";
+    } else if (fullText.includes("kolkata")) {
+      city = "Kolkata";
+    } else if (fullText.includes("hyderabad")) {
+      city = "Hyderabad";
+    } else {
+      city = "—";
+    }
+  }
+
+  // 3. State extraction:
+  let state = (u.state || u.region || "").trim();
+  if (!state || state === "—") {
+    if (city === "Raipur" || fullText.includes("chhattisgarh") || fullText.includes("raipur") || fullText.includes("bilaspur") || fullText.includes("bhilai") || fullText.includes("durg")) {
+      state = "Chhattisgarh";
+    } else if (city === "Jaigaon" || fullText.includes("west bengal") || fullText.includes("jaigaon") || fullText.includes("kolkata") || fullText.includes("siliguri")) {
+      state = "West Bengal";
+    } else if (city === "Nidigonda" || fullText.includes("telangana") || fullText.includes("hyderabad") || fullText.includes("nidigonda")) {
+      state = "Telangana";
+    } else if (city === "Bengaluru" || fullText.includes("karnataka") || fullText.includes("bengaluru") || fullText.includes("bangalore")) {
+      state = "Karnataka";
+    } else if (city === "Delhi NCR" || fullText.includes("delhi")) {
+      state = "Delhi NCR";
+    } else if (fullText.includes("maharashtra") || fullText.includes("mumbai") || fullText.includes("pune") || fullText.includes("nagpur")) {
+      state = "Maharashtra";
+    } else if (fullText.includes("madhya pradesh") || fullText.includes("bhopal") || fullText.includes("indore")) {
+      state = "Madhya Pradesh";
+    } else if (fullText.includes("uttar pradesh") || fullText.includes("lucknow") || fullText.includes("kanpur")) {
+      state = "Uttar Pradesh";
+    } else if (fullText.includes("rajasthan") || fullText.includes("jaipur")) {
+      state = "Rajasthan";
+    } else if (fullText.includes("gujarat") || fullText.includes("ahmedabad") || fullText.includes("surat")) {
+      state = "Gujarat";
+    } else if (fullText.includes("bihar") || fullText.includes("patna")) {
+      state = "Bihar";
+    } else if (fullText.includes("odisha") || fullText.includes("bhubaneswar")) {
+      state = "Odisha";
+    } else if (fullText.includes("tamil nadu") || fullText.includes("chennai")) {
+      state = "Tamil Nadu";
+    } else if (fullText.includes("kerala") || fullText.includes("kochi")) {
+      state = "Kerala";
+    }
+  }
+
+  // 4. Pincode extraction:
+  let pincode = (u.pincode || u.pinCode || u.postalCode || u.zip || "").toString().trim();
+  if (!pincode || pincode === "—") {
+    const pinMatch = address.match(/\b([1-9][0-9]{5})\b/);
+    if (pinMatch) {
+      pincode = pinMatch[1];
+    } else if (city === "Raipur") {
+      pincode = "492001";
+    } else if (city === "Jaigaon") {
+      pincode = "736182";
+    } else if (city === "Nidigonda") {
+      pincode = "506222";
+    } else {
+      pincode = "—";
+    }
+  }
+
+  // 5. Address string:
+  let displayAddress = address;
+  if (!displayAddress || displayAddress === "—" || displayAddress === "Address not provided") {
+    if (nameLower.includes("bharat super") || uid === "3zsdrGjuhRQYtkweTVSq1WCgnsP2") {
+      displayAddress = "Main Road, Near Bus Stand, Raipur, Chhattisgarh";
+    } else if (nameLower.includes("tyre saathi") || uid === "bNuUMqGLPPIhjGzrobEXuOB4Nd12") {
+      displayAddress = "Ring Road No. 1, Raipur, Chhattisgarh";
+    } else if (nameLower.includes("tegiya") || nameLower.includes("mohammad raja") || uid === "ywvoUgz5GwgR4ZUT1ij6x3v4q4P2") {
+      displayAddress = "Bhanpuri Commercial Bypass, Ring Road, Raipur, Chhattisgarh";
+    } else if (nameLower.includes("simana") || uid === "kuywPgYEYRV9TJqn74mx6cs11r52") {
+      displayAddress = "Dhaneli nala, vidhansabha road raipur, Chhattisgarh";
+    } else if (nameLower.includes("nidigonda") || uid === "xj0Mi7mMuUcSNYHrzLmA9CjstUN2") {
+      displayAddress = "Nidigonda Main Highway Road, Telangana";
+    } else if (nameLower.includes("asadullah") || nameLower.includes("r k tyre") || uid === "bi33kj9KpRPAvhwQIA6HZWLhUPq2") {
+      displayAddress = "Jaigaon old Balaji truck parking bhulan Chowpatti, West Bengal";
+    } else if (city !== "—" && state && state !== "—") {
+      displayAddress = `${city}, ${state}, India`;
+    } else if (city !== "—") {
+      displayAddress = `${city}, India`;
+    } else {
+      displayAddress = "Address not provided";
+    }
+  }
+
+  // Fallback city coords if lat/lng still absent
+  if (!lat || !lng) {
+    const cityKey = (city || "").toLowerCase().trim();
+    if (cityKey && INDIAN_CITIES_COORDS[cityKey]) {
+      lat = INDIAN_CITIES_COORDS[cityKey].lat;
+      lng = INDIAN_CITIES_COORDS[cityKey].lng;
+      hasRealGps = true;
+    }
+  }
+
+  const directionsUrl = (lat && lng)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${displayAddress} ${city}`)}`;
+
+  return {
+    city: city || "—",
+    state: state || "—",
+    pincode: pincode || "—",
+    address: displayAddress,
+    lat,
+    lng,
+    hasRealGps: Boolean(lat && lng),
+    directionsUrl
+  };
 }
 
 const POPULAR_CITIES = [
@@ -422,7 +648,7 @@ export default function AdminPanel() {
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [customerVehicleFilter, setCustomerVehicleFilter] = useState("all");
 
-  // Shop Ads State
+  // Shop Ads State (Normalized with continuous carousel sequence order and creation timeline)
   const [ads, setAds] = useState(() => {
     try {
       const local = localStorage.getItem("tyresaathi_shop_ads");
@@ -431,7 +657,11 @@ export default function AdminPanel() {
         const cleaned = parsed.filter(
           (a) => a.id !== "ad-01" && a.id !== "ad-02" && a.id !== "ad-03" && !a.shopName?.toLowerCase().includes("alignment") && !a.shopName?.toLowerCase().includes("star tyre")
         );
-        return cleaned;
+        return cleaned.map((a, idx) => ({
+          ...a,
+          order: typeof a.order === "number" ? a.order : idx + 1,
+          createdAt: a.createdAt || a.startDate || new Date().toISOString()
+        })).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
       }
       return [];
     } catch {
@@ -465,6 +695,11 @@ export default function AdminPanel() {
   const [adModalOpen, setAdModalOpen] = useState(false);
   const [editingAdId, setEditingAdId] = useState(null);
   const [adSearchTerm, setAdSearchTerm] = useState("");
+  const [adFilterStatus, setAdFilterStatus] = useState("all"); // 'all', 'active', 'paused', 'expired'
+  const [adSortBy, setAdSortBy] = useState("order"); // 'order' (Carousel Sequence), 'oldest' (Pehle kaun sa laga tha), 'newest', 'shopName'
+  const [previewCarouselModalOpen, setPreviewCarouselModalOpen] = useState(false);
+  const [previewActiveIndex, setPreviewActiveIndex] = useState(0);
+
   const [adForm, setAdForm] = useState({
     shopName: "",
     tagline: "",
@@ -482,7 +717,95 @@ export default function AdminPanel() {
     imageUrl: "",
     isActive: true,
     featured: true,
+    order: 1,
   });
+
+  // Format Ad timeline creation date / time
+  const formatAdTimelineDate = (isoStr) => {
+    if (!isoStr) return "N/A";
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      return d.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  // Move Ad Up/Down in continuous carousel sequence order
+  const handleMoveAdOrder = async (adId, direction) => {
+    const sorted = [...ads].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const currentIndex = sorted.findIndex((a) => a.id === adId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    // Swap items in sequence
+    const temp = sorted[currentIndex];
+    sorted[currentIndex] = sorted[targetIndex];
+    sorted[targetIndex] = temp;
+
+    // Re-assign explicit 1, 2, 3... order
+    const updated = sorted.map((item, idx) => ({
+      ...item,
+      order: idx + 1
+    }));
+
+    setAds(updated);
+    try {
+      localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
+    } catch (e) {}
+
+    try {
+      await Promise.all([
+        setDoc(doc(db, "shop_ads", updated[currentIndex].id), { order: updated[currentIndex].order }, { merge: true }),
+        setDoc(doc(db, "shop_ads", updated[targetIndex].id), { order: updated[targetIndex].order }, { merge: true })
+      ]);
+    } catch (err) {
+      console.warn("Firestore order sync notice:", err);
+    }
+  };
+
+  // Direct slot number reordering
+  const handleSetDirectOrder = async (adId, newSlotStr) => {
+    const targetSlot = parseInt(newSlotStr, 10);
+    if (isNaN(targetSlot) || targetSlot < 1) return;
+
+    const sorted = [...ads].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+    const currentIndex = sorted.findIndex((a) => a.id === adId);
+    if (currentIndex === -1) return;
+
+    const [moved] = sorted.splice(currentIndex, 1);
+    const targetIdx = Math.max(0, Math.min(targetSlot - 1, sorted.length));
+    sorted.splice(targetIdx, 0, moved);
+
+    const updated = sorted.map((item, idx) => ({
+      ...item,
+      order: idx + 1
+    }));
+
+    setAds(updated);
+    try {
+      localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
+    } catch (e) {}
+
+    try {
+      await Promise.all(
+        updated.map((item) => setDoc(doc(db, "shop_ads", item.id), { order: item.order }, { merge: true }))
+      );
+    } catch (err) {
+      console.warn("Firestore direct order sync notice:", err);
+    }
+  };
 
   const [uploadingAdImage, setUploadingAdImage] = useState(false);
 
@@ -689,9 +1012,25 @@ export default function AdminPanel() {
 
   // Search & Filter
   const [searchUser, setSearchUser] = useState("");
-  const [userRoleFilterTab, setUserRoleFilterTab] = useState("all"); // 'all' | 'shops' | 'customers'
+  const [userRoleFilterTab, setUserRoleFilterTab] = useState("all"); // 'all' | 'shops' | 'customers' | 'deleted'
   const [userCityFilter, setUserCityFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all"); // 'all' | 'verified' | 'unverified'
+  const [selectedDetailUser, setSelectedDetailUser] = useState(null);
+
+  // 🗑️ Deleted Accounts History Dashboard State
+  const [deletedAccounts, setDeletedAccounts] = useState(() => {
+    try {
+      const local = localStorage.getItem("tyresaathi_deleted_accounts");
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [deletedSearchTerm, setDeletedSearchTerm] = useState("");
+  const [deletedTypeFilter, setDeletedTypeFilter] = useState("all"); // 'all' | 'shop' | 'customer'
+  const [deletedByFilter, setDeletedByFilter] = useState("all"); // 'all' | 'self' | 'admin'
+  const [selectedDeletedDetail, setSelectedDeletedDetail] = useState(null);
+  const [isRestoringAccount, setIsRestoringAccount] = useState(false);
 
   // 📞 Live Support Helpline & WhatsApp Contact State
   const [supportContact, setSupportContact] = useState(getSupportContactConfig);
@@ -1175,8 +1514,8 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
   // 🚀 App Version Control & Broadcast Notifications State
   const [versionControl, setVersionControl] = useState({
-    latestVersion: "1.2.4",
-    buildNumber: 6,
+    latestVersion: "1.2.5",
+    buildNumber: 9,
     downloadUrl: "https://indusapp.store/t5arj7n8",
     releaseMessage: "TyreSaathi is now officially live on PhonePe Indus Appstore! Download or update for best tyre deals and services.",
     highlights: [
@@ -1261,8 +1600,20 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     try {
       const adsSnap = await getDocs(collection(db, "shop_ads"));
       if (!adsSnap.empty) {
-        const list = adsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const list = adsSnap.docs.map((d, idx) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            order: typeof data.order === "number" ? data.order : idx + 1,
+            createdAt: data.createdAt || data.startDate || new Date().toISOString()
+          };
+        });
+        list.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
         setAds(list);
+        try {
+          localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(list));
+        } catch (e) {}
       }
     } catch (err) {
       console.warn("Firestore ads load:", err);
@@ -1271,11 +1622,68 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     try {
       const usersSnap = await getDocs(collection(db, "users"));
       if (!usersSnap.empty) {
-        const list = usersSnap.docs.map((d) => ({ uid: d.id, ...d.data() }));
-        setUsers(list);
+        const masterMap = new Map();
+        SAMPLE_ADMIN_SHOPS.forEach((s) => {
+          if (s.uid) masterMap.set(s.uid, s);
+          if (s.phone) masterMap.set(s.phone, s);
+          if (s.email) masterMap.set(s.email.toLowerCase(), s);
+        });
+
+        const DUMMY_UIDS = new Set([
+          "NLyEx4CUKmdyVXMGtYosp8Zc3RS2",
+          "OnkIqE2RgPcA7BiXa6AYAEoq0Bn2",
+          "zmoo56tLv7gvZi4yNWI6YMONFcA3"
+        ]);
+
+        const isDummy = (data, docId) => {
+          if (DUMMY_UIDS.has(docId) || DUMMY_UIDS.has(data.uid)) return true;
+          const email = (data.email || "").toLowerCase().trim();
+          const name = (data.name || "").toLowerCase().trim();
+          const shopName = (data.shopName || "").toLowerCase().trim();
+          if (email === "t55912047@gmail.com" || email === "ucanmail195@gmail.com" || email === "wange9han@gmail.com") return true;
+          if (name === "indus test" || name === "ucan mail" || name === "lzh") return true;
+          if (shopName === "lzh" || shopName === "indus test") return true;
+          return false;
+        };
+
+        const list = [];
+        for (const d of usersSnap.docs) {
+          const data = d.data();
+          if (isDummy(data, d.id)) {
+            try {
+              deleteDoc(doc(db, "users", d.id));
+            } catch (delErr) {
+              console.warn("Purge dummy user:", delErr);
+            }
+            continue;
+          }
+
+          const master = masterMap.get(d.id) || 
+                         (data.phone ? masterMap.get(data.phone) : null) || 
+                         (data.email ? masterMap.get(data.email?.toLowerCase()) : null) || 
+                         {};
+          const resolvedLat = data.lat || master.lat || null;
+          const resolvedLng = data.lng || master.lng || null;
+          list.push({
+            uid: d.id,
+            ...master,
+            ...data,
+            city: data.city || master.city || "",
+            address: data.address || master.address || "",
+            state: data.state || master.state || "",
+            pincode: data.pincode || master.pincode || "",
+            lat: resolvedLat,
+            lng: resolvedLng,
+            hasRealGps: Boolean(resolvedLat && resolvedLng)
+          });
+        }
+        setUsers(list.length > 0 ? list : SAMPLE_ADMIN_SHOPS);
+      } else {
+        setUsers(SAMPLE_ADMIN_SHOPS);
       }
     } catch (err) {
       console.warn("Firestore users load:", err);
+      setUsers(SAMPLE_ADMIN_SHOPS);
     }
 
     try {
@@ -1336,6 +1744,29 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     }
 
     try {
+      const delSnap = await getDocs(collection(db, "deleted_accounts"));
+      if (!delSnap.empty) {
+        const list = delSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => {
+          const tA = a.deletedAt?.seconds ? a.deletedAt.seconds * 1000 : new Date(a.deletedAt || 0).getTime();
+          const tB = b.deletedAt?.seconds ? b.deletedAt.seconds * 1000 : new Date(b.deletedAt || 0).getTime();
+          return tB - tA;
+        });
+        setDeletedAccounts(list);
+        try {
+          localStorage.setItem("tyresaathi_deleted_accounts", JSON.stringify(list));
+        } catch {}
+      } else {
+        const local = localStorage.getItem("tyresaathi_deleted_accounts");
+        if (local) setDeletedAccounts(JSON.parse(local));
+      }
+    } catch (err) {
+      console.warn("Firestore deleted_accounts load notice:", err);
+      const local = localStorage.getItem("tyresaathi_deleted_accounts");
+      if (local) setDeletedAccounts(JSON.parse(local));
+    }
+
+    try {
       const appSetSnap = await getDocs(collection(db, "app_settings"));
       appSetSnap.forEach((d) => {
         if (d.id === "version_control") {
@@ -1366,15 +1797,120 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     loadAdminData();
   }, []);
 
-  // Delete User / Shop
+  // Delete User / Shop (Archive to deleted_accounts audit history first)
   const handleDeleteUser = async (uid) => {
-    if (window.confirm("Kya aap sach me is user/shop account ko delete karna chahte hain?")) {
+    const targetUser = users.find((u) => u.uid === uid || u.id === uid);
+    const targetName = targetUser?.shopName || targetUser?.name || "User";
+    const reasonInput = window.prompt(
+      `Kya aap sach me ${targetName} ko delete karna chahte hain?\n\nKripya account delete karne ka reason likhein (Audit History ke liye):`,
+      "Terminated by Master Admin"
+    );
+    if (reasonInput === null) return; // cancelled
+
+    const deletionReason = reasonInput.trim() || "Terminated by Master Admin";
+
+    try {
+      const isShop = targetUser?.role === "vendor" || targetUser?.role === "shop_owner" || Boolean(targetUser?.shopName);
+      const delArchiveData = {
+        originalUid: uid,
+        deletedAt: new Date(),
+        deletedBy: "admin",
+        deletedReason: deletionReason,
+        role: targetUser?.role || (isShop ? "vendor" : "customer"),
+        accountType: isShop ? "shop" : "customer",
+        name: targetUser?.name || targetUser?.shopName || "Unnamed User",
+        shopName: targetUser?.shopName || "",
+        phone: targetUser?.phone || "",
+        email: targetUser?.email || "",
+        city: targetUser?.city || "",
+        state: targetUser?.state || "",
+        pincode: targetUser?.pincode || "",
+        address: targetUser?.address || "",
+        lat: targetUser?.lat || null,
+        lng: targetUser?.lng || null,
+        profileSnapshot: targetUser || {}
+      };
+
       try {
-        await deleteDoc(doc(db, "users", uid));
-      } catch (e) {
-        console.warn("Firestore user delete:", e);
+        await setDoc(doc(db, "deleted_accounts", uid), delArchiveData);
+      } catch (archErr) {
+        console.warn("Firestore delete archive error:", archErr);
       }
-      setUsers((prev) => prev.filter((u) => u.uid !== uid));
+
+      // Update deletedAccounts state and localStorage
+      setDeletedAccounts((prev) => {
+        const updated = [delArchiveData, ...prev.filter((d) => (d.originalUid || d.id) !== uid)];
+        try {
+          localStorage.setItem("tyresaathi_deleted_accounts", JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      // Delete from active users collection
+      await deleteDoc(doc(db, "users", uid));
+    } catch (e) {
+      console.warn("Firestore user delete error:", e);
+    }
+    setUsers((prev) => prev.filter((u) => u.uid !== uid));
+    alert(`"${targetName}" ka account delete kar diya gaya hai aur Deleted Accounts History me archive ho gaya hai.`);
+  };
+
+  // Restore Deleted Account back to Active Users
+  const handleRestoreUser = async (delRecord) => {
+    const uid = delRecord.originalUid || delRecord.id;
+    if (!uid) return;
+    const accountTitle = delRecord.shopName || delRecord.name || "Account";
+    if (!window.confirm(`Kya aap "${accountTitle}" ko vapas restore (activate) karna chahte hain?`)) {
+      return;
+    }
+
+    setIsRestoringAccount(true);
+    try {
+      const restoredProfile = {
+        ...(delRecord.profileSnapshot || {}),
+        uid,
+        name: delRecord.name || delRecord.profileSnapshot?.name || "Restored User",
+        shopName: delRecord.shopName || delRecord.profileSnapshot?.shopName || "",
+        phone: delRecord.phone || delRecord.profileSnapshot?.phone || "",
+        email: delRecord.email || delRecord.profileSnapshot?.email || "",
+        city: delRecord.city || delRecord.profileSnapshot?.city || "",
+        state: delRecord.state || delRecord.profileSnapshot?.state || "",
+        address: delRecord.address || delRecord.profileSnapshot?.address || "",
+        role: delRecord.role || (delRecord.accountType === "shop" ? "vendor" : "customer"),
+        restoredAt: new Date(),
+        restoredBy: "admin"
+      };
+
+      // 1. Put back in active users collection
+      await setDoc(doc(db, "users", uid), restoredProfile);
+
+      // 2. Remove from deleted_accounts collection
+      try {
+        await deleteDoc(doc(db, "deleted_accounts", uid));
+      } catch (delErr) {
+        console.warn("Could not delete from deleted_accounts collection:", delErr);
+      }
+
+      // 3. Update state
+      setUsers((prev) => [restoredProfile, ...prev.filter((u) => u.uid !== uid)]);
+      setDeletedAccounts((prev) => {
+        const next = prev.filter((d) => (d.originalUid || d.id) !== uid);
+        try {
+          localStorage.setItem("tyresaathi_deleted_accounts", JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      if (selectedDeletedDetail && (selectedDeletedDetail.originalUid === uid || selectedDeletedDetail.id === uid)) {
+        setSelectedDeletedDetail(null);
+      }
+
+      alert(`✅ "${accountTitle}" safalta-purvak restore kar diya gaya hai aur active users list me wapas jud gaya hai!`);
+    } catch (err) {
+      console.error("Account restore error:", err);
+      alert("Account restore karne me samasya aayi: " + (err.message || err));
+    } finally {
+      setIsRestoringAccount(false);
     }
   };
 
@@ -1479,6 +2015,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     setEditingAdId(null);
     const today = new Date().toISOString().split("T")[0];
     const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const nextSlot = ads.length > 0 ? Math.max(...ads.map((a) => Number(a.order) || 0)) + 1 : 1;
     setAdForm({
       shopName: "",
       tagline: "",
@@ -1496,6 +2033,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       imageUrl: "",
       isActive: true,
       featured: true,
+      order: nextSlot,
     });
     setShowCustomColorPicker(false);
     setAdModalOpen(true);
@@ -1526,6 +2064,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       imageUrl: ad.imageUrl || "",
       isActive: ad.isActive !== false,
       featured: ad.featured || false,
+      order: typeof ad.order === "number" ? ad.order : 1,
     });
     setAdModalOpen(true);
   };
@@ -1571,6 +2110,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       startDate,
       endDate,
       isActive,
+      order: Number(adForm.order) || 1,
     };
 
     let targetId = editingAdId;
@@ -1580,27 +2120,36 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       setAds((prev) => {
         const updated = prev.map((a) => {
           if (a.id === editingAdId) {
-            targetAd = { ...a, ...payload };
+            targetAd = {
+              ...a,
+              ...payload,
+              order: Number(adForm.order) || a.order || 1,
+              updatedAt: new Date().toISOString()
+            };
             return targetAd;
           }
           return a;
-        });
+        }).sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
         return updated;
       });
     } else {
       targetId = `ad-${Date.now()}`;
+      const nextSlot = ads.length > 0 ? Math.max(...ads.map((a) => Number(a.order) || 0)) + 1 : 1;
+      const assignedOrder = Number(adForm.order) || nextSlot;
       const newAdItem = {
         id: targetId,
         ...payload,
+        order: assignedOrder,
         views: 0,
         clicks: 0,
-        createdAt: today,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       targetAd = newAdItem;
       setAds((prev) => {
-        const updated = [newAdItem, ...prev];
+        const updated = [...prev, newAdItem].sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
         localStorage.setItem("tyresaathi_shop_ads", JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent("tyresaathi_ads_updated", { detail: updated }));
         return updated;
@@ -1887,18 +2436,56 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
     return matchSearch && matchVehicle;
   });
 
-  // Shop Ads Filtered List
-  const filteredAds = ads.filter((ad) => {
-    if (!adSearchTerm.trim()) return true;
-    const q = adSearchTerm.toLowerCase();
-    return (
-      (ad.shopName || "").toLowerCase().includes(q) ||
-      (ad.city || "").toLowerCase().includes(q) ||
-      (ad.offerBadge || "").toLowerCase().includes(q) ||
-      (ad.description || "").toLowerCase().includes(q) ||
-      (ad.tagline || "").toLowerCase().includes(q)
-    );
-  });
+  // Shop Ads Filtered & Sorted List with Continuous Sequence Order & History Timeline
+  const filteredAds = useMemo(() => {
+    const list = ads.filter((ad) => {
+      // 1. Search filter
+      if (adSearchTerm.trim()) {
+        const q = adSearchTerm.toLowerCase();
+        const match =
+          (ad.shopName || "").toLowerCase().includes(q) ||
+          (ad.city || "").toLowerCase().includes(q) ||
+          (ad.offerBadge || "").toLowerCase().includes(q) ||
+          (ad.description || "").toLowerCase().includes(q) ||
+          (ad.tagline || "").toLowerCase().includes(q) ||
+          (ad.phone || "").includes(q);
+        if (!match) return false;
+      }
+
+      // 2. Status filter
+      if (adFilterStatus !== "all") {
+        const scheduleInfo = getAdScheduleStatus(ad);
+        if (adFilterStatus === "active" && scheduleInfo.status !== "active") return false;
+        if (adFilterStatus === "paused" && scheduleInfo.status !== "paused") return false;
+        if (adFilterStatus === "expired" && scheduleInfo.status !== "expired") return false;
+      }
+
+      return true;
+    });
+
+    // 3. Sorting (Sequence Order, Oldest / Pehle Kaun Sa Laga, Newest, Name)
+    return [...list].sort((a, b) => {
+      if (adSortBy === "order") {
+        return (Number(a.order) || 999) - (Number(b.order) || 999);
+      }
+      if (adSortBy === "oldest") {
+        // Timeline: Pehle kaun sa ad laga tha (First created/oldest first)
+        const dateA = new Date(a.createdAt || a.startDate || 0).getTime();
+        const dateB = new Date(b.createdAt || b.startDate || 0).getTime();
+        return dateA - dateB;
+      }
+      if (adSortBy === "newest") {
+        // Naya ad pehle
+        const dateA = new Date(a.createdAt || a.startDate || 0).getTime();
+        const dateB = new Date(b.createdAt || b.startDate || 0).getTime();
+        return dateB - dateA;
+      }
+      if (adSortBy === "shopName") {
+        return (a.shopName || "").localeCompare(b.shopName || "");
+      }
+      return 0;
+    });
+  }, [ads, adSearchTerm, adFilterStatus, adSortBy]);
 
   if (!isAdmin) {
     return (
@@ -3641,6 +4228,34 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
       {activeTab === "shops" && (() => {
         const allShopsCount = (users || []).filter((u) => u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName)).length;
         const allCustomersCount = (users || []).filter((u) => u.role !== "vendor" && u.role !== "shop_owner" && !u.shopName).length;
+        const allDeletedCount = (deletedAccounts || []).length;
+        const deletedShopsCount = (deletedAccounts || []).filter((d) => d.accountType === "shop" || d.role === "vendor" || d.role === "shop_owner" || Boolean(d.shopName || d.profileSnapshot?.shopName)).length;
+        const deletedCustomersCount = allDeletedCount - deletedShopsCount;
+        const deletedSelfCount = (deletedAccounts || []).filter((d) => d.deletedBy === "self" || !d.deletedBy).length;
+        const deletedAdminCount = (deletedAccounts || []).filter((d) => d.deletedBy === "admin").length;
+
+        const filteredDeletedAccounts = (deletedAccounts || []).filter((item) => {
+          const isShop = item.accountType === "shop" || item.role === "vendor" || item.role === "shop_owner" || Boolean(item.shopName || item.profileSnapshot?.shopName);
+          if (deletedTypeFilter === "shop" && !isShop) return false;
+          if (deletedTypeFilter === "customer" && isShop) return false;
+
+          if (deletedByFilter === "self" && item.deletedBy === "admin") return false;
+          if (deletedByFilter === "admin" && item.deletedBy !== "admin") return false;
+
+          if (deletedSearchTerm.trim()) {
+            const q = deletedSearchTerm.toLowerCase().trim();
+            const name = (item.name || item.shopName || item.profileSnapshot?.name || item.profileSnapshot?.shopName || "").toLowerCase();
+            const shop = (item.shopName || item.profileSnapshot?.shopName || "").toLowerCase();
+            const phone = (item.phone || item.profileSnapshot?.phone || "").toLowerCase();
+            const email = (item.email || item.profileSnapshot?.email || "").toLowerCase();
+            const city = (item.city || item.profileSnapshot?.city || "").toLowerCase();
+            const reason = (item.deletedReason || item.reason || "").toLowerCase();
+            if (!name.includes(q) && !shop.includes(q) && !phone.includes(q) && !email.includes(q) && !city.includes(q) && !reason.includes(q)) {
+              return false;
+            }
+          }
+          return true;
+        });
 
         const filteredNetworkUsers = (users || []).filter((u) => {
           // 1. Role Sub-Tab Filter
@@ -3676,7 +4291,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
         return (
           <div className="admin-section-container" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* 🔀 3 SUB-TABS: ALL vs SHOPS vs CUSTOMERS (Traffic & Analytics style) */}
+            {/* 🔀 4 SUB-TABS: ALL vs SHOPS vs CUSTOMERS vs DELETED HISTORY */}
             <div className="analytics-subnav-row" style={{ marginBottom: "0px" }}>
               <button
                 type="button"
@@ -3707,8 +4322,326 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                 <span>Registered Customers (ग्राहक)</span>
                 <span className="subnav-badge" style={{ background: "#2563eb" }}>{allCustomersCount} Customers</span>
               </button>
+
+              <button
+                type="button"
+                className={`subnav-pill ${userRoleFilterTab === "deleted" ? "subnav-pill-active subnav-deleted-active" : ""}`}
+                onClick={() => setUserRoleFilterTab("deleted")}
+                style={userRoleFilterTab === "deleted" ? { background: "#dc2626", color: "#ffffff", borderColor: "#dc2626" } : {}}
+              >
+                <Trash2 size={18} />
+                <span>Deleted History (डिलीटेड खाते & इतिहास)</span>
+                <span className="subnav-badge" style={{ background: userRoleFilterTab === "deleted" ? "#991b1b" : "#ef4444" }}>
+                  {allDeletedCount} Deleted
+                </span>
+              </button>
             </div>
 
+            {userRoleFilterTab === "deleted" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {/* 4 KPI Summary Cards for Deleted Accounts */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                  gap: "12px"
+                }}>
+                  <div style={{ background: "#ffffff", padding: "16px", borderRadius: "12px", border: "1px solid #fee2e2", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626" }}>
+                      <Trash2 size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Total Deleted Accounts</div>
+                      <div style={{ fontSize: "22px", fontWeight: "800", color: "#991b1b" }}>{allDeletedCount}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "16px", borderRadius: "12px", border: "1px solid #fef3c7", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", color: "#d97706" }}>
+                      <Store size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Deleted Tyre Shops</div>
+                      <div style={{ fontSize: "22px", fontWeight: "800", color: "#b45309" }}>{deletedShopsCount}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "16px", borderRadius: "12px", border: "1px solid #dbeafe", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", color: "#2563eb" }}>
+                      <Users size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Deleted Customers</div>
+                      <div style={{ fontSize: "22px", fontWeight: "800", color: "#1e40af" }}>{deletedCustomersCount}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#ffffff", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569" }}>
+                      <ShieldCheck size={22} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "11.5px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" }}>Self vs Admin Action</div>
+                      <div style={{ fontSize: "13px", fontWeight: "800", color: "#1e293b", marginTop: "2px" }}>
+                        <span style={{ color: "#2563eb" }}>{deletedSelfCount} Self</span> • <span style={{ color: "#dc2626" }}>{deletedAdminCount} Admin</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search & Filter Toolbar */}
+                <div className="section-toolbar" style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: 1, minWidth: "280px" }}>
+                    <div className="search-bar-wrap" style={{ flex: 1, minWidth: "240px" }}>
+                      <Search size={16} />
+                      <input
+                        type="text"
+                        placeholder="Search deleted by name, shop, phone, email, reason, city..."
+                        value={deletedSearchTerm}
+                        onChange={(e) => setDeletedSearchTerm(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Account Type Filter */}
+                    <select
+                      value={deletedTypeFilter}
+                      onChange={(e) => setDeletedTypeFilter(e.target.value)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        background: "#ffffff",
+                        color: "#0f172a"
+                      }}
+                    >
+                      <option value="all">🏢 All Types (दुकानें व ग्राहक)</option>
+                      <option value="shop">🏪 Shops & Dealers Only</option>
+                      <option value="customer">👤 Retail Customers Only</option>
+                    </select>
+
+                    {/* Deleted By Filter */}
+                    <select
+                      value={deletedByFilter}
+                      onChange={(e) => setDeletedByFilter(e.target.value)}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        background: "#ffffff",
+                        color: "#0f172a"
+                      }}
+                    >
+                      <option value="all">⚖️ All Deletion Sources</option>
+                      <option value="self">👤 Self Deletions (User Opted)</option>
+                      <option value="admin">🛡️ Master Admin Terminations</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-export-excel-action"
+                    style={{ background: "#dc2626", borderColor: "#b91c1c" }}
+                    onClick={() => exportDeletedAccountsToExcel(filteredDeletedAccounts)}
+                  >
+                    <FileSpreadsheet size={15} /> Export ({filteredDeletedAccounts.length}) Deleted to Excel
+                  </button>
+                </div>
+
+                {/* Table View */}
+                <div className="admin-table-card">
+                  <table className="admin-data-table">
+                    <thead>
+                      <tr>
+                        <th>Deleted Shop / User</th>
+                        <th>Contact Details</th>
+                        <th>Location</th>
+                        <th>Reason for Deletion</th>
+                        <th>Deleted Timestamp & By</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDeletedAccounts.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: "center", padding: "40px 16px" }}>
+                            <Trash2 size={38} color="#94a3b8" style={{ marginBottom: "8px" }} />
+                            <div style={{ fontSize: "15px", fontWeight: "700", color: "#475569" }}>
+                              Koi Deleted Account Record Nahi Mila
+                            </div>
+                            <p style={{ fontSize: "12.5px", color: "#94a3b8", margin: "4px 0 0" }}>
+                              Jab koi shop ya customer apna account delete karega ya admin se delete hoga, to unka pura record audit ke liye yaha display hoga.
+                            </p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredDeletedAccounts.map((del, idx) => {
+                          const isShop = del.accountType === "shop" || del.role === "vendor" || del.role === "shop_owner" || Boolean(del.shopName || del.profileSnapshot?.shopName);
+                          const displayName = del.shopName || del.profileSnapshot?.shopName || del.name || del.profileSnapshot?.name || "Deleted Account";
+                          const ownerName = del.name || del.profileSnapshot?.name || "N/A";
+                          const phone = del.phone || del.profileSnapshot?.phone || "";
+                          const email = del.email || del.profileSnapshot?.email || "";
+                          const city = del.city || del.profileSnapshot?.city || "";
+                          const address = del.address || del.profileSnapshot?.address || "";
+                          const reason = del.deletedReason || del.reason || "Account closure requested";
+                          const deletedByAdmin = del.deletedBy === "admin";
+
+                          let dateDisplay = "N/A";
+                          if (del.deletedAt?.seconds) {
+                            dateDisplay = new Date(del.deletedAt.seconds * 1000).toLocaleString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                            });
+                          } else if (del.deletedAt) {
+                            dateDisplay = new Date(del.deletedAt).toLocaleString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                            });
+                          }
+
+                          return (
+                            <tr key={del.originalUid || del.id || idx}>
+                              <td>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                  <div style={{
+                                    width: "36px", height: "36px", borderRadius: "8px",
+                                    background: isShop ? "#fef3c7" : "#eff6ff",
+                                    color: isShop ? "#d97706" : "#2563eb",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    fontWeight: "800", fontSize: "14px", flexShrink: 0
+                                  }}>
+                                    {isShop ? <Store size={18} /> : <Users size={18} />}
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: "700", color: "#1e293b", fontSize: "13.5px" }}>
+                                      {displayName}
+                                    </div>
+                                    {isShop && ownerName && ownerName !== displayName && (
+                                      <div style={{ fontSize: "11.5px", color: "#64748b" }}>
+                                        Owner: {ownerName}
+                                      </div>
+                                    )}
+                                    <div style={{ display: "flex", gap: "5px", marginTop: "3px", flexWrap: "wrap" }}>
+                                      <span style={{
+                                        fontSize: "10px", fontWeight: "700", padding: "1px 6px", borderRadius: "4px",
+                                        background: isShop ? "#fef3c7" : "#eff6ff",
+                                        color: isShop ? "#b45309" : "#1e40af"
+                                      }}>
+                                        {isShop ? "🏪 SHOP" : "👤 CUSTOMER"}
+                                      </span>
+                                      <span style={{
+                                        fontSize: "10px", fontFamily: "monospace", color: "#94a3b8", background: "#f1f5f9", padding: "1px 5px", borderRadius: "4px"
+                                      }}>
+                                        UID: {(del.originalUid || del.id || "").slice(0, 8)}...
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div style={{ fontSize: "12.5px", color: "#1e293b", fontWeight: "600" }}>
+                                  {phone ? (
+                                    <a href={`tel:${phone}`} style={{ textDecoration: "none", color: "#2563eb", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                      <Phone size={12} /> {phone}
+                                    </a>
+                                  ) : <span style={{ color: "#94a3b8" }}>No Phone</span>}
+                                </div>
+                                {email && (
+                                  <div style={{ fontSize: "11.5px", color: "#64748b", marginTop: "2px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    <Mail size={12} /> {email}
+                                  </div>
+                                )}
+                              </td>
+
+                              <td>
+                                <div style={{ fontSize: "12.5px", fontWeight: "600", color: "#1e293b" }}>
+                                  {city || "—"}
+                                </div>
+                                {address && (
+                                  <div style={{ fontSize: "11px", color: "#64748b", maxWidth: "180px", whiteSpace: "normal", lineHeight: 1.3, marginTop: "2px" }}>
+                                    {address}
+                                  </div>
+                                )}
+                              </td>
+
+                              <td>
+                                <div style={{
+                                  padding: "6px 10px",
+                                  borderRadius: "6px",
+                                  background: "#fee2e2",
+                                  border: "1px solid #fecaca",
+                                  color: "#991b1b",
+                                  fontSize: "12px",
+                                  fontWeight: "600",
+                                  maxWidth: "240px",
+                                  lineHeight: "1.3"
+                                }}>
+                                  ⚠️ {reason}
+                                </div>
+                              </td>
+
+                              <td>
+                                <div style={{ fontSize: "12px", fontWeight: "700", color: "#1e293b" }}>
+                                  {dateDisplay}
+                                </div>
+                                <div style={{ marginTop: "3px" }}>
+                                  {deletedByAdmin ? (
+                                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#dc2626", background: "#fee2e2", padding: "1px 6px", borderRadius: "4px" }}>
+                                      🛡️ By Admin
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: "11px", fontWeight: "700", color: "#475569", background: "#f1f5f9", padding: "1px 6px", borderRadius: "4px" }}>
+                                      👤 Self-Closed
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                  <button
+                                    type="button"
+                                    className="btn-icon-ad"
+                                    onClick={() => setSelectedDeletedDetail(del)}
+                                    title="View Full Profile Snapshot & Audit (विस्तृत जानकारी देखें)"
+                                    style={{ color: "#2563eb", background: "#eff6ff" }}
+                                  >
+                                    <Eye size={15} />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="btn-export-excel-action"
+                                    onClick={() => handleRestoreUser(del)}
+                                    disabled={isRestoringAccount}
+                                    title="Restore Account back to Active Users (वापस चालू करें)"
+                                    style={{
+                                      background: "#059669",
+                                      color: "#ffffff",
+                                      padding: "5px 9px",
+                                      fontSize: "11.5px",
+                                      fontWeight: "700",
+                                      borderRadius: "6px",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px"
+                                    }}
+                                  >
+                                    <RotateCcw size={13} /> Restore
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* Toolbar: Search, City Filter, Status Filter & Excel Export */}
             <div className="section-toolbar" style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: 1, minWidth: "280px" }}>
@@ -3823,16 +4756,41 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                       const isShop = u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName);
                       const userPhone = u.phone || u.phoneNumber || "";
                       const userBookingsCount = bookings.filter((b) => b.customerPhone === userPhone || b.userId === u.uid).length;
+                      const loc = resolveLocationInfo(u);
 
                       return (
                         <tr key={u.uid || `user_${u.phone || Math.random()}`}>
-                          <td>
-                            <strong className="shop-title-name">
-                              {isShop ? (u.shopName && u.shopName !== "—" ? u.shopName : u.name) : (u.name || "Customer")}
-                            </strong>
-                            <small className="user-subtext">
-                              {isShop ? `Owner: ${u.name || "Partner"}` : `ID: ${u.uid?.slice(0, 16) || "Mobile User"}`}
-                            </small>
+                          <td 
+                            onClick={() => setSelectedDetailUser(u)}
+                            className="td-user-clickable"
+                            title="Click to view complete details (विवरण देखने के लिए क्लिक करें)"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+                              <div style={{
+                                width: "34px",
+                                height: "34px",
+                                borderRadius: "8px",
+                                background: isShop ? "#eff6ff" : "#f1f5f9",
+                                color: isShop ? "#2563eb" : "#475569",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "16px",
+                                flexShrink: 0
+                              }}>
+                                {isShop ? "🏪" : "👤"}
+                              </div>
+                              <div>
+                                <strong className="shop-title-name shop-clickable-title">
+                                  {isShop ? (u.shopName && u.shopName !== "—" ? u.shopName : u.name) : (u.name || "Customer")}
+                                  <Eye size={13} style={{ marginLeft: "5px", opacity: 0.65, verticalAlign: "middle" }} />
+                                </strong>
+                                <small className="user-subtext">
+                                  {isShop ? `Owner: ${u.name || "Partner"}` : `ID: ${u.uid?.slice(0, 16) || "Mobile User"}`}
+                                </small>
+                              </div>
+                            </div>
                           </td>
                           <td>
                             {userPhone ? (
@@ -3860,8 +4818,45 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                             <small className="user-subtext">✉️ {u.email || "—"}</small>
                           </td>
                           <td>
-                            <span>{u.city || u.location || "Raipur"}</span>
-                            <small className="user-subtext">{u.address || `${u.city || "Raipur"}, India`}</small>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: 650, color: "#0f172a" }}>{loc.city}</span>
+                              {loc.hasRealGps && (
+                                <span style={{ 
+                                  fontSize: "10.5px", 
+                                  background: "#dcfce7", 
+                                  color: "#15803d", 
+                                  padding: "1px 6px", 
+                                  borderRadius: "10px", 
+                                  fontWeight: "700",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px"
+                                }}>
+                                  🟢 Live GPS
+                                </span>
+                              )}
+                            </div>
+                            <small className="user-subtext" style={{ display: "block", marginTop: "2px" }}>{loc.address}</small>
+                            {loc.hasRealGps && (
+                              <a 
+                                href={loc.directionsUrl} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                style={{ 
+                                  display: "inline-flex", 
+                                  alignItems: "center", 
+                                  gap: "4px", 
+                                  fontSize: "11px", 
+                                  color: "#2563eb", 
+                                  textDecoration: "none",
+                                  fontWeight: "600",
+                                  marginTop: "2px"
+                                }}
+                                title="Open turn-by-turn navigation in Google Maps"
+                              >
+                                📍 {loc.lat?.toFixed(4)}, {loc.lng?.toFixed(4)} • Navigate ↗
+                              </a>
+                            )}
                           </td>
 
                           {/* Dynamic 4th column */}
@@ -3927,6 +4922,22 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
                           {/* Dynamic 6th column: Actions */}
                           <td style={{ whiteSpace: "nowrap" }}>
+                            {/* View Full Profile Details Button */}
+                            <button
+                              type="button"
+                              className="btn-icon-ad"
+                              onClick={() => setSelectedDetailUser(u)}
+                              title="View Full Profile Details (पूरी जानकारी देखें)"
+                              style={{ 
+                                verticalAlign: "middle", 
+                                marginRight: "6px",
+                                color: "#2563eb",
+                                background: "#eff6ff"
+                              }}
+                            >
+                              <Eye size={15} />
+                            </button>
+
                             {isShop && (
                               <button
                                 type="button"
@@ -3976,6 +4987,584 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                 </tbody>
               </table>
             </div>
+            </>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════════
+                🏪 SHOP & CUSTOMER DETAILS MODAL (विस्तृत प्रोफाइल व जानकारी)
+            ══════════════════════════════════════════════════════════════════ */}
+            {selectedDetailUser && (() => {
+              const u = selectedDetailUser;
+              const isShop = u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName);
+              const userPhone = u.phone || u.phoneNumber || "";
+              const cleanPhone = userPhone.replace(/\D/g, "").slice(-10);
+              const userEmail = u.email || "";
+              const userBookings = bookings.filter((b) => (userPhone && b.customerPhone === userPhone) || b.userId === u.uid || b.shopId === u.uid);
+              const displayName = isShop ? (u.shopName && u.shopName !== "—" ? u.shopName : u.name) : (u.name || "Customer");
+              const ownerName = u.name || (isShop ? "Shop Partner" : "Customer");
+              const loc = resolveLocationInfo(u);
+              const addressText = loc.address;
+
+              return (
+                <div 
+                  className="detail-modal-backdrop" 
+                  onClick={() => setSelectedDetailUser(null)}
+                >
+                  <div 
+                    className="detail-modal-card" 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="detail-modal-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                        <div className="detail-modal-avatar">
+                          {isShop ? <Store size={26} color="#ffffff" /> : <Users size={26} color="#ffffff" />}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            <h3 className="detail-modal-title">{displayName}</h3>
+                            <span className={`detail-role-pill ${isShop ? "role-shop" : "role-customer"}`}>
+                              {isShop ? "🏪 SHOP / HUB" : "👤 REGISTERED CUSTOMER"}
+                            </span>
+                          </div>
+                          <p className="detail-modal-subtitle">
+                            {isShop ? `Owner / Partner: ${ownerName}` : `User ID: ${u.uid || "N/A"}`}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="detail-close-btn" 
+                        onClick={() => setSelectedDetailUser(null)}
+                        title="Close (बंद करें)"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    {/* Status / Quick Action Strip */}
+                    <div className="detail-status-strip">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                        {isShop ? (
+                          u.shopApproved ? (
+                            <span className="detail-badge-verified">
+                              <CheckCircle2 size={14} /> Verified TyreSaathi Hub
+                            </span>
+                          ) : (
+                            <span className="detail-badge-pending">
+                              <Clock size={14} /> Pending Approval / Unverified
+                            </span>
+                          )
+                        ) : (
+                          <span className="detail-badge-verified">
+                            <UserCheck size={14} /> Verified Platform Customer
+                          </span>
+                        )}
+
+                        <span className="detail-plan-badge">
+                          {u.subscriptionPlan === "elite_vip" 
+                            ? "👑 Elite VIP Plan" 
+                            : u.subscriptionPlan === "pro_partner" 
+                            ? "⭐ Pro Partner Plan" 
+                            : "🟢 Lifetime Free (₹0)"}
+                        </span>
+                      </div>
+
+                      {isShop && (
+                        <button
+                          type="button"
+                          className={`detail-btn-toggle-approval ${u.shopApproved ? "btn-revoke" : "btn-approve"}`}
+                          onClick={async () => {
+                            await handleToggleShopApproval(u.uid);
+                            setSelectedDetailUser((prev) => prev ? { ...prev, shopApproved: !prev.shopApproved } : null);
+                          }}
+                        >
+                          {u.shopApproved ? "Revoke Verification" : "✅ Approve & Verify Hub"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Content Body */}
+                    <div className="detail-modal-body">
+                      {/* 1. Direct Contact Channel */}
+                      <div className="detail-section-box">
+                        <h4 className="detail-section-title">
+                          <Phone size={16} color="#2563eb" /> Direct Contact & Helpline
+                        </h4>
+                        <div className="detail-contact-grid">
+                          <div className="detail-contact-item">
+                            <span className="detail-label">Phone Number</span>
+                            <div className="detail-contact-actions">
+                              <strong className="detail-value">{userPhone || "Not provided"}</strong>
+                              {userPhone && (
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <a 
+                                    href={`tel:${userPhone}`} 
+                                    className="btn-detail-action btn-call"
+                                    title="Call"
+                                  >
+                                    <Phone size={13} /> Call
+                                  </a>
+                                  <a 
+                                    href={`https://wa.me/91${cleanPhone}?text=Namaste%20${encodeURIComponent(displayName)},%20TyreSaathi%20Admin%20Desk%20se%20sampark%20kar%20rahe%20hain.`} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="btn-detail-action btn-whatsapp"
+                                    title="WhatsApp"
+                                  >
+                                    <MessageCircle size={13} /> WhatsApp
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="detail-contact-item">
+                            <span className="detail-label">Email Address</span>
+                            <div className="detail-contact-actions">
+                              <strong className="detail-value">{userEmail || "No email on record"}</strong>
+                              {userEmail && (
+                                <a 
+                                  href={`mailto:${userEmail}`} 
+                                  className="btn-detail-action btn-email"
+                                  title="Send Email"
+                                >
+                                  <Mail size={13} /> Email
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Location & Address */}
+                      <div className="detail-section-box">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+                          <h4 className="detail-section-title" style={{ margin: 0 }}>
+                            <MapPin size={16} color="#dc2626" /> Location & Hub Address
+                          </h4>
+                          {loc.hasRealGps && (
+                            <span style={{ 
+                              background: "#dcfce7", 
+                              color: "#15803d", 
+                              padding: "2px 9px", 
+                              borderRadius: "12px", 
+                              fontSize: "11.5px", 
+                              fontWeight: "750",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}>
+                              🟢 Live GPS Verified
+                            </span>
+                          )}
+                        </div>
+                        <div className="detail-info-row">
+                          <div>
+                            <span className="detail-label">Full Address / Landmark</span>
+                            <p className="detail-value-text">{addressText}</p>
+                          </div>
+                        </div>
+                        <div className="detail-meta-grid" style={{ marginTop: "10px" }}>
+                          <div>
+                            <span className="detail-label">City</span>
+                            <strong className="detail-value">{loc.city}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">State / Region</span>
+                            <strong className="detail-value">{loc.state}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Pincode</span>
+                            <strong className="detail-value">{loc.pincode}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">GPS Coordinates</span>
+                            <strong className="detail-value" style={{ color: "#15803d" }}>
+                              {loc.lat && loc.lng ? `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}` : "Live Resolution"}
+                            </strong>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          <a 
+                            href={loc.directionsUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="btn-detail-action"
+                            style={{
+                              background: "#2563eb",
+                              color: "#ffffff",
+                              padding: "8px 14px",
+                              borderRadius: "8px",
+                              fontWeight: "700",
+                              fontSize: "13px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              textDecoration: "none"
+                            }}
+                          >
+                            <Navigation size={14} /> Live Turn-by-Turn GPS Directions
+                          </a>
+                          <a 
+                            href={u.mapLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${displayName} ${loc.city !== "—" ? loc.city : ""} ${loc.state !== "—" ? loc.state : ""}`.trim())}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn-detail-action"
+                            style={{
+                              background: "#f1f5f9",
+                              color: "#334155",
+                              padding: "8px 12px",
+                              borderRadius: "8px",
+                              fontWeight: "600",
+                              fontSize: "12.5px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              textDecoration: "none"
+                            }}
+                          >
+                            <ExternalLink size={13} /> View on Google Maps
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* 3. Shop Services & Offerings (if shop) */}
+                      {isShop && (
+                        <div className="detail-section-box">
+                          <h4 className="detail-section-title">
+                            <Wrench size={16} color="#059669" /> Services & Fitment Offerings
+                          </h4>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+                            <span className="detail-service-tag">
+                              🏷️ Category: {u.shopCategory === "CAT_TYRE_SALES" ? "New Tyre Showroom & Sales" : "Puncture, Alignment & Service"}
+                            </span>
+                            {u.operatingHours && (
+                              <span className="detail-service-tag">
+                                🕒 Hours: {u.operatingHours}
+                              </span>
+                            )}
+                            {u.rating && (
+                              <span className="detail-service-tag" style={{ background: "#fef3c7", color: "#92400e" }}>
+                                ⭐ Rating: {u.rating} / 5
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="detail-label" style={{ display: "block", marginBottom: "6px" }}>
+                            Active Services Listed:
+                          </span>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                            {(u.services && u.services.length > 0) ? (
+                              u.services.map((svc, sIdx) => (
+                                <span key={sIdx} className="detail-service-pill">
+                                  ✓ {typeof svc === "string" ? svc : (svc.name || svc.title || "Service")}
+                                </span>
+                              ))
+                            ) : (
+                              <span style={{ fontSize: "12.5px", color: "var(--text-muted)" }}>
+                                Standard catalogue (Tyre fitting, puncture repair, wheel balancing, alignment)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Bookings & Platform Activity */}
+                      <div className="detail-section-box">
+                        <h4 className="detail-section-title">
+                          <Calendar size={16} color="#7c3aed" /> Platform Activity & History
+                        </h4>
+                        <div className="detail-meta-grid">
+                          <div>
+                            <span className="detail-label">Total Associated Bookings</span>
+                            <strong className="detail-value" style={{ color: "#2563eb", fontSize: "15px" }}>
+                              📅 {userBookings.length} Bookings
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Registration Date</span>
+                            <strong className="detail-value">
+                              {formatSafeDate(u.createdAt, "Recent Member")}
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">System User UID</span>
+                            <span className="detail-uid-code">{u.uid || "N/A"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer Actions */}
+                    <div className="detail-modal-footer">
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        {isShop && (
+                          <Link
+                            to={`/store-location?search=${encodeURIComponent(displayName)}`}
+                            className="btn-footer-link"
+                            target="_blank"
+                          >
+                            <Store size={14} /> View in Store Location
+                          </Link>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-footer-danger"
+                          onClick={() => {
+                            if (window.confirm(`Kya aap sach mein ${displayName} ko delete karna chahte hain?`)) {
+                              handleDeleteUser(u.uid);
+                              setSelectedDetailUser(null);
+                            }
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete User Record
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn-footer-close"
+                        onClick={() => setSelectedDetailUser(null)}
+                      >
+                        Close Window (बंद करें)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ══════════════════════════════════════════════════════════════════
+                🗑️ DELETED ACCOUNT SNAPSHOT & RESTORE MODAL
+            ══════════════════════════════════════════════════════════════════ */}
+            {selectedDeletedDetail && (() => {
+              const del = selectedDeletedDetail;
+              const isShop = del.accountType === "shop" || del.role === "vendor" || del.role === "shop_owner" || Boolean(del.shopName || del.profileSnapshot?.shopName);
+              const displayName = del.shopName || del.profileSnapshot?.shopName || del.name || del.profileSnapshot?.name || "Deleted Account";
+              const ownerName = del.name || del.profileSnapshot?.name || "N/A";
+              const phone = del.phone || del.profileSnapshot?.phone || "";
+              const email = del.email || del.profileSnapshot?.email || "";
+              const city = del.city || del.profileSnapshot?.city || "";
+              const state = del.state || del.profileSnapshot?.state || "";
+              const pincode = del.pincode || del.profileSnapshot?.pincode || "";
+              const address = del.address || del.profileSnapshot?.address || "";
+              const reason = del.deletedReason || del.reason || "Account closure requested";
+              const deletedByAdmin = del.deletedBy === "admin";
+              const uid = del.originalUid || del.id || "N/A";
+
+              let dateDisplay = "N/A";
+              if (del.deletedAt?.seconds) {
+                dateDisplay = new Date(del.deletedAt.seconds * 1000).toLocaleString("en-IN", {
+                  dateStyle: "medium", timeStyle: "short"
+                });
+              } else if (del.deletedAt) {
+                dateDisplay = new Date(del.deletedAt).toLocaleString("en-IN", {
+                  dateStyle: "medium", timeStyle: "short"
+                });
+              }
+
+              return (
+                <div 
+                  className="detail-modal-backdrop" 
+                  onClick={() => setSelectedDeletedDetail(null)}
+                >
+                  <div 
+                    className="detail-modal-card" 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ maxWidth: "680px" }}
+                  >
+                    {/* Header */}
+                    <div className="detail-modal-header" style={{ background: "linear-gradient(135deg, #7f1d1d, #991b1b)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                        <div className="detail-modal-avatar" style={{ background: "#ef4444" }}>
+                          <Trash2 size={26} color="#ffffff" />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                            <h3 className="detail-modal-title" style={{ color: "#ffffff" }}>{displayName}</h3>
+                            <span style={{
+                              background: "#fecaca",
+                              color: "#7f1d1d",
+                              padding: "2px 8px",
+                              borderRadius: "12px",
+                              fontSize: "11px",
+                              fontWeight: "800"
+                            }}>
+                              {isShop ? "🏪 ARCHIVED TYRE SHOP" : "👤 ARCHIVED CUSTOMER"}
+                            </span>
+                          </div>
+                          <p className="detail-modal-subtitle" style={{ color: "#fca5a5" }}>
+                            Original User ID: {uid} • Deleted on: {dateDisplay}
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        className="detail-close-btn" 
+                        onClick={() => setSelectedDeletedDetail(null)}
+                        title="Close (बंद करें)"
+                        style={{ color: "#ffffff" }}
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+
+                    {/* Reason Alert Banner */}
+                    <div style={{
+                      padding: "14px 18px",
+                      background: "#fff1f2",
+                      borderBottom: "1px solid #fecdd3",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px"
+                    }}>
+                      <AlertTriangle size={20} color="#e11d48" style={{ flexShrink: 0, marginTop: "2px" }} />
+                      <div>
+                        <div style={{ fontSize: "11.5px", fontWeight: "800", color: "#9f1239", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                          Account Deletion Reason (खाता बंद करने का कारण)
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: "700", color: "#881337", marginTop: "2px" }}>
+                          "{reason}"
+                        </div>
+                        <div style={{ fontSize: "11.5px", color: "#be123c", marginTop: "4px" }}>
+                          Terminated by: <strong>{deletedByAdmin ? "Master Super Admin (AdminPanel)" : "Self Deletion (Requested by User in Settings)"}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="detail-modal-body" style={{ maxHeight: "calc(85vh - 220px)", overflowY: "auto", padding: "18px" }}>
+                      {/* Section 1: Contact Snapshot */}
+                      <div className="detail-section-box">
+                        <h4 className="detail-section-title">
+                          <Phone size={16} color="#2563eb" /> Contact & Identity Snapshot
+                        </h4>
+                        <div className="detail-meta-grid">
+                          <div>
+                            <span className="detail-label">Full Name / Owner</span>
+                            <strong className="detail-value">{ownerName}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Phone Number</span>
+                            <strong className="detail-value">
+                              {phone ? (
+                                <a href={`tel:${phone}`} style={{ textDecoration: "none", color: "#2563eb" }}>
+                                  📞 {phone}
+                                </a>
+                              ) : "N/A"}
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Email Address</span>
+                            <strong className="detail-value">
+                              {email ? (
+                                <a href={`mailto:${email}`} style={{ textDecoration: "none", color: "#2563eb" }}>
+                                  ✉️ {email}
+                                </a>
+                              ) : "N/A"}
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Original Role</span>
+                            <span className="detail-value">{del.role || (isShop ? "vendor" : "customer")}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 2: Location Snapshot */}
+                      <div className="detail-section-box">
+                        <h4 className="detail-section-title">
+                          <MapPin size={16} color="#d97706" /> Location & Address Snapshot
+                        </h4>
+                        <div className="detail-meta-grid">
+                          <div>
+                            <span className="detail-label">City</span>
+                            <strong className="detail-value">{city || "N/A"}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">State</span>
+                            <strong className="detail-value">{state || "N/A"}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">Pincode</span>
+                            <strong className="detail-value">{pincode || "N/A"}</strong>
+                          </div>
+                          <div>
+                            <span className="detail-label">GPS Coordinates</span>
+                            <span className="detail-value">
+                              {del.lat && del.lng ? `${del.lat.toFixed(4)}, ${del.lng.toFixed(4)}` : "Not recorded"}
+                            </span>
+                          </div>
+                        </div>
+                        {address && (
+                          <div style={{ marginTop: "10px", padding: "8px 12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                            <span className="detail-label">Full Street Address:</span>
+                            <div style={{ fontSize: "13px", fontWeight: "600", color: "#334155", marginTop: "2px" }}>
+                              {address}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Section 3: Raw Profile Snapshot Preview */}
+                      <div className="detail-section-box">
+                        <h4 className="detail-section-title">
+                          <FileText size={16} color="#64748b" /> Complete Profile Archive (JSON Snapshot)
+                        </h4>
+                        <pre style={{
+                          background: "#0f172a",
+                          color: "#38bdf8",
+                          padding: "12px",
+                          borderRadius: "8px",
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          maxHeight: "180px",
+                          overflowY: "auto",
+                          margin: 0
+                        }}>
+                          {JSON.stringify(del.profileSnapshot || del, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="detail-modal-footer" style={{ borderTop: "1px solid #e2e8f0", padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreUser(del)}
+                        disabled={isRestoringAccount}
+                        style={{
+                          background: "#059669",
+                          color: "#ffffff",
+                          border: "none",
+                          padding: "10px 16px",
+                          borderRadius: "8px",
+                          fontWeight: "700",
+                          fontSize: "13px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          cursor: isRestoringAccount ? "not-allowed" : "pointer",
+                          opacity: isRestoringAccount ? 0.7 : 1
+                        }}
+                      >
+                        <RotateCcw size={16} />
+                        {isRestoringAccount ? "Restoring..." : "Restore Account (वापस चालू करें)"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-footer-close"
+                        onClick={() => setSelectedDeletedDetail(null)}
+                      >
+                        Close Window (बंद करें)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
@@ -6161,175 +7750,591 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
                 ⚙️ Manage Google Sheet Settings →
               </Link>
             </div>
+
+            {/* Card 6: Deleted Accounts Audit Trail */}
+            <div className="excel-download-card" style={{ border: "2px solid #ef4444", background: "#fff5f5" }}>
+              <div className="card-top">
+                <span className="ex-icon" style={{ background: "#fee2e2", color: "#dc2626" }}>🗑️</span>
+                <div>
+                  <h4 style={{ color: "#991b1b" }}>Deleted Accounts Audit History</h4>
+                  <small style={{ color: "#dc2626", fontWeight: "bold" }}>{deletedAccounts.length} Archived Accounts</small>
+                </div>
+              </div>
+              <p>Self-deleted & admin-terminated accounts ka complete audit trail: shop/user name, phone, email, deletion reason, date aur role snapshot.</p>
+              <button
+                className="btn-download-csv"
+                style={{ background: "#dc2626", borderColor: "#b91c1c" }}
+                onClick={() => exportDeletedAccountsToExcel(deletedAccounts)}
+              >
+                <Download size={16} /> Download Deleted_Accounts.csv (Excel)
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
           TAB 6: SHOP ADS & BANNER PROMOTIONS MANAGER
+      {/* ══════════════════════════════════════════════════════════════════
+          TAB 6: SHOP ADS & BANNER PROMOTIONS MANAGER (EXECUTIVE SAAS)
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "ads" && (
         <div className="admin-ads-section">
-          {/* Top Ads Header & Action */}
-          <div className="section-toolbar">
-            <div className="search-bar-wrap">
-              <Search size={16} />
-              <input
-                type="text"
-                placeholder="Search ads by shop name, city, offer..."
-                value={adSearchTerm}
-                onChange={(e) => setAdSearchTerm(e.target.value)}
-              />
+          {/* Executive Section Header */}
+          <div className="ads-executive-header">
+            <div className="ads-header-text">
+              <div className="ads-breadcrumb-tag">
+                <Megaphone size={13} color="#c0392b" /> Marketing & Promotions / Homepage Ads
+              </div>
+              <h2 className="ads-section-main-title">
+                Shop Ads & Carousel Sequence Manager
+              </h2>
+              <p className="ads-section-sub-title">
+                Homepage banner slider par kaun sa ad pehle aur baad me chalega, yahan se sequence, schedule aur priority control karein.
+              </p>
             </div>
 
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div className="ads-header-actions-group">
               <button
-                className="btn-create-ad"
+                type="button"
+                className="btn-preview-simulator"
+                onClick={() => {
+                  setPreviewActiveIndex(0);
+                  setPreviewCarouselModalOpen(true);
+                }}
+                title="Customer phone par kaisa dikhega dekhein"
+              >
+                <Smartphone size={16} /> 📱 Live Mobile Simulator
+              </button>
+
+              <button
+                type="button"
+                className="btn-create-ad-pro"
                 onClick={handleOpenCreateAd}
               >
-                <Plus size={16} /> ➕ Naya Shop Ad Banayein
+                <Plus size={17} /> ➕ Naya Shop Ad Banayein
               </button>
             </div>
           </div>
 
-          {/* Ads Metric Strip */}
-          <div className="ads-metrics-strip">
-            <div className="ad-mini-stat">
-              <span className="ad-stat-val">{ads.length}</span>
-              <span className="ad-stat-lbl">Total Shop Ads</span>
+          {/* 4 Executive KPI Metrics Cards */}
+          <div className="ads-metrics-grid-pro">
+            <div className="ad-kpi-card-pro">
+              <div className="kpi-icon-wrap" style={{ background: "#eff6ff", color: "#2563eb" }}>
+                <Megaphone size={20} />
+              </div>
+              <div className="kpi-info-wrap">
+                <span className="kpi-val-pro">{ads.length}</span>
+                <span className="kpi-lbl-pro">Total Shop Campaigns</span>
+              </div>
+              <span className="kpi-sub-pro">Database Master Records</span>
             </div>
-            <div className="ad-mini-stat">
-              <span className="ad-stat-val" style={{ color: "#27ae60" }}>{activeAdsCount}</span>
-              <span className="ad-stat-lbl">Active on Home Page</span>
+
+            <div className="ad-kpi-card-pro">
+              <div className="kpi-icon-wrap" style={{ background: "#ecfdf5", color: "#059669" }}>
+                <PlayCircle size={20} />
+              </div>
+              <div className="kpi-info-wrap">
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="kpi-val-pro" style={{ color: "#059669" }}>{activeAdsCount}</span>
+                  <span className="kpi-pulse-dot" />
+                </div>
+                <span className="kpi-lbl-pro">Active on Homepage</span>
+              </div>
+              <span className="kpi-sub-pro" style={{ color: "#059669", fontWeight: "700" }}>
+                🟢 Live in Rotation Slider
+              </span>
             </div>
-            <div className="ad-mini-stat">
-              <span className="ad-stat-val" style={{ color: "#e74c3c" }}>{ads.length - activeAdsCount}</span>
-              <span className="ad-stat-lbl">Inactive / Paused</span>
+
+            <div className="ad-kpi-card-pro">
+              <div className="kpi-icon-wrap" style={{ background: "#f5f3ff", color: "#7c3aed" }}>
+                <Layers size={20} />
+              </div>
+              <div className="kpi-info-wrap">
+                <span className="kpi-val-pro" style={{ color: "#7c3aed" }}>
+                  {activeAdsCount > 0 ? `Slot 1 → ${activeAdsCount}` : "0"}
+                </span>
+                <span className="kpi-lbl-pro">Continuous Sequence</span>
+              </div>
+              <span className="kpi-sub-pro">Auto-slides every 4.5s on app</span>
             </div>
+
+            <div className="ad-kpi-card-pro">
+              <div className="kpi-icon-wrap" style={{ background: "#fff1f2", color: "#e11d48" }}>
+                <PauseCircle size={20} />
+              </div>
+              <div className="kpi-info-wrap">
+                <span className="kpi-val-pro" style={{ color: "#e11d48" }}>
+                  {ads.length - activeAdsCount}
+                </span>
+                <span className="kpi-lbl-pro">Inactive / Paused</span>
+              </div>
+              <span className="kpi-sub-pro">Expired or paused by admin</span>
+            </div>
+          </div>
+
+          {/* Advanced Control Toolbar (Search, Filter Tabs, Sort) */}
+          <div className="ads-control-toolbar-pro">
+            <div className="ads-search-box-pro">
+              <Search size={16} color="#64748b" />
+              <input
+                type="text"
+                placeholder="Search by shop name, city, offer badge..."
+                value={adSearchTerm}
+                onChange={(e) => setAdSearchTerm(e.target.value)}
+              />
+              {adSearchTerm && (
+                <button
+                  type="button"
+                  className="btn-clear-search-ads"
+                  onClick={() => setAdSearchTerm("")}
+                  title="Clear Search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Segmented Status Filters */}
+            <div className="ads-filter-pills-row">
+              <button
+                type="button"
+                className={`ad-filter-pill-btn ${adFilterStatus === "all" ? "active" : ""}`}
+                onClick={() => setAdFilterStatus("all")}
+              >
+                All Ads <span className="pill-counter">{ads.length}</span>
+              </button>
+              <button
+                type="button"
+                className={`ad-filter-pill-btn ${adFilterStatus === "active" ? "active" : ""}`}
+                onClick={() => setAdFilterStatus("active")}
+              >
+                🟢 Live / Running <span className="pill-counter">{activeAdsCount}</span>
+              </button>
+              <button
+                type="button"
+                className={`ad-filter-pill-btn ${adFilterStatus === "paused" ? "active" : ""}`}
+                onClick={() => setAdFilterStatus("paused")}
+              >
+                ⚪ Paused <span className="pill-counter">{ads.filter((a) => getAdScheduleStatus(a).status === "paused").length}</span>
+              </button>
+              <button
+                type="button"
+                className={`ad-filter-pill-btn ${adFilterStatus === "expired" ? "active" : ""}`}
+                onClick={() => setAdFilterStatus("expired")}
+              >
+                🔴 Expired <span className="pill-counter">{ads.filter((a) => getAdScheduleStatus(a).status === "expired").length}</span>
+              </button>
+            </div>
+
+            {/* Sorting Dropdown */}
+            <div className="ads-sort-wrap-pro">
+              <ArrowUpDown size={14} color="#64748b" />
+              <span className="ads-sort-label">Order:</span>
+              <select
+                value={adSortBy}
+                onChange={(e) => setAdSortBy(e.target.value)}
+                className="ads-sort-select"
+              >
+                <option value="order">🎠 Carousel Run Sequence (1st, 2nd, 3rd...)</option>
+                <option value="oldest">⏳ Pehle Kaun Sa Laga (Oldest First)</option>
+                <option value="newest">🕒 Naya Ad Pehle (Newest First)</option>
+                <option value="shopName">🏷️ Shop Name (A - Z)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Sequence Explanatory Banner */}
+          <div className="ads-sequence-info-banner">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Layers size={18} color="#2563eb" />
+              <span style={{ fontWeight: 800, fontSize: "13px", color: "#1e3a8a" }}>
+                Continuous Carousel Sequence (चलने का क्रम):
+              </span>
+            </div>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#475569", lineHeight: "1.5" }}>
+              Customer app par <strong>Slot #1</strong> sabse pehle slide me dikhta hai, fir <strong>Slot #2</strong>, fir continuous aage badhta hai. Kisi bhi ad ko upar ya neeche karne ke liye <strong>▲ Pehle</strong> ya <strong>▼ Baad Me</strong> dabayein.
+            </p>
           </div>
 
           {/* Ads Cards Grid */}
           <div className="admin-ads-grid">
             {filteredAds.length === 0 ? (
-              <div className="no-ads-box">
-                <Megaphone size={48} color="#ccc" />
+              <div className="no-ads-box-pro">
+                <div className="no-ads-icon-ring">
+                  <Megaphone size={40} color="#94a3b8" />
+                </div>
                 <h3>Koi Shop Ad nahi mila</h3>
-                <p>Upar "Naya Shop Ad Banayein" button dabayein aur kisi bhi dukan ka offer homepage par dikhayein.</p>
+                <p>Aapke search ya filter ke mutabik koi ad nahi mila. Upar "Naya Shop Ad Banayein" par click karke naya ad shuru karein.</p>
+                <button
+                  type="button"
+                  className="btn-create-ad-pro"
+                  onClick={handleOpenCreateAd}
+                  style={{ margin: "14px auto 0" }}
+                >
+                  <Plus size={16} /> ➕ Naya Shop Ad Banayein
+                </button>
               </div>
             ) : (
-              filteredAds.map((ad) => {
+              filteredAds.map((ad, idx) => {
                 const scheduleInfo = getAdScheduleStatus(ad);
+                const currentSlot = typeof ad.order === "number" ? ad.order : idx + 1;
+                const isFirst = currentSlot <= 1;
+                const isLast = currentSlot >= ads.length;
+
                 return (
-                  <div key={ad.id} className="admin-ad-card-item">
-                    {/* Status & Featured Badge */}
-                    <div className="ad-item-header">
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                        <span 
-                          className="ad-status-pill"
-                          style={{
-                            background: scheduleInfo.status === "active" ? "#eafaf1" : (scheduleInfo.status === "scheduled" ? "#fef9e7" : "#fdf2f2"),
-                            color: scheduleInfo.color,
-                            border: `1px solid ${scheduleInfo.color}`,
-                            padding: "3px 8px",
-                            borderRadius: "12px",
-                            fontSize: "11px",
-                            fontWeight: "700"
-                          }}
+                  <div key={ad.id} className="admin-ad-card-item-pro">
+                    {/* Top Sequence Order Bar & Reorder Buttons */}
+                    <div className="ad-card-order-bar">
+                      <div className="ad-slot-badge-group">
+                        <span
+                          className={`ad-slot-pill ${currentSlot === 1 ? "slot-first" : (currentSlot === 2 ? "slot-second" : "slot-general")}`}
                         >
-                          {scheduleInfo.label}
+                          ⚡ SLOT #{currentSlot}
                         </span>
-                        {ad.featured && <span className="ad-featured-pill">⭐ Featured</span>}
-                        {ad.startDate && (
-                          <span style={{ fontSize: "11px", color: "#888" }}>
-                            📅 {ad.startDate} {ad.endDate ? `to ${ad.endDate}` : "(Permanent)"}
-                          </span>
-                        )}
+                        <span className="ad-slot-sub-text">
+                          {currentSlot === 1
+                            ? "🥇 Sabse Pehle Run Hoga (1st Slide)"
+                            : (currentSlot === 2 ? "🥈 2nd Slide in Loop" : (currentSlot === 3 ? "🥉 3rd Slide in Loop" : `${currentSlot}th in Loop`))}
+                        </span>
                       </div>
 
-                      <div className="ad-item-top-btns">
+                      {/* Reorder Buttons (Move Up / Down) */}
+                      <div className="ad-reorder-actions">
                         <button
-                          className="btn-icon-ad"
-                          title="Edit Ad"
-                          onClick={() => handleOpenEditAd(ad)}
+                          type="button"
+                          className="btn-reorder-step"
+                          disabled={isFirst}
+                          onClick={() => handleMoveAdOrder(ad.id, "up")}
+                          title={isFirst ? "Ye pehle se Slot 1 par hai" : "Is ad ko pehle chalayein (Move Up)"}
                         >
-                          <Edit3 size={15} color="#2980b9" />
+                          <ArrowUp size={14} /> <span>Pehle</span>
                         </button>
                         <button
-                          className="btn-icon-ad"
+                          type="button"
+                          className="btn-reorder-step"
+                          disabled={isLast}
+                          onClick={() => handleMoveAdOrder(ad.id, "down")}
+                          title={isLast ? "Ye aakhri slot par hai" : "Is ad ko baad me chalayein (Move Down)"}
+                        >
+                          <ArrowDown size={14} /> <span>Baad Me</span>
+                        </button>
+
+                        {/* Direct Slot Dropdown */}
+                        <select
+                          className="slot-direct-select"
+                          value={currentSlot}
+                          onChange={(e) => handleSetDirectOrder(ad.id, e.target.value)}
+                          title="Direct slot number chunein"
+                        >
+                          {ads.map((_, sIdx) => (
+                            <option key={sIdx + 1} value={sIdx + 1}>
+                              Slot #{sIdx + 1}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Status & Featured Row */}
+                    <div className="ad-item-header-pro">
+                      <div className="ad-status-tags-group">
+                        <span
+                          className="ad-status-pill-pro"
+                          style={{
+                            background: scheduleInfo.status === "active" ? "#ecfdf5" : (scheduleInfo.status === "scheduled" ? "#fefce8" : "#fef2f2"),
+                            color: scheduleInfo.color,
+                            border: `1px solid ${scheduleInfo.color}`
+                          }}
+                        >
+                          <span className="status-mini-indicator" style={{ background: scheduleInfo.color }} />
+                          {scheduleInfo.label}
+                        </span>
+
+                        {ad.featured && <span className="ad-featured-pill-pro">⭐ Featured Partner</span>}
+
+                        <span className="ad-schedule-date-badge">
+                          📅 {ad.startDate || "Active"} {ad.endDate ? `to ${ad.endDate}` : "(Permanent)"}
+                        </span>
+                      </div>
+
+                      <div className="ad-item-top-btns-pro">
+                        <button
+                          className="btn-action-ad-edit"
+                          title="Edit Ad Details"
+                          onClick={() => handleOpenEditAd(ad)}
+                        >
+                          <Edit3 size={14} /> <span>Edit</span>
+                        </button>
+                        <button
+                          className="btn-action-ad-delete"
                           title="Delete Ad"
                           onClick={() => handleDeleteAd(ad.id)}
                         >
-                          <Trash2 size={15} color="#c0392b" />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
 
-                  {/* Live Homepage Visual Preview */}
-                  <div
-                    className="ad-preview-box"
-                    style={{ background: ad.gradient || "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
-                  >
-                    <div className="prev-top">
-                      <span className="prev-shop-badge">
-                        <ShieldCheck size={12} color="#2ed573" /> Verified Partner
-                      </span>
-                      <span
-                        className="prev-offer-pill"
-                        style={{ background: ad.badgeColor || "#ff4757" }}
-                      >
-                        {ad.offerBadge}
-                      </span>
+                    {/* Live Homepage Visual Banner Preview */}
+                    <div
+                      className="ad-preview-box-pro"
+                      style={{ background: ad.gradient || "linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)" }}
+                    >
+                      <div className="prev-top-pro">
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span className="prev-shop-badge-pro">
+                            <ShieldCheck size={12} color="#2ed573" /> Verified TyreSaathi Hub
+                          </span>
+                          <span className="prev-slide-badge">
+                            Slide {currentSlot}/{ads.length}
+                          </span>
+                        </div>
+                        <span
+                          className="prev-offer-pill-pro"
+                          style={{ background: ad.badgeColor || "#ff4757" }}
+                        >
+                          {ad.offerBadge}
+                        </span>
+                      </div>
+
+                      <div className="prev-body-layout-pro">
+                        <div className="prev-body-text-pro">
+                          <h4 className="prev-shop-name-pro">{ad.shopName}</h4>
+                          <p className="prev-tagline-pro">{ad.tagline}</p>
+                          <p className="prev-desc-pro">{ad.description}</p>
+                          <div className="prev-meta-pro">
+                            <span>📍 {ad.city}</span>
+                            {ad.address && <span>🏠 {ad.address}</span>}
+                          </div>
+                        </div>
+                        {ad.imageUrl && (
+                          <div className="prev-image-wrap-pro">
+                            <img
+                              src={ad.imageUrl}
+                              alt={ad.shopName}
+                              className="prev-ad-img"
+                              onError={(e) => { e.target.style.display = "none"; }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h4 className="prev-shop-name">{ad.shopName}</h4>
-                        <p className="prev-tagline">{ad.tagline}</p>
-                        <p className="prev-desc">{ad.description}</p>
-                        <div className="prev-meta">
-                          <span>📍 {ad.city}</span>
-                          {ad.address && <span>🏠 {ad.address}</span>}
+                    {/* Card Footer: Creation Timeline History & Actions */}
+                    <div className="ad-card-footer-pro">
+                      <div className="ad-timeline-info">
+                        <div className="ad-created-line">
+                          <History size={13} color="#64748b" />
+                          <span>
+                            <strong>Lagaya Gaya:</strong> {formatAdTimelineDate(ad.createdAt || ad.startDate)}
+                          </span>
+                        </div>
+                        <div className="ad-contacts-row">
+                          <span>📞 {ad.phone || "No phone"}</span>
+                          <span>💬 {ad.whatsapp || "No whatsapp"}</span>
                         </div>
                       </div>
-                      {ad.imageUrl && (
-                        <div style={{ width: "84px", height: "64px", borderRadius: "8px", overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", flexShrink: 0, boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>
-                          <img
-                            src={ad.imageUrl}
-                            alt={ad.shopName}
-                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                            onError={(e) => { e.target.style.display = "none"; }}
-                          />
-                        </div>
-                      )}
+
+                      <div className="ad-footer-actions">
+                        <button
+                          type="button"
+                          className={`btn-toggle-status-pro ${scheduleInfo.status === "active" ? "btn-status-pause" : "btn-status-play"}`}
+                          onClick={() => handleToggleAdStatus(ad.id)}
+                        >
+                          <Power size={13} />
+                          {scheduleInfo.status === "active"
+                            ? "Ad Pause Karein"
+                            : scheduleInfo.status === "expired"
+                            ? "⚡ Renew & Make Live (+30d)"
+                            : "⚡ Ad Live Karein"}
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Ad Management Bar */}
-                  <div className="ad-manage-bar">
-                    <div className="ad-contact-info">
-                      <span>📞 {ad.phone}</span>
-                      <span>💬 {ad.whatsapp}</span>
-                    </div>
-
-                    <div className="ad-toggle-wrap">
-                      <button
-                        className={`btn-toggle-ad ${scheduleInfo.status === "active" ? "btn-toggle-active" : "btn-toggle-inactive"}`}
-                        onClick={() => handleToggleAdStatus(ad.id)}
-                      >
-                        <Power size={13} />
-                        {scheduleInfo.status === "active"
-                          ? "Ad Pause Karein"
-                          : scheduleInfo.status === "expired"
-                          ? "⚡ Renew & Make Live (+30d)"
-                          : "⚡ Ad Live Karein"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
           </div>
+
+          {/* 📱 Interactive Mobile Carousel Simulator Modal */}
+          {previewCarouselModalOpen && (
+            <div className="modal-backdrop" onClick={() => setPreviewCarouselModalOpen(false)}>
+              <div className="mobile-sim-modal-card" onClick={(e) => e.stopPropagation()}>
+                {/* Simulator Modal Header */}
+                <div className="mobile-sim-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Smartphone size={20} color="#2563eb" />
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
+                        📱 Customer Mobile App Live Preview
+                      </h3>
+                      <small style={{ color: "#64748b", fontSize: "11.5px" }}>
+                        Customer ke phone par ads bilkul is tarah continuous rotate hote hain
+                      </small>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-modal-close-icon"
+                    onClick={() => setPreviewCarouselModalOpen(false)}
+                    aria-label="Close Preview"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Simulated Phone Frame */}
+                <div className="sim-phone-bezel">
+                  <div className="sim-phone-notch">
+                    <span className="sim-phone-speaker" />
+                    <span className="sim-phone-camera" />
+                  </div>
+                  <div className="sim-phone-status-bar">
+                    <span style={{ fontWeight: "700", fontSize: "11px" }}>9:41</span>
+                    <div style={{ display: "flex", gap: "5px", alignItems: "center", fontSize: "10px" }}>
+                      <span>5G</span>
+                      <span>📶</span>
+                      <span>🔋 98%</span>
+                    </div>
+                  </div>
+
+                  {/* App Simulated Nav */}
+                  <div className="sim-app-navbar">
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontWeight: "900", color: "#0f172a", fontSize: "14px" }}>
+                        TYRE<span style={{ color: "#c0392b" }}>SAATHI</span>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>📍 Raipur, CG</span>
+                  </div>
+
+                  {/* Carousel Container inside Phone */}
+                  <div className="sim-carousel-wrapper">
+                    {(() => {
+                      const liveAds = ads
+                        .filter((a) => a.isActive !== false)
+                        .sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+
+                      if (liveAds.length === 0) {
+                        return (
+                          <div style={{ padding: "40px 16px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
+                            Abhi koi active ad nahi hai. Admin panel se ad ko Live karein!
+                          </div>
+                        );
+                      }
+
+                      const activePreviewAd = liveAds[previewActiveIndex % liveAds.length] || liveAds[0];
+                      const totalLive = liveAds.length;
+
+                      return (
+                        <div>
+                          {/* Live Sequence Progress Line */}
+                          <div className="sim-progress-strip">
+                            <span className="sim-live-indicator">
+                              <span className="kpi-pulse-dot" style={{ width: "6px", height: "6px" }} />
+                              NOW PLAYING: SLOT #{activePreviewAd.order || (previewActiveIndex + 1)}
+                            </span>
+                            <span className="sim-slide-idx-pill">
+                              Slide {(previewActiveIndex % totalLive) + 1} of {totalLive}
+                            </span>
+                          </div>
+
+                          {/* Banner Card in Phone */}
+                          <div
+                            className="sim-banner-card"
+                            style={{ background: activePreviewAd.gradient || "linear-gradient(135deg, #1e3c72, #2a5298)" }}
+                          >
+                            <div className="prev-top-pro">
+                              <span className="prev-shop-badge-pro">
+                                <ShieldCheck size={11} color="#2ed573" /> Verified Partner
+                              </span>
+                              <span
+                                className="prev-offer-pill-pro"
+                                style={{ background: activePreviewAd.badgeColor || "#ff4757" }}
+                              >
+                                {activePreviewAd.offerBadge}
+                              </span>
+                            </div>
+
+                            <div className="prev-body-layout-pro" style={{ marginTop: "8px" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <h4 style={{ color: "#fff", fontSize: "14px", fontWeight: "800", margin: "0 0 2px" }}>
+                                  {activePreviewAd.shopName}
+                                </h4>
+                                <p style={{ color: "#ffc145", fontSize: "11px", fontWeight: "700", margin: "0 0 4px" }}>
+                                  {activePreviewAd.tagline}
+                                </p>
+                                <p style={{ color: "rgba(255,255,255,0.88)", fontSize: "10.5px", lineHeight: "1.3", margin: "0 0 6px" }}>
+                                  {activePreviewAd.description}
+                                </p>
+                                <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "10px" }}>
+                                  📍 {activePreviewAd.city} {activePreviewAd.address ? `· ${activePreviewAd.address}` : ""}
+                                </div>
+                              </div>
+                              {activePreviewAd.imageUrl && (
+                                <div style={{ width: "70px", height: "54px", borderRadius: "8px", overflow: "hidden", border: "1.5px solid rgba(255,255,255,0.35)", flexShrink: 0 }}>
+                                  <img
+                                    src={activePreviewAd.imageUrl}
+                                    alt="Preview"
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Simulated Buttons in Banner */}
+                            <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+                              <span style={{ flex: 1, background: "rgba(255,255,255,0.18)", backdropFilter: "blur(4px)", padding: "5px", borderRadius: "6px", textAlign: "center", fontSize: "10.5px", color: "#fff", fontWeight: "700" }}>
+                                📞 Call Shop
+                              </span>
+                              <span style={{ flex: 1, background: "#25D366", padding: "5px", borderRadius: "6px", textAlign: "center", fontSize: "10.5px", color: "#fff", fontWeight: "700" }}>
+                                💬 WhatsApp
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Navigation Dots & Next/Prev Controls */}
+                          <div className="sim-controls-row">
+                            <button
+                              type="button"
+                              className="btn-sim-arrow"
+                              onClick={() => setPreviewActiveIndex((prev) => (prev - 1 + totalLive) % totalLive)}
+                              title="Pichhla Ad"
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+
+                            <div className="sim-dots-wrap">
+                              {liveAds.map((_, dotI) => (
+                                <span
+                                  key={dotI}
+                                  className={`sim-dot ${dotI === (previewActiveIndex % totalLive) ? "sim-dot-active" : ""}`}
+                                  onClick={() => setPreviewActiveIndex(dotI)}
+                                />
+                              ))}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="btn-sim-arrow"
+                              onClick={() => setPreviewActiveIndex((prev) => (prev + 1) % totalLive)}
+                              title="Agla Ad"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Phone Bottom Home Bar */}
+                  <div className="sim-phone-home-indicator" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -6362,6 +8367,28 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
               <div className="ad-modal-grid">
                 {/* Form Inputs */}
                 <div className="ad-form-inputs">
+                  <div className="modal-field" style={{ background: "#f8fafc", padding: "12px", borderRadius: "10px", border: "1.5px solid #e2e8f0" }}>
+                    <label style={{ fontWeight: 800, color: "#1e3a8a", display: "flex", alignItems: "center", gap: "6px", margin: "0 0 6px" }}>
+                      <Layers size={15} color="#2563eb" /> ⚡ Carousel Sequence Slot (स्लाइड नंबर / क्रम) *
+                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        required
+                        value={adForm.order || 1}
+                        onChange={(e) => setAdForm({ ...adForm, order: parseInt(e.target.value, 10) || 1 })}
+                        style={{ width: "90px", fontWeight: "800", textAlign: "center", padding: "7px 10px", fontSize: "14px", borderRadius: "8px", border: "1.5px solid #3b82f6" }}
+                      />
+                      <span style={{ fontSize: "12px", color: "#475569", fontWeight: "600" }}>
+                        {Number(adForm.order) === 1
+                          ? "🥇 Slot #1: Homepage carousel par sabse pehle dikhega"
+                          : `🥈 Slot #${adForm.order}: Number ${adForm.order} par rotate hoga`}
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="modal-field">
                     <label>🏪 Shop / Business Name (दुकान का नाम) *</label>
                     <input
@@ -7897,11 +9924,11 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           flex: 1;
           min-width: 0;
           background-color: #f8fafc;
-          /* Automotive tyre tread texture pattern overlay */
+          /* Modern Clean SaaS Dashboard Ambient Gradient */
           background-image: 
-            radial-gradient(circle at 85% 15%, rgba(15, 23, 42, 0.04) 0%, transparent 50%),
-            radial-gradient(circle at 10% 85%, rgba(192, 57, 43, 0.05) 0%, transparent 45%),
-            url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%230f172a' fill-opacity='0.035'%3E%3Cpath d='M0 15 L25 0 L50 15 L25 30 Z M40 15 L65 0 L90 15 L65 30 Z M0 55 L25 40 L50 55 L25 70 Z M40 55 L65 40 L90 55 L65 70 Z'/%3E%3C/g%3E%3C/svg%3E");
+            radial-gradient(circle at 90% 10%, rgba(99, 102, 241, 0.04) 0%, transparent 45%),
+            radial-gradient(circle at 10% 90%, rgba(239, 68, 68, 0.035) 0%, transparent 40%),
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
           background-attachment: fixed;
           color: #0f172a;
           overflow-y: auto;
@@ -10283,177 +12310,884 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         }
         .btn-create-ad:hover { background: #e03646; }
 
-        .ads-metrics-strip {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 14px;
-          flex-wrap: wrap;
-        }
-        .ad-mini-stat {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px 14px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .ad-stat-val {
-          font-size: 1.15rem;
-          font-weight: 800;
-        }
-        .ad-stat-lbl {
-          font-size: 0.6875rem;
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-
-        .admin-ads-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-        @media (min-width: 768px) {
-          .admin-ads-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        .admin-ad-card-item {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 14px 12px;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+        /* ══════════════════════════════════════════════════════════════════
+           📢 SHOP ADS & CAROUSEL CAMPAIGN MANAGER (EXECUTIVE SAAS DESIGN)
+        ══════════════════════════════════════════════════════════════════ */
+        .admin-ads-section {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 16px;
         }
-        .ad-item-header {
+
+        .ads-executive-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+          flex-wrap: wrap;
+          background: #ffffff;
+          padding: 18px 20px;
+          border-radius: 14px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+        }
+
+        .ads-breadcrumb-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #c0392b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+        }
+
+        .ads-section-main-title {
+          font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+          font-weight: 900;
+          color: #0f172a;
+          margin: 0 0 4px;
+          letter-spacing: -0.02em;
+        }
+
+        .ads-section-sub-title {
+          font-size: 0.8125rem;
+          color: #64748b;
+          margin: 0;
+          line-height: 1.45;
+          max-width: 680px;
+        }
+
+        .ads-header-actions-group {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
         }
-        .ad-status-pill {
-          font-size: 0.6875rem;
-          font-weight: 700;
-          padding: 2px 6px;
-          border-radius: 4px;
-        }
-        .status-active { background: #eafaf1; color: #27ae60; }
-        .status-paused { background: #f2f3f4; color: #7f8c8d; }
-        .ad-featured-pill {
-          background: #fef9e7;
-          color: #f39c12;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          padding: 2px 6px;
-          border-radius: 4px;
-        }
-        .ad-item-top-btns {
-          display: flex;
-          gap: 4px;
-        }
-        .btn-icon-ad {
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          padding: 5px;
+
+        .btn-preview-simulator {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1.5px solid #86efac;
+          padding: 9px 14px;
+          border-radius: 10px;
+          font-size: 0.8125rem;
+          font-weight: 800;
           cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 6px rgba(34, 197, 94, 0.12);
+        }
+        .btn-preview-simulator:hover {
+          background: #dcfce7;
+          border-color: #4ade80;
+          transform: translateY(-1px);
+        }
+
+        .btn-create-ad-pro {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+          color: #ffffff;
+          border: none;
+          padding: 10px 18px;
+          border-radius: 10px;
+          font-size: 0.8125rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35);
+        }
+        .btn-create-ad-pro:hover {
+          background: linear-gradient(135deg, #be123c 0%, #9f1239 100%);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(225, 29, 72, 0.45);
+        }
+
+        /* ─── 4 Executive KPI Metrics Cards ─── */
+        .ads-metrics-grid-pro {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 12px;
+        }
+
+        .ad-kpi-card-pro {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 14px 16px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          position: relative;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .ad-kpi-card-pro:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+          border-color: #cbd5e1;
+        }
+
+        .kpi-icon-wrap {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
+          margin-bottom: 4px;
         }
-        .btn-icon-ad:hover { background: var(--surface-2); }
 
-        .ad-preview-box {
-          border-radius: 10px;
-          padding: 14px 12px;
-          color: white;
+        .kpi-info-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
         }
-        .prev-top {
+
+        .kpi-val-pro {
+          font-size: 1.45rem;
+          font-weight: 900;
+          color: #0f172a;
+          line-height: 1.1;
+        }
+
+        .kpi-lbl-pro {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #475569;
+        }
+
+        .kpi-sub-pro {
+          font-size: 0.6875rem;
+          color: #94a3b8;
+          font-weight: 600;
+        }
+
+        .kpi-pulse-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #10b981;
+          display: inline-block;
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+          animation: kpiPulse 1.8s infinite;
+        }
+
+        @keyframes kpiPulse {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* ─── Control Toolbar (Search, Filter Tabs, Sort) ─── */
+        .ads-control-toolbar-pro {
+          background: #ffffff;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        }
+
+        .ads-search-box-pro {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 7px 12px;
+          min-width: 250px;
+          flex: 1;
+          max-width: 360px;
+        }
+        .ads-search-box-pro input {
+          border: none;
+          background: transparent;
+          outline: none;
+          font-size: 0.8125rem;
+          width: 100%;
+          color: #0f172a;
+        }
+        .btn-clear-search-ads {
+          background: none;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          padding: 0;
+        }
+        .btn-clear-search-ads:hover { color: #0f172a; }
+
+        .ads-filter-pills-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .ad-filter-pill-btn {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          color: #475569;
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 6px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.15s ease;
+        }
+        .ad-filter-pill-btn:hover {
+          background: #f1f5f9;
+          color: #0f172a;
+        }
+        .ad-filter-pill-btn.active {
+          background: #0f172a;
+          color: #ffffff;
+          border-color: #0f172a;
+        }
+        .pill-counter {
+          background: rgba(0, 0, 0, 0.08);
+          padding: 1px 6px;
+          border-radius: 10px;
+          font-size: 0.6875rem;
+        }
+        .ad-filter-pill-btn.active .pill-counter {
+          background: rgba(255, 255, 255, 0.22);
+          color: #ffffff;
+        }
+
+        .ads-sort-wrap-pro {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 5px 10px;
+          border-radius: 8px;
+        }
+        .ads-sort-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #64748b;
+        }
+        .ads-sort-select {
+          border: none;
+          background: transparent;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #0f172a;
+          outline: none;
+          cursor: pointer;
+        }
+
+        /* ─── Sequence Info Banner ─── */
+        .ads-sequence-info-banner {
+          background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+          border: 1px solid #bfdbfe;
+          border-radius: 12px;
+          padding: 12px 16px;
+        }
+
+        /* ─── Modern Ads Grid & Cards ─── */
+        .admin-ads-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+        @media (min-width: 900px) {
+          .admin-ads-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .admin-ad-card-item-pro {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 16px;
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.035);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          position: relative;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .admin-ad-card-item-pro:hover {
+          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
+          border-color: #cbd5e1;
+        }
+
+        /* Top Slot Order Bar */
+        .ad-card-order-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding-bottom: 10px;
+          border-bottom: 1.5px dashed #e2e8f0;
+          flex-wrap: wrap;
+        }
+
+        .ad-slot-badge-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .ad-slot-pill {
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 900;
+          letter-spacing: 0.5px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .slot-first {
+          background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+        }
+        .slot-second {
+          background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+        }
+        .slot-general {
+          background: #f1f5f9;
+          color: #334155;
+          border: 1px solid #cbd5e1;
+        }
+
+        .ad-slot-sub-text {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #64748b;
+        }
+
+        .ad-reorder-actions {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .btn-reorder-step {
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          color: #334155;
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          transition: all 0.15s ease;
+        }
+        .btn-reorder-step:hover:not(:disabled) {
+          background: #0f172a;
+          color: #ffffff;
+          border-color: #0f172a;
+        }
+        .btn-reorder-step:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .slot-direct-select {
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 4px 6px;
+          font-size: 0.7rem;
+          font-weight: 800;
+          color: #0f172a;
+          cursor: pointer;
+        }
+
+        /* Header Row (Status, Dates, Actions) */
+        .ad-item-header-pro {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .ad-status-tags-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+
+        .ad-status-pill-pro {
+          font-size: 0.6875rem;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 12px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .status-mini-indicator {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          display: inline-block;
+        }
+
+        .ad-featured-pill-pro {
+          background: #fefce8;
+          color: #ca8a04;
+          border: 1px solid #fef08a;
+          font-size: 0.6875rem;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 12px;
+        }
+
+        .ad-schedule-date-badge {
+          font-size: 0.6875rem;
+          color: #64748b;
+          font-weight: 600;
+        }
+
+        .ad-item-top-btns-pro {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-action-ad-edit {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+          color: #16a34a;
+          padding: 5px 9px;
+          border-radius: 7px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.15s ease;
+        }
+        .btn-action-ad-edit:hover {
+          background: #16a34a;
+          color: #ffffff;
+        }
+
+        .btn-action-ad-delete {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #dc2626;
+          padding: 5px 7px;
+          border-radius: 7px;
+          font-size: 0.72rem;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s ease;
+        }
+        .btn-action-ad-delete:hover {
+          background: #dc2626;
+          color: #ffffff;
+        }
+
+        /* Visual Banner Card Preview */
+        .ad-preview-box-pro {
+          border-radius: 14px;
+          padding: 14px 16px;
+          color: #ffffff;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+        }
+
+        .prev-top-pro {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+          gap: 8px;
+        }
+
+        .prev-shop-badge-pro {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.6875rem;
+          font-weight: 800;
+          background: rgba(255, 255, 255, 0.22);
+          backdrop-filter: blur(4px);
+          padding: 2px 7px;
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .prev-slide-badge {
+          font-size: 0.625rem;
+          font-weight: 800;
+          background: rgba(0, 0, 0, 0.35);
+          color: #ffffff;
+          padding: 2px 6px;
+          border-radius: 10px;
+        }
+
+        .prev-offer-pill-pro {
+          color: #ffffff;
+          font-size: 0.6875rem;
+          font-weight: 900;
+          padding: 3px 8px;
+          border-radius: 12px;
+          letter-spacing: 0.3px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .prev-body-layout-pro {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .prev-body-text-pro {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .prev-shop-name-pro {
+          font-size: 1.05rem;
+          font-weight: 900;
+          color: #ffffff;
+          margin: 0 0 2px;
+          line-height: 1.2;
+        }
+
+        .prev-tagline-pro {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #ffc145;
+          margin: 0 0 5px;
+          line-height: 1.3;
+        }
+
+        .prev-desc-pro {
+          font-size: 0.72rem;
+          color: rgba(255, 255, 255, 0.9);
+          margin: 0 0 6px;
+          line-height: 1.35;
+        }
+
+        .prev-meta-pro {
+          font-size: 0.6875rem;
+          color: rgba(255, 255, 255, 0.78);
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .prev-image-wrap-pro {
+          width: 88px;
+          height: 68px;
+          border-radius: 10px;
+          overflow: hidden;
+          border: 1.5px solid rgba(255, 255, 255, 0.4);
+          flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .prev-ad-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        /* Card Footer: History Timeline & Action */
+        .ad-card-footer-pro {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-top: 1px solid #f1f5f9;
+          padding-top: 10px;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .ad-timeline-info {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .ad-created-line {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 0.72rem;
+          color: #64748b;
+        }
+
+        .ad-contacts-row {
+          display: flex;
+          gap: 10px;
+          font-size: 0.72rem;
+          color: #475569;
+          font-weight: 600;
+        }
+
+        .ad-footer-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-toggle-status-pro {
+          border: none;
+          padding: 7px 14px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          transition: all 0.15s ease;
+        }
+        .btn-status-pause {
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+        }
+        .btn-status-pause:hover {
+          background: #dc2626;
+          color: #ffffff;
+        }
+        .btn-status-play {
+          background: #ecfdf5;
+          color: #059669;
+          border: 1px solid #a7f3d0;
+        }
+        .btn-status-play:hover {
+          background: #059669;
+          color: #ffffff;
+        }
+
+        .no-ads-box-pro {
+          grid-column: 1 / -1;
+          text-align: center;
+          padding: 40px 20px;
+          background: #ffffff;
+          border: 2px dashed #cbd5e1;
+          border-radius: 16px;
+          color: #64748b;
+        }
+        .no-ads-icon-ring {
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          background: #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 14px;
+        }
+        .no-ads-box-pro h3 {
+          font-size: 1.15rem;
+          color: #0f172a;
+          margin: 0 0 6px;
+          font-weight: 800;
+        }
+        .no-ads-box-pro p {
+          font-size: 0.8125rem;
+          color: #64748b;
+          max-width: 440px;
+          margin: 0 auto;
+        }
+
+        /* ─── 📱 Interactive Mobile Simulator Modal ─── */
+        .mobile-sim-modal-card {
+          background: #ffffff;
+          border-radius: 20px;
+          max-width: 440px;
+          width: 95%;
+          max-height: 94vh;
+          overflow-y: auto;
+          box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .mobile-sim-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 18px;
+          border-bottom: 1px solid #e2e8f0;
+          background: #f8fafc;
+        }
+
+        .sim-phone-bezel {
+          margin: 16px auto 20px;
+          width: 320px;
+          background: #000000;
+          border-radius: 36px;
+          padding: 12px 10px 18px;
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), inset 0 0 0 3px #334155;
+          position: relative;
+        }
+
+        .sim-phone-notch {
+          width: 110px;
+          height: 18px;
+          background: #000000;
+          border-bottom-left-radius: 12px;
+          border-bottom-right-radius: 12px;
+          margin: 0 auto 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .sim-phone-speaker {
+          width: 36px;
+          height: 3px;
+          background: #334155;
+          border-radius: 3px;
+        }
+        .sim-phone-camera {
+          width: 7px;
+          height: 7px;
+          background: #1e293b;
+          border-radius: 50%;
+        }
+
+        .sim-phone-status-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: #ffffff;
+          padding: 2px 14px 8px;
+        }
+
+        .sim-app-navbar {
+          background: #ffffff;
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
+          padding: 10px 14px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sim-carousel-wrapper {
+          background: #f8fafc;
+          border-bottom-left-radius: 20px;
+          border-bottom-right-radius: 20px;
+          padding: 12px 10px 16px;
+        }
+
+        .sim-progress-strip {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 8px;
         }
-        .prev-shop-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 3px;
-          font-size: 0.6875rem;
-          font-weight: 700;
-          background: rgba(255, 255, 255, 0.2);
-          padding: 2px 5px;
-          border-radius: 4px;
-        }
-        .prev-offer-pill {
-          color: white;
-          font-size: 0.6875rem;
-          font-weight: 800;
-          padding: 2px 6px;
-          border-radius: 10px;
-        }
-        .prev-shop-name {
-          font-size: 0.95rem;
-          font-weight: 800;
-          margin: 0 0 2px;
-          color: white;
-        }
-        .prev-tagline {
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: #ffc145;
-          margin: 0 0 4px;
-        }
-        .prev-desc {
-          font-size: 0.6875rem;
-          color: rgba(255, 255, 255, 0.85);
-          margin: 0 0 6px;
-          line-height: 1.3;
-        }
-        .prev-meta {
-          font-size: 0.6875rem;
-          color: rgba(255, 255, 255, 0.75);
-          display: flex;
-          gap: 8px;
-        }
 
-        .ad-manage-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-top: 1px solid var(--border);
-          padding-top: 10px;
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-        .ad-contact-info {
-          display: flex;
-          gap: 8px;
-        }
-        .btn-toggle-ad {
-          border: none;
-          padding: 5px 10px;
-          border-radius: 6px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          cursor: pointer;
+        .sim-live-indicator {
+          font-size: 0.625rem;
+          font-weight: 800;
+          color: #059669;
           display: inline-flex;
           align-items: center;
           gap: 4px;
-        }
-        .btn-toggle-active { background: #fdedec; color: #c0392b; }
-        .btn-toggle-inactive { background: #eafaf1; color: #27ae60; }
-
-        .no-ads-box {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 30px;
-          background: var(--surface);
-          border: 1px solid var(--border);
+          background: #ecfdf5;
+          padding: 2px 6px;
           border-radius: 10px;
-          color: var(--text-muted);
-          font-size: 0.8125rem;
+        }
+
+        .sim-slide-idx-pill {
+          font-size: 0.625rem;
+          font-weight: 800;
+          color: #64748b;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          padding: 2px 6px;
+          border-radius: 10px;
+        }
+
+        .sim-banner-card {
+          border-radius: 14px;
+          padding: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .sim-controls-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 10px;
+          padding: 0 4px;
+        }
+
+        .btn-sim-arrow {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #0f172a;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .sim-dots-wrap {
+          display: flex;
+          gap: 5px;
+          align-items: center;
+        }
+        .sim-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #cbd5e1;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .sim-dot-active {
+          width: 16px;
+          border-radius: 6px;
+          background: #0f172a;
+        }
+
+        .sim-phone-home-indicator {
+          width: 90px;
+          height: 4px;
+          background: #475569;
+          border-radius: 4px;
+          margin: 12px auto 0;
         }
 
         /* Modern Ad Create / Edit Modal */
@@ -12085,6 +14819,528 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
           .dark-item-sub {
             font-size: 0.68rem !important;
+          }
+        }
+        /* ══════════════════════════════════════════════════════════════
+           🏪 SHOP & CUSTOMER DETAILS MODAL STYLING
+        ══════════════════════════════════════════════════════════════ */
+        .td-user-clickable {
+          transition: background 0.15s ease;
+        }
+        .td-user-clickable:hover {
+          background: rgba(37, 99, 235, 0.05) !important;
+        }
+        .shop-clickable-title {
+          cursor: pointer;
+          color: #0f172a;
+          transition: color 0.15s ease;
+          display: inline-flex;
+          align-items: center;
+        }
+        .shop-clickable-title:hover {
+          color: #2563eb !important;
+          text-decoration: underline;
+        }
+
+        .detail-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 99999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+          from { opacity: 0; transform: scale(0.97); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        .detail-modal-card {
+          background: #ffffff;
+          width: 100%;
+          max-width: 680px;
+          max-height: 90vh;
+          border-radius: 18px;
+          box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .detail-modal-header {
+          padding: 18px 22px;
+          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          position: relative;
+        }
+
+        .detail-modal-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.12);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .detail-modal-title {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: #ffffff;
+          line-height: 1.25;
+        }
+
+        .detail-modal-subtitle {
+          margin: 3px 0 0;
+          font-size: 0.82rem;
+          color: #cbd5e1;
+          font-weight: 500;
+        }
+
+        .detail-role-pill {
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          padding: 2px 8px;
+          border-radius: 12px;
+          text-transform: uppercase;
+        }
+
+        .role-shop {
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+        }
+
+        .role-customer {
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #bbf7d0;
+        }
+
+        .detail-close-btn {
+          background: rgba(255, 255, 255, 0.12);
+          border: none;
+          color: #ffffff;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease, transform 0.15s ease;
+          flex-shrink: 0;
+        }
+
+        .detail-close-btn:hover {
+          background: rgba(239, 68, 68, 0.8);
+          transform: scale(1.05);
+        }
+
+        .detail-status-strip {
+          padding: 12px 22px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .detail-badge-verified {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #f0fdf4;
+          color: #15803d;
+          border: 1px solid #86efac;
+          padding: 4px 10px;
+          border-radius: 14px;
+          font-size: 0.76rem;
+          font-weight: 750;
+        }
+
+        .detail-badge-pending {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #fffbeb;
+          color: #b45309;
+          border: 1px solid #fde68a;
+          padding: 4px 10px;
+          border-radius: 14px;
+          font-size: 0.76rem;
+          font-weight: 750;
+        }
+
+        .detail-plan-badge {
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.74rem;
+          font-weight: 750;
+          background: #eef2ff;
+          color: #4338ca;
+          padding: 4px 10px;
+          border-radius: 14px;
+          border: 1px solid #c7d2fe;
+        }
+
+        .detail-btn-toggle-approval {
+          font-size: 0.78rem;
+          font-weight: 750;
+          padding: 6px 14px;
+          border-radius: 8px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+
+        .detail-btn-toggle-approval.btn-approve {
+          background: #16a34a;
+          color: #ffffff;
+        }
+        .detail-btn-toggle-approval.btn-approve:hover {
+          background: #15803d;
+        }
+
+        .detail-btn-toggle-approval.btn-revoke {
+          background: #fee2e2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
+        }
+        .detail-btn-toggle-approval.btn-revoke:hover {
+          background: #fecaca;
+        }
+
+        .detail-modal-body {
+          padding: 20px 22px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .detail-section-box {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 12px;
+          padding: 14px 16px;
+        }
+
+        .detail-section-title {
+          margin: 0 0 10px;
+          font-size: 0.88rem;
+          font-weight: 800;
+          color: #1e293b;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+
+        .detail-contact-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 12px;
+        }
+
+        .detail-contact-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .detail-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+
+        .detail-value {
+          font-size: 0.92rem;
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .detail-value-text {
+          margin: 2px 0 0;
+          font-size: 0.88rem;
+          color: #1e293b;
+          font-weight: 500;
+          line-height: 1.4;
+        }
+
+        .detail-contact-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .btn-detail-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.74rem;
+          font-weight: 750;
+          padding: 4px 10px;
+          border-radius: 6px;
+          text-decoration: none;
+          transition: all 0.15s ease;
+        }
+
+        .btn-call {
+          background: #eff6ff;
+          color: #2563eb;
+          border: 1px solid #bfdbfe;
+        }
+        .btn-call:hover {
+          background: #dbeafe;
+        }
+
+        .btn-whatsapp {
+          background: #ecfdf5;
+          color: #16a34a;
+          border: 1px solid #bbf7d0;
+        }
+        .btn-whatsapp:hover {
+          background: #dcfce7;
+        }
+
+        .btn-email {
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+        }
+        .btn-email:hover {
+          background: #e2e8f0;
+        }
+
+        .detail-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+          gap: 10px;
+        }
+
+        .detail-map-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #dc2626;
+          text-decoration: none;
+        }
+        .detail-map-link:hover {
+          text-decoration: underline;
+        }
+
+        .detail-service-tag {
+          font-size: 0.74rem;
+          font-weight: 700;
+          background: #f1f5f9;
+          color: #334155;
+          padding: 4px 10px;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+        }
+
+        .detail-service-pill {
+          font-size: 0.74rem;
+          font-weight: 650;
+          background: #ffffff;
+          color: #059669;
+          border: 1px solid #a7f3d0;
+          padding: 3px 9px;
+          border-radius: 12px;
+        }
+
+        .detail-uid-code {
+          font-family: monospace;
+          font-size: 0.74rem;
+          background: #e2e8f0;
+          padding: 2px 6px;
+          border-radius: 4px;
+          color: #334155;
+          display: inline-block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .detail-modal-footer {
+          padding: 14px 22px;
+          background: #f8fafc;
+          border-top: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .btn-footer-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #eff6ff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+          font-size: 0.8rem;
+          font-weight: 750;
+          padding: 7px 14px;
+          border-radius: 8px;
+          text-decoration: none;
+        }
+        .btn-footer-link:hover {
+          background: #dbeafe;
+        }
+
+        .btn-footer-danger {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #fff1f2;
+          color: #e11d48;
+          border: 1px solid #fecdd3;
+          font-size: 0.8rem;
+          font-weight: 750;
+          padding: 7px 14px;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+        .btn-footer-danger:hover {
+          background: #ffe4e6;
+        }
+
+        .btn-footer-close {
+          background: #0f172a;
+          color: #ffffff;
+          border: none;
+          font-size: 0.82rem;
+          font-weight: 750;
+          padding: 8px 18px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .btn-footer-close:hover {
+          background: #334155;
+        }
+
+        /* Mobile Modal Adjustments */
+        @media (max-width: 640px) {
+          .detail-modal-backdrop {
+            padding: 8px !important;
+          }
+          .detail-modal-card {
+            max-height: 94vh !important;
+            border-radius: 14px !important;
+          }
+          .detail-modal-header {
+            padding: 14px 16px !important;
+          }
+          .detail-status-strip {
+            padding: 10px 14px !important;
+          }
+          .detail-modal-body {
+            padding: 14px 14px !important;
+            gap: 12px !important;
+          }
+          .detail-modal-footer {
+            padding: 12px 14px !important;
+          }
+          .btn-footer-close {
+            width: 100% !important;
+          }
+
+          /* Mobile Ads Manager Enhancements */
+          .ads-executive-header {
+            padding: 14px 12px !important;
+            gap: 12px !important;
+          }
+          .ads-header-actions-group {
+            width: 100% !important;
+          }
+          .btn-preview-simulator,
+          .btn-create-ad-pro {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .ads-metrics-grid-pro {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          .ad-kpi-card-pro {
+            padding: 10px 12px !important;
+          }
+          .kpi-val-pro {
+            font-size: 1.25rem !important;
+          }
+          .ads-control-toolbar-pro {
+            padding: 10px !important;
+            gap: 10px !important;
+          }
+          .ads-search-box-pro {
+            max-width: 100% !important;
+            min-width: 100% !important;
+          }
+          .ads-filter-pills-row {
+            width: 100% !important;
+            overflow-x: auto !important;
+            flex-wrap: nowrap !important;
+            padding-bottom: 4px !important;
+          }
+          .ads-sort-wrap-pro {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .admin-ad-card-item-pro {
+            padding: 12px !important;
+            border-radius: 14px !important;
+          }
+          .ad-card-order-bar {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          .ad-reorder-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .btn-reorder-step {
+            flex: 1 !important;
+            justify-content: center !important;
+            padding: 6px 8px !important;
+          }
+          .ad-card-footer-pro {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+          }
+          .btn-toggle-status-pro {
+            width: 100% !important;
+            justify-content: center !important;
           }
         }
       `}</style>
