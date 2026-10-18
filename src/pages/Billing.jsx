@@ -1560,7 +1560,17 @@ export default function Billing() {
         <div className="print-modal-overlay" onClick={() => setPrintModalInvoice(null)}>
           <div className="print-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="print-modal-controls no-print">
-              <h3>📄 Retail Invoice Print Preview</h3>
+              <div className="print-modal-controls-head">
+                <h3>📄 Retail Invoice Print Preview</h3>
+                <button
+                  type="button"
+                  className="btn-close-modal btn-close-mobile"
+                  onClick={() => setPrintModalInvoice(null)}
+                  aria-label="Close"
+                >
+                  ✕ Close
+                </button>
+              </div>
               <div className="print-controls-right">
                 <button
                   type="button"
@@ -1576,7 +1586,8 @@ export default function Billing() {
                     cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "6px"
+                    gap: "6px",
+                    justifyContent: "center"
                   }}
                   onClick={() => {
                     const itemsSummary = (printModalInvoice.items || []).map((i) => `${i.name} (x${i.qty})`).join(", ");
@@ -1598,7 +1609,7 @@ export default function Billing() {
                 </button>
                 <button
                   type="button"
-                  className="btn-close-modal"
+                  className="btn-close-modal btn-close-desktop"
                   onClick={() => setPrintModalInvoice(null)}
                 >
                   ✕ Close
@@ -1651,40 +1662,45 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Items Table */}
-              <table className="paper-items-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: "5%" }}>#</th>
-                    <th style={{ width: "30%" }}>Item Description / Brand</th>
-                    <th style={{ width: "18%" }}>Tyre Number / Size (साइज)</th>
-                    <th style={{ width: "18%" }}>Serial / DOT No. (सीरियल)</th>
-                    <th style={{ width: "7%" }}>Qty</th>
-                    <th style={{ width: "10%" }}>Rate (₹)</th>
-                    <th style={{ width: "12%", textAlign: "right" }}>Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printModalInvoice.items.map((it, idx) => (
-                    <tr key={idx}>
-                      <td>{idx + 1}</td>
-                      <td>
-                        <strong>{it.name}</strong>
-                        <span className="paper-type-sub">({it.type.toUpperCase()})</span>
-                      </td>
-                      <td>
-                        {it.tyreSize ? <strong style={{ color: "#0f172a" }}>{it.tyreSize}</strong> : <span style={{ color: "#94a3b8" }}>—</span>}
-                      </td>
-                      <td>
-                        {it.serialNo ? <code style={{ fontSize: "11px", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", fontWeight: "700" }}>{it.serialNo}</code> : <span style={{ color: "#94a3b8" }}>—</span>}
-                      </td>
-                      <td>{it.qty}</td>
-                      <td>₹{it.rate}</td>
-                      <td style={{ textAlign: "right", fontWeight: "700" }}>₹{it.amount}</td>
+              {/* Items Table with Responsive Wrapper */}
+              <div className="paper-table-wrapper">
+                <table className="paper-items-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "5%" }}>#</th>
+                      <th style={{ minWidth: "140px" }}>Item Description / Brand</th>
+                      <th style={{ minWidth: "120px" }}>Tyre Number / Size (साइज)</th>
+                      <th style={{ minWidth: "120px" }}>Serial / DOT No. (सीरियल)</th>
+                      <th style={{ width: "7%" }}>Qty</th>
+                      <th style={{ minWidth: "80px" }}>Rate (₹)</th>
+                      <th style={{ minWidth: "90px", textAlign: "right" }}>Amount (₹)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {printModalInvoice.items.map((it, idx) => (
+                      <tr key={idx}>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <strong>{it.name}</strong>
+                          <span className="paper-type-sub">({it.type.toUpperCase()})</span>
+                        </td>
+                        <td>
+                          {it.tyreSize ? <strong style={{ color: "#0f172a" }}>{it.tyreSize}</strong> : <span style={{ color: "#94a3b8" }}>—</span>}
+                        </td>
+                        <td>
+                          {it.serialNo ? <code style={{ fontSize: "11px", background: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", fontWeight: "700" }}>{it.serialNo}</code> : <span style={{ color: "#94a3b8" }}>—</span>}
+                        </td>
+                        <td>{it.qty}</td>
+                        <td>₹{it.rate}</td>
+                        <td style={{ textAlign: "right", fontWeight: "700" }}>₹{it.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="paper-table-scroll-hint">
+                <span>⇄ उंगली से टेबल को बाएँ-दाएँ (Left-Right) खिसका कर सभी कॉलम देखें</span>
+              </div>
 
               {/* Calculations Bottom */}
               <div className="paper-totals-layout">
@@ -2876,6 +2892,8 @@ export default function Billing() {
           justify-content: center;
           padding: 20px;
           overflow-y: auto;
+          overflow-x: hidden;
+          box-sizing: border-box;
         }
         .print-modal-box {
           background: white;
@@ -2887,6 +2905,8 @@ export default function Billing() {
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          box-sizing: border-box;
+          margin: auto;
         }
         .print-modal-controls {
           background: #2c3e50;
@@ -2895,10 +2915,25 @@ export default function Billing() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          gap: 12px;
+          box-sizing: border-box;
         }
-        .print-modal-controls h3 {
+        .print-modal-controls-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .print-modal-controls-head h3 {
           margin: 0;
           font-size: 15px;
+          font-weight: 700;
+        }
+        .btn-close-mobile {
+          display: none;
+        }
+        .btn-close-desktop {
+          display: inline-block;
         }
         .print-controls-right {
           display: flex;
@@ -2934,11 +2969,15 @@ export default function Billing() {
           background: white;
           font-family: 'Inter', sans-serif;
           overflow-y: auto;
+          overflow-x: hidden;
+          box-sizing: border-box;
+          width: 100%;
         }
         .paper-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
+          gap: 14px;
         }
         .paper-header-left {
           display: flex;
@@ -3013,10 +3052,19 @@ export default function Billing() {
           margin: 2px 0;
           color: #444;
         }
+        .paper-table-wrapper {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          margin-bottom: 20px;
+          box-sizing: border-box;
+        }
+        .paper-table-scroll-hint {
+          display: none;
+        }
         .paper-items-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 20px;
           font-size: 13px;
         }
         .paper-items-table th {
@@ -3091,6 +3139,142 @@ export default function Billing() {
           margin-bottom: 6px;
         }
 
+        /* 📱 Mobile Responsive Invoice Modal (< 768px) */
+        @media screen and (max-width: 768px) {
+          .print-modal-overlay {
+            padding: 8px 6px;
+            align-items: flex-start;
+            justify-content: flex-start;
+          }
+          .print-modal-box {
+            max-height: 96vh;
+            border-radius: 10px;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 auto;
+          }
+          .print-modal-controls {
+            padding: 10px 12px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+          .print-modal-controls-head {
+            width: 100%;
+          }
+          .print-modal-controls-head h3 {
+            font-size: 13.5px;
+          }
+          .btn-close-mobile {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 6px;
+          }
+          .btn-close-desktop {
+            display: none;
+          }
+          .print-controls-right {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+          }
+          .btn-do-share,
+          .btn-do-print {
+            width: 100%;
+            justify-content: center;
+            font-size: 12px;
+            padding: 9px 8px;
+          }
+          .invoice-paper-sheet {
+            padding: 16px 12px;
+            font-size: 12.5px;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+          }
+          .paper-header {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch;
+          }
+          .paper-header-left {
+            gap: 10px;
+          }
+          .paper-logo {
+            height: 38px;
+          }
+          .paper-shop-name {
+            font-size: 17px;
+          }
+          .paper-header-right {
+            text-align: left;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .paper-header-right .invoice-badge-title {
+            margin-bottom: 6px;
+          }
+          .paper-billed-to-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .paper-table-wrapper {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background: #ffffff;
+          }
+          .paper-items-table {
+            min-width: 540px;
+            margin-bottom: 0;
+            font-size: 12px;
+          }
+          .paper-items-table th,
+          .paper-items-table td {
+            padding: 7px 8px;
+            white-space: nowrap;
+          }
+          .paper-table-scroll-hint {
+            display: block;
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 14px;
+            text-align: right;
+            font-weight: 600;
+          }
+          .paper-totals-layout {
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+          }
+          .paper-amounts-col {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .paper-footer-signatures {
+            padding-top: 14px;
+            gap: 10px;
+          }
+          .sign-line {
+            width: 110px;
+          }
+        }
+
         /* 🖨️ Native Browser Print Rules */
         @media print {
           body * {
@@ -3109,11 +3293,14 @@ export default function Billing() {
             width: 100%;
             padding: 0;
             background: white !important;
+            display: block !important;
           }
           .print-modal-box {
             box-shadow: none;
             max-width: 100%;
             border-radius: 0;
+            overflow: visible;
+            display: block;
           }
           #printable-invoice,
           #printable-invoice * {
@@ -3125,6 +3312,40 @@ export default function Billing() {
             top: 0;
             width: 100%;
             padding: 20px;
+          }
+          .paper-table-wrapper {
+            overflow: visible !important;
+            border: none !important;
+          }
+          .paper-header {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+          }
+          .paper-header-right {
+            text-align: right !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+          }
+          .paper-billed-to-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+          }
+          .paper-totals-layout {
+            display: grid !important;
+            grid-template-columns: 1.2fr 1fr !important;
+          }
+          .paper-amounts-col {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+          }
+          .paper-table-scroll-hint {
+            display: none !important;
           }
         }
       `}</style>
