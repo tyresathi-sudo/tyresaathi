@@ -136,6 +136,12 @@ export default function StoreLocation() {
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingSuccessAlert, setBookingSuccessAlert] = useState(null);
 
+  // 🔍 Tyre Specification & Stock Details Modal States
+  const [selectedProductForSpecs, setSelectedProductForSpecs] = useState(null);
+  const [specModalQty, setSpecModalQty] = useState(1);
+  const [activeSpecImageIndex, setActiveSpecImageIndex] = useState(0);
+  const [cartToastMessage, setCartToastMessage] = useState(null);
+
   // Live Location State
   const [userLocation, setUserLocation] = useState(null);
   const [detectingLocation, setDetectingLocation] = useState(false);
@@ -392,6 +398,31 @@ export default function StoreLocation() {
       }
     }
     loadData();
+
+    // 🌟 Live Real-time Products & Stock Listener (Partner Stock Update Sync)
+    let unsubProducts = null;
+    try {
+      unsubProducts = onSnapshot(
+        collection(db, "products"),
+        (snapshot) => {
+          if (!snapshot.empty) {
+            const prods = snapshot.docs
+              .map((d) => ({ id: d.id, ...d.data() }))
+              .filter((p) => p.published !== false);
+            setAllProducts(prods);
+          }
+        },
+        (err) => {
+          console.warn("Products live listener warning:", err);
+        }
+      );
+    } catch (err) {
+      console.warn("Live products listener registration error:", err);
+    }
+
+    return () => {
+      if (unsubProducts) unsubProducts();
+    };
   }, [initialShopId, initialShopName]);
 
   // 🌟 Recalculate Distances & Live Ratings from Firestore for shops
@@ -537,16 +568,94 @@ export default function StoreLocation() {
     trackStoreEvent("open_rating_modal", { shopId: shop.id, shopName: shop.name });
   };
 
+  // 🛒 Add to Cart Handler (Saves to localStorage and notifies Navbar)
+  const handleAddToCart = (product, quantity = 1, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const stockNum = product.stock !== undefined && product.stock !== null && product.stock !== "" ? Number(product.stock) : 99;
+    if (stockNum <= 0) {
+      alert("Yeh tyre filhal stock me uplabdh nahi hai (Out of Stock).");
+      return;
+    }
+
+    try {
+      const existingCart = JSON.parse(localStorage.getItem("tyresaathi_cart") || "[]");
+      const shopId = activeShopProfile?.id || product.shopId || "hub_partner";
+      const existingIndex = existingCart.findIndex(
+        (item) => item.productId === product.id && item.shopId === shopId
+      );
+      
+      const img = (Array.isArray(product.images) && product.images[0]) || product.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80";
+
+      if (existingIndex > -1) {
+        const newQty = existingCart[existingIndex].quantity + quantity;
+        existingCart[existingIndex].quantity = stockNum > 0 ? Math.min(newQty, stockNum) : newQty;
+      } else {
+        existingCart.push({
+          id: `cart_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          productId: product.id,
+          productName: product.productName || product.sizeName || "Tyre",
+          brandName: product.brandName || "",
+          sizeName: product.sizeName || "",
+          price: Number(product.offerPrice || product.price || 0),
+          mrp: Number(product.originalPrice || 0),
+          quantity: quantity,
+          condition: product.condition || "new",
+          image: img,
+          shopId: shopId,
+          shopName: activeShopProfile?.name || product.shopName || "Tyre Saathi Partner",
+          addedAt: new Date().toISOString()
+        });
+      }
+
+      localStorage.setItem("tyresaathi_cart", JSON.stringify(existingCart));
+      window.dispatchEvent(new Event("cartUpdated"));
+
+      setCartToastMessage(`✅ ${quantity}x "${product.productName || product.sizeName || 'Tyre'}" Cart me add ho gaya!`);
+      setTimeout(() => setCartToastMessage(null), 3500);
+
+      if (selectedProductForSpecs) {
+        setSelectedProductForSpecs(null);
+      }
+    } catch (err) {
+      console.error("Cart add error:", err);
+    }
+  };
+
+  // 🔍 Open Product Specifications Modal
+  const handleOpenProductSpecs = (product, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const stockNum = product.stock !== undefined && product.stock !== null && product.stock !== "" ? Number(product.stock) : 99;
+    setSelectedProductForSpecs(product);
+    setSpecModalQty(stockNum > 0 ? 1 : 0);
+    setActiveSpecImageIndex(0);
+  };
+
   // 🛠️ Open In-Place Shop Service Booking Modal
   const handleOpenBookingModal = (shop, serviceName = "Tubeless Puncture Repair", e) => {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
     }
+    let prefName = userData?.name || currentUser?.displayName || "";
+    let prefPhone = userData?.phone || "";
+    if (!prefName || !prefPhone) {
+      try {
+        const cached = JSON.parse(localStorage.getItem("tyresaathi_user_cache") || "{}");
+        if (!prefName && cached.name) prefName = cached.name;
+        if (!prefPhone && cached.phone) prefPhone = cached.phone;
+      } catch (e) {}
+    }
+
     setBookingShop(shop);
     setBookingService(serviceName || "Tubeless Puncture Repair");
-    setBookingCustomerName(userData?.name || currentUser?.displayName || "");
-    setBookingCustomerPhone(userData?.phone || "");
+    setBookingCustomerName(prefName);
+    setBookingCustomerPhone(prefPhone);
     setBookingVehicleType("Car / SUV");
     setBookingVehicleNumber("");
     setBookingDate(new Date().toISOString().split("T")[0]);
@@ -566,6 +675,7 @@ export default function StoreLocation() {
 
     setSubmittingBooking(true);
     const bookingId = `TS-BKG-${Math.floor(1000 + Math.random() * 9000)}`;
+    const cleanCustPhone = bookingCustomerPhone.trim().replace(/\D/g, "").slice(-10);
 
     const newBookingRecord = {
       id: bookingId,
@@ -577,16 +687,16 @@ export default function StoreLocation() {
       shopAddress: bookingShop?.address || "",
       serviceName: bookingService || "Tyre Service",
       customerName: bookingCustomerName.trim(),
-      customerPhone: bookingCustomerPhone.trim(),
-      customerEmail: currentUser?.email || "",
+      customerPhone: cleanCustPhone || bookingCustomerPhone.trim(),
+      customerEmail: currentUser?.email || `${cleanCustPhone}@tyresaathi.in`,
       vehicleType: bookingVehicleType,
       vehicleNumber: bookingVehicleNumber.trim(),
       date: bookingDate,
       timeSlot: bookingTimeSlot,
       notes: bookingNotes.trim(),
       status: "pending",
-      userId: currentUser?.uid || "guest",
-      customerId: currentUser?.uid || "guest",
+      userId: currentUser?.uid || `phone_${cleanCustPhone}`,
+      customerId: currentUser?.uid || `phone_${cleanCustPhone}`,
       createdAt: new Date().toISOString(),
     };
 
@@ -598,6 +708,24 @@ export default function StoreLocation() {
     } catch (err) {
       console.warn("Firestore booking sync fallback:", err);
     }
+
+    // Also persist customer profile to users collection so Admin Panel sees customer in Registered Customers!
+    try {
+      const custUid = currentUser?.uid || `phone_${cleanCustPhone}`;
+      const custData = {
+        uid: custUid,
+        name: bookingCustomerName.trim(),
+        phone: cleanCustPhone,
+        email: currentUser?.email || `${cleanCustPhone}@tyresaathi.in`,
+        role: "customer",
+        city: bookingShop?.city || userData?.city || "Raipur",
+        vehicleType: bookingVehicleType,
+        vehicleNumber: bookingVehicleNumber.trim(),
+        lastActive: new Date().toISOString().split("T")[0],
+        source: "Service Booking",
+      };
+      setDoc(doc(db, "users", custUid), custData, { merge: true }).catch(() => {});
+    } catch (custErr) {}
 
     try {
       const userKey = currentUser?.uid ? `tyresaathi_bookings_${currentUser.uid}` : "tyresaathi_guest_bookings";
@@ -1449,23 +1577,102 @@ export default function StoreLocation() {
                   <div className="shop-products-grid">
                     {shopProducts.map((p) => {
                       const img = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80";
+                      const stockNum = p.stock !== undefined && p.stock !== null && p.stock !== "" ? Number(p.stock) : null;
+                      const isOutOfStock = stockNum !== null && stockNum <= 0;
+                      const isLowStock = stockNum !== null && stockNum > 0 && stockNum <= 3;
+
+                      const discountPercent = (p.originalPrice && (p.offerPrice || p.price) && Number(p.originalPrice) > Number(p.offerPrice || p.price))
+                        ? Math.round(((Number(p.originalPrice) - Number(p.offerPrice || p.price)) / Number(p.originalPrice)) * 100)
+                        : null;
+
                       return (
-                        <div key={p.id} className="shop-prod-card">
-                          <img src={img} alt={p.productName} className="shop-prod-img" />
+                        <div key={p.id} className="shop-prod-card" onClick={(e) => handleOpenProductSpecs(p, e)}>
+                          <div className="shop-prod-img-wrap">
+                            <img src={img} alt={p.productName} className="shop-prod-img" />
+                            <div className="shop-prod-badges-overlay">
+                              {discountPercent ? (
+                                <span className="badge-discount">{discountPercent}% OFF</span>
+                              ) : <span></span>}
+                              {p.condition === "old" ? (
+                                <span className="badge-condition used">♻️ Used</span>
+                              ) : (
+                                <span className="badge-condition new">✨ New</span>
+                              )}
+                            </div>
+                          </div>
+
                           <div className="shop-prod-details">
-                            <span className="shop-prod-brand">{p.brandName} • {p.sizeName}</span>
-                            <h4 className="shop-prod-title">{p.productName}</h4>
+                            <span className="shop-prod-brand">{p.brandName || "Tyre"} • {p.sizeName || p.customSize || ""}</span>
+                            <h4 className="shop-prod-title" title={p.productName}>{p.productName}</h4>
+                            
                             <div className="shop-prod-price-row">
                               <span className="shop-prod-offer">₹{p.offerPrice || p.price}</span>
                               {p.originalPrice && <span className="shop-prod-mrp">₹{p.originalPrice}</span>}
+                              {discountPercent && <span className="shop-prod-save-tag">Save ₹{Number(p.originalPrice) - Number(p.offerPrice || p.price)}</span>}
                             </div>
-                            <button
-                              type="button"
-                              className="shop-prod-book-btn"
-                              onClick={(e) => handleOpenBookingModal(activeShopProfile, p.productName || 'Tyre Purchase', e)}
-                            >
-                              ⚡ Book From This Shop
-                            </button>
+
+                            {/* ALAG SE HIGHLIGHTED DEDICATED LIVE STOCK BADGE */}
+                            <div className={`shop-stock-display-box ${isOutOfStock ? "stock-box-out" : isLowStock ? "stock-box-low" : "stock-box-ok"}`}>
+                              {isOutOfStock ? (
+                                <div className="stock-content-row">
+                                  <span className="stock-icon">🔴</span>
+                                  <span className="stock-text-main">Out of Stock (0)</span>
+                                </div>
+                              ) : isLowStock ? (
+                                <div className="stock-content-row">
+                                  <span className="stock-icon">⚠️</span>
+                                  <div className="stock-text-group">
+                                    <span className="stock-text-main">Stock: <strong>Only {stockNum} left!</strong></span>
+                                    <span className="stock-subtext">Jaldi book karein</span>
+                                  </div>
+                                </div>
+                              ) : stockNum !== null ? (
+                                <div className="stock-content-row">
+                                  <span className="stock-icon-dot"></span>
+                                  <div className="stock-text-group">
+                                    <span className="stock-text-main">Stock: <strong>{stockNum} Tyres</strong> Available</span>
+                                    <span className="stock-subtext">Ready in shop</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="stock-content-row">
+                                  <span className="stock-icon-dot"></span>
+                                  <span className="stock-text-main">Available in Shop</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Buttons Row */}
+                            <div className="shop-prod-actions-row">
+                              <button
+                                type="button"
+                                className="shop-prod-specs-btn"
+                                onClick={(e) => handleOpenProductSpecs(p, e)}
+                                title="Tyre Specifications dekhein"
+                              >
+                                🔍 Specs
+                              </button>
+
+                              {isOutOfStock ? (
+                                <button
+                                  type="button"
+                                  className="shop-prod-book-btn btn-disabled"
+                                  disabled
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  ❌ Out of Stock
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="shop-prod-book-btn"
+                                  onClick={(e) => handleAddToCart(p, 1, e)}
+                                  title="Cart me add karein"
+                                >
+                                  🛒 Add to Cart
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -2025,6 +2232,249 @@ export default function StoreLocation() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 Tyre Specification & Stock Details Modal */}
+      {selectedProductForSpecs && (
+        <div className="rating-modal-backdrop" onClick={() => setSelectedProductForSpecs(null)}>
+          <div className="rating-modal-card spec-modal-card" style={{ maxWidth: "520px", width: "94%" }} onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="spec-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Package size={20} color="#c0392b" />
+                </div>
+                <div>
+                  <span className="spec-modal-tag">TYRE SPECIFICATIONS</span>
+                  <h3 className="spec-modal-title">{selectedProductForSpecs.productName}</h3>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="spec-modal-close-btn"
+                onClick={() => setSelectedProductForSpecs(null)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="spec-modal-body">
+              {(() => {
+                const imgList = (Array.isArray(selectedProductForSpecs.images) && selectedProductForSpecs.images.filter(Boolean).length > 0)
+                  ? selectedProductForSpecs.images.filter(Boolean)
+                  : [selectedProductForSpecs.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=500&auto=format&fit=crop&q=80"];
+                const mainImg = imgList[activeSpecImageIndex] || imgList[0];
+                const stockNum = selectedProductForSpecs.stock !== undefined && selectedProductForSpecs.stock !== null && selectedProductForSpecs.stock !== "" ? Number(selectedProductForSpecs.stock) : null;
+                const isOutOfStock = stockNum !== null && stockNum <= 0;
+                const isLowStock = stockNum !== null && stockNum > 0 && stockNum <= 3;
+                const unitPrice = Number(selectedProductForSpecs.offerPrice || selectedProductForSpecs.price || 0);
+
+                return (
+                  <>
+                    <div className="spec-img-section">
+                      <div className="spec-main-img-wrap">
+                        <img src={mainImg} alt={selectedProductForSpecs.productName} className="spec-main-img" />
+                        <div className="spec-img-badges">
+                          {selectedProductForSpecs.condition === "old" ? (
+                            <span className="badge-condition used">♻️ Re-mould / Used</span>
+                          ) : (
+                            <span className="badge-condition new">✨ Brand New</span>
+                          )}
+                          {selectedProductForSpecs.originalPrice && unitPrice < Number(selectedProductForSpecs.originalPrice) && (
+                            <span className="badge-discount">
+                              {Math.round(((Number(selectedProductForSpecs.originalPrice) - unitPrice) / Number(selectedProductForSpecs.originalPrice)) * 100)}% OFF
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {imgList.length > 1 && (
+                        <div className="spec-thumbs-row">
+                          {imgList.map((thumb, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              className={`spec-thumb-btn ${idx === activeSpecImageIndex ? 'active' : ''}`}
+                              onClick={() => setActiveSpecImageIndex(idx)}
+                            >
+                              <img src={thumb} alt={`Slot ${idx + 1}`} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stock Alert Banner in Modal */}
+                    <div className={`spec-stock-banner ${isOutOfStock ? "out" : isLowStock ? "low" : "ok"}`}>
+                      {isOutOfStock ? (
+                        <>
+                          <span className="banner-icon">🔴</span>
+                          <div>
+                            <strong>Currently Out of Stock (0 available)</strong>
+                            <p>Is shop par ye tyre filhal uplabdh nahi hai.</p>
+                          </div>
+                        </>
+                      ) : isLowStock ? (
+                        <>
+                          <span className="banner-icon">⚠️</span>
+                          <div>
+                            <strong>Low Stock Alert: Only {stockNum} Tyres Left!</strong>
+                            <p>Stock tezi se book ho raha hai. Turant order confirm karein.</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="banner-icon">🟢</span>
+                          <div>
+                            <strong>In Stock: {stockNum !== null ? `${stockNum} Tyres Available` : 'Available in Shop'}</strong>
+                            <p>Ready for instant fitment or pickup at {activeShopProfile?.name || "this shop"}.</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Price Block */}
+                    <div className="spec-price-card">
+                      <div className="spec-price-row">
+                        <span className="spec-current-price">₹{unitPrice.toLocaleString('en-IN')}</span>
+                        {selectedProductForSpecs.originalPrice && (
+                          <span className="spec-mrp-price">₹{Number(selectedProductForSpecs.originalPrice).toLocaleString('en-IN')}</span>
+                        )}
+                        {selectedProductForSpecs.originalPrice && unitPrice < Number(selectedProductForSpecs.originalPrice) && (
+                          <span className="spec-save-tag">
+                            Save ₹{(Number(selectedProductForSpecs.originalPrice) - unitPrice).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                      <span className="spec-inclusive-text">Includes GST • Free valve inspection with fitting</span>
+                    </div>
+
+                    {/* Specification Table */}
+                    <div className="spec-table-box">
+                      <div className="spec-row">
+                        <span className="spec-label">Brand:</span>
+                        <span className="spec-value">{selectedProductForSpecs.brandName || "Apollo / CEAT / MRF"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Tyre Size:</span>
+                        <span className="spec-value font-bold">{selectedProductForSpecs.sizeName || selectedProductForSpecs.customSize || "Standard"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Category:</span>
+                        <span className="spec-value">{selectedProductForSpecs.categoryName || selectedProductForSpecs.vehicleTypeName || "Commercial / Passenger"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Type / Construction:</span>
+                        <span className="spec-value">{selectedProductForSpecs.tyreType || "Tubeless"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Condition:</span>
+                        <span className="spec-value">{selectedProductForSpecs.condition === "old" ? "♻️ Inspected Used / Retread" : "✨ Brand New (Fresh Batch)"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Warranty:</span>
+                        <span className="spec-value">{selectedProductForSpecs.warranty || "Standard Manufacturer / Shop Warranty"}</span>
+                      </div>
+                      <div className="spec-row">
+                        <span className="spec-label">Shop Hub:</span>
+                        <span className="spec-value">{activeShopProfile?.name || "Authorized Partner"}</span>
+                      </div>
+                    </div>
+
+                    {/* Quantity Stepper & Subtotal */}
+                    {!isOutOfStock && (
+                      <div className="spec-qty-control-box">
+                        <div className="spec-qty-left">
+                          <span className="spec-qty-title">Select Quantity:</span>
+                          <span className="spec-qty-sub">
+                            {stockNum ? `Max available: ${stockNum} tyre(s)` : "Choose required quantity"}
+                          </span>
+                        </div>
+                        <div className="spec-qty-stepper">
+                          <button
+                            type="button"
+                            className="qty-btn"
+                            disabled={specModalQty <= 1}
+                            onClick={() => setSpecModalQty(prev => Math.max(1, prev - 1))}
+                          >
+                            -
+                          </button>
+                          <span className="qty-val">{specModalQty}</span>
+                          <button
+                            type="button"
+                            className="qty-btn"
+                            disabled={stockNum ? specModalQty >= stockNum : specModalQty >= 10}
+                            onClick={() => setSpecModalQty(prev => (stockNum ? Math.min(stockNum, prev + 1) : prev + 1))}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total summary */}
+                    {!isOutOfStock && (
+                      <div className="spec-total-strip">
+                        <span>Total ({specModalQty} {specModalQty === 1 ? 'Tyre' : 'Tyres'}):</span>
+                        <strong>₹{(unitPrice * specModalQty).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="spec-modal-actions">
+                      <button
+                        type="button"
+                        className="btn-spec-cart"
+                        disabled={isOutOfStock}
+                        onClick={(e) => handleAddToCart(selectedProductForSpecs, specModalQty, e)}
+                      >
+                        🛒 Add to Cart
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-spec-book"
+                        disabled={isOutOfStock}
+                        onClick={(e) => {
+                          const p = selectedProductForSpecs;
+                          setSelectedProductForSpecs(null);
+                          handleOpenBookingModal(
+                            activeShopProfile,
+                            `${p.productName || 'Tyre Purchase'} (Qty: ${specModalQty})`,
+                            e
+                          );
+                        }}
+                      >
+                        ⚡ Book / Fitting Now
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Cart Toast Message */}
+      {cartToastMessage && (
+        <div className="floating-cart-toast">
+          <div className="toast-inner">
+            <span className="toast-text">{cartToastMessage}</span>
+            <button 
+              type="button" 
+              onClick={() => {
+                setCartToastMessage(null);
+                window.dispatchEvent(new Event("open_cart_drawer"));
+              }} 
+              className="toast-link"
+              style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
+            >
+              Open Cart 🛒 ➔
+            </button>
           </div>
         </div>
       )}
@@ -3534,55 +3984,549 @@ export default function StoreLocation() {
 
         .shop-prod-card {
           border: 1px solid #e2e8f0;
-          border-radius: 10px;
+          border-radius: 12px;
           padding: 10px;
           background: #ffffff;
           display: flex;
           flex-direction: column;
           gap: 6px;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+          cursor: pointer;
+        }
+        .shop-prod-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+          border-color: #cbd5e1;
+        }
+
+        .shop-prod-img-wrap {
+          position: relative;
+          width: 100%;
+          height: 110px;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #f1f5f9;
         }
 
         .shop-prod-img {
           width: 100%;
-          height: 100px;
+          height: 100%;
           object-fit: cover;
-          border-radius: 6px;
+          transition: transform 0.3s ease;
+        }
+        .shop-prod-card:hover .shop-prod-img {
+          transform: scale(1.04);
+        }
+
+        .shop-prod-badges-overlay {
+          position: absolute;
+          top: 6px;
+          left: 6px;
+          right: 6px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          pointer-events: none;
+        }
+        .badge-discount {
+          background: #fef3c7;
+          color: #92400e;
+          border: 1px solid #fcd34d;
+          font-size: 9.5px;
+          font-weight: 800;
+          padding: 2px 5px;
+          border-radius: 5px;
+        }
+        .badge-condition.new {
+          background: #dcfce7;
+          color: #15803d;
+          border: 1px solid #86efac;
+          font-size: 9.5px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 5px;
+        }
+        .badge-condition.used {
+          background: #f1f5f9;
+          color: #475569;
+          border: 1px solid #cbd5e1;
+          font-size: 9.5px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 5px;
         }
 
         .shop-prod-brand {
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 700;
           color: #c0392b;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
 
         .shop-prod-title {
           font-size: 12.5px;
           font-weight: 700;
-          margin: 0;
+          margin: 1px 0 0;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          color: #0f172a;
         }
 
         .shop-prod-price-row {
           display: flex;
           align-items: baseline;
           gap: 6px;
+          flex-wrap: wrap;
+          margin-top: 2px;
         }
-        .shop-prod-offer { font-size: 13.5px; font-weight: 800; color: #16a34a; }
+        .shop-prod-offer { font-size: 14px; font-weight: 800; color: #16a34a; }
         .shop-prod-mrp { font-size: 10.5px; color: #94a3b8; text-decoration: line-through; }
+        .shop-prod-save-tag {
+          font-size: 9.5px;
+          font-weight: 700;
+          color: #15803d;
+          background: #ecfdf5;
+          padding: 1px 4px;
+          border-radius: 4px;
+        }
 
-        .shop-prod-book-btn {
+        /* 📦 DEDICATED LIVE STOCK DISPLAY BOX */
+        .shop-stock-display-box {
           margin-top: 4px;
+          padding: 6px 8px;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+        .stock-box-ok {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+        }
+        .stock-box-low {
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15);
+        }
+        .stock-box-out {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+        }
+        .stock-content-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .stock-icon-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10b981;
+          display: inline-block;
+          flex-shrink: 0;
+          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+        }
+        .stock-icon {
+          font-size: 11px;
+          line-height: 1;
+        }
+        .stock-text-group {
+          display: flex;
+          flex-direction: column;
+          line-height: 1.15;
+        }
+        .stock-box-ok .stock-text-main {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #065f46;
+        }
+        .stock-box-low .stock-text-main {
+          font-size: 10.5px;
+          font-weight: 800;
+          color: #92400e;
+        }
+        .stock-box-out .stock-text-main {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #991b1b;
+        }
+        .stock-subtext {
+          font-size: 9px;
+          color: #64748b;
+        }
+
+        /* Action Buttons Row */
+        .shop-prod-actions-row {
+          display: grid;
+          grid-template-columns: 1fr 1.1fr;
+          gap: 5px;
+          margin-top: 6px;
+        }
+        .shop-prod-specs-btn {
+          padding: 6px 4px;
+          border-radius: 7px;
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          color: #334155;
+          font-size: 10.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .shop-prod-specs-btn:hover {
+          background: #e2e8f0;
+        }
+        .shop-prod-book-btn {
+          margin-top: 0;
           display: block;
           text-align: center;
-          padding: 6px 8px;
-          border-radius: 6px;
+          padding: 6px 6px;
+          border-radius: 7px;
           background: #c0392b;
           color: white;
+          border: none;
+          font-size: 10.5px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.1s;
+        }
+        .shop-prod-book-btn:hover {
+          background: #a93226;
+        }
+        .shop-prod-book-btn.btn-disabled {
+          background: #e2e8f0 !important;
+          color: #94a3b8 !important;
+          cursor: not-allowed !important;
+        }
+
+        /* 🔍 Specification Modal Custom Styles */
+        .spec-modal-card {
+          border-radius: 16px;
+          overflow: hidden;
+          background: #ffffff;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+        .spec-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 18px;
+          border-bottom: 1.5px solid #f1f5f9;
+          background: #f8fafc;
+        }
+        .spec-modal-tag {
+          font-size: 9.5px;
+          font-weight: 800;
+          color: #c0392b;
+          letter-spacing: 0.5px;
+        }
+        .spec-modal-title {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+        .spec-modal-close-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: none;
+          background: #e2e8f0;
+          color: #475569;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+        .spec-modal-close-btn:hover {
+          background: #cbd5e1;
+          color: #0f172a;
+        }
+        .spec-modal-body {
+          padding: 16px 18px;
+          max-height: 75vh;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .spec-main-img-wrap {
+          position: relative;
+          width: 100%;
+          height: 180px;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+        }
+        .spec-main-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .spec-img-badges {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          display: flex;
+          gap: 6px;
+        }
+        .spec-thumbs-row {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .spec-thumb-btn {
+          width: 48px;
+          height: 48px;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          padding: 0;
+          cursor: pointer;
+          background: #f1f5f9;
+        }
+        .spec-thumb-btn.active {
+          border-color: #c0392b;
+        }
+        .spec-thumb-btn img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .spec-stock-banner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 10px;
+        }
+        .spec-stock-banner.ok {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #065f46;
+        }
+        .spec-stock-banner.low {
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          color: #92400e;
+        }
+        .spec-stock-banner.out {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #991b1b;
+        }
+        .spec-stock-banner p {
+          margin: 2px 0 0;
+          font-size: 11px;
+          opacity: 0.85;
+        }
+
+        .spec-price-card {
+          padding: 10px 12px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+        }
+        .spec-price-row {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+        }
+        .spec-current-price {
+          font-size: 20px;
+          font-weight: 900;
+          color: #16a34a;
+        }
+        .spec-mrp-price {
+          font-size: 13px;
+          color: #94a3b8;
+          text-decoration: line-through;
+        }
+        .spec-save-tag {
           font-size: 11px;
           font-weight: 700;
-          text-decoration: none;
+          color: #15803d;
+          background: #dcfce7;
+          padding: 2px 6px;
+          border-radius: 6px;
+        }
+        .spec-inclusive-text {
+          font-size: 10.5px;
+          color: #64748b;
+          display: block;
+          margin-top: 3px;
+        }
+
+        .spec-table-box {
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+          overflow: hidden;
+          font-size: 12px;
+        }
+        .spec-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 7px 12px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .spec-row:last-child {
+          border-bottom: none;
+        }
+        .spec-row:nth-child(even) {
+          background: #f8fafc;
+        }
+        .spec-label {
+          color: #64748b;
+          font-weight: 600;
+        }
+        .spec-value {
+          color: #0f172a;
+          font-weight: 700;
+        }
+
+        .spec-qty-control-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 10px;
+        }
+        .spec-qty-title {
+          font-size: 12px;
+          font-weight: 700;
+          color: #0f172a;
+          display: block;
+        }
+        .spec-qty-sub {
+          font-size: 10.5px;
+          color: #64748b;
+        }
+        .spec-qty-stepper {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .qty-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          font-size: 15px;
+          font-weight: 800;
+          cursor: pointer;
+          color: #334155;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s;
+        }
+        .qty-btn:hover:not(:disabled) {
+          background: #f1f5f9;
+          border-color: #94a3b8;
+        }
+        .qty-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .qty-val {
+          width: 24px;
+          text-align: center;
+          font-size: 14px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+
+        .spec-total-strip {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 4px 6px;
+          font-size: 13px;
+          color: #334155;
+        }
+        .spec-total-strip strong {
+          font-size: 18px;
+          font-weight: 900;
+          color: #16a34a;
+        }
+
+        .spec-modal-actions {
+          display: flex;
+          gap: 10px;
+          padding-top: 6px;
+        }
+        .btn-spec-cart {
+          flex: 1;
+          background: #0f172a;
+          color: #ffffff;
+          border: none;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .btn-spec-cart:hover:not(:disabled) {
+          background: #000000;
+        }
+        .btn-spec-book {
+          flex: 1.2;
+          background: #c0392b;
+          color: #ffffff;
+          border: none;
+          padding: 10px 14px;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+        .btn-spec-book:hover:not(:disabled) {
+          background: #a93226;
+        }
+        .btn-spec-cart:disabled,
+        .btn-spec-book:disabled {
+          background: #e2e8f0;
+          color: #94a3b8;
+          cursor: not-allowed;
+        }
+
+        /* 🚀 Floating Cart Toast */
+        .floating-cart-toast {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 9999;
+          animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUpToast {
+          from { transform: translate(-50%, 40px); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .toast-inner {
+          background: #0f172a;
+          color: #ffffff;
+          padding: 10px 18px;
+          border-radius: 50px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 12.5px;
+          font-weight: 700;
+        }
+        .toast-link {
+          color: #facc15;
+          text-decoration: underline;
+          font-size: 12px;
         }
 
         .no-custom-products-note {

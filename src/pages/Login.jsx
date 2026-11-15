@@ -21,6 +21,7 @@ import {
 import { logUserActivityToSheet } from "../utils/googleSheets";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { SAMPLE_SHOPS } from "../config/tyreCatalog";
 
 export function friendlyError(code) {
   if (typeof code === "string" && (code.includes("offline") || code.includes("unavailable"))) {
@@ -53,7 +54,7 @@ export function friendlyError(code) {
 }
 
 export default function Login() {
-  const { user, login, loginWithPhone, resetPassword, loading: authLoading } = useAuth();
+  const { user, role, profile, login, loginWithPhone, resetPassword, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -91,13 +92,28 @@ export default function Login() {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [otpSuccessAlert, setOtpSuccessAlert] = useState("");
 
+  // Helper function: Redirect user strictly to their role-appropriate dashboard
+  const navigateByRole = (targetRole) => {
+    const userRole = targetRole || role || profile?.role;
+    if (userRole === "admin") {
+      navigate("/admin", { replace: true });
+    } else if (userRole === "shop_owner" || userRole === "vendor") {
+      navigate("/bookings", { replace: true });
+    } else {
+      navigate("/store-location", { replace: true });
+    }
+  };
+
   // Auto-redirect if session is active
   useEffect(() => {
     if (user && !authLoading) {
-      const from = location.state?.from?.pathname || "/";
-      navigate(from, { replace: true });
+      if (location.state?.from?.pathname && location.state.from.pathname !== "/login") {
+        navigate(location.state.from.pathname, { replace: true });
+      } else {
+        navigateByRole(role || profile?.role);
+      }
     }
-  }, [user, authLoading, navigate, location]);
+  }, [user, authLoading, role, profile, navigate, location]);
 
   // Countdown timer for OTP Resend
   useEffect(() => {
@@ -133,7 +149,9 @@ export default function Login() {
       } catch (sheetErr) {
         console.warn("Non-blocking sheet logging notice:", sheetErr);
       }
-      navigate("/", { replace: true });
+      
+      const loggedRole = userCred?.user?.role || role || (cleanEmail.includes("admin") ? "admin" : "customer");
+      navigateByRole(loggedRole);
     } catch (err) {
       console.warn("Firebase Login Error:", err);
       setError(friendlyError(err.code || err.message));
@@ -177,11 +195,11 @@ export default function Login() {
 
     let found = null;
     try {
-      // Safely attempt to match existing user without blocking if permissions restrict reading
+      // Safely attempt to match existing user from Firestore users table
       const usersSnap = await getDocs(collection(db, "users"));
       if (!usersSnap.empty) {
         found = usersSnap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
+          .map((d) => ({ uid: d.id, id: d.id, ...d.data() }))
           .find((u) => {
             if (!u.phone) return false;
             const uPhone = String(u.phone).trim().replace(/\D/g, "").slice(-10);
@@ -189,8 +207,82 @@ export default function Login() {
           });
       }
     } catch (dbErr) {
-      // Guest users might not have list permission on users table; gracefully proceed
       console.warn("Firestore user lookup skipped:", dbErr);
+    }
+
+    // 2. Check partner shops list if not found in users collection
+    if (!found) {
+      const matchedShop = (SAMPLE_SHOPS || []).find((s) => {
+        const sPhone = String(s.phone || "").trim().replace(/\D/g, "").slice(-10);
+        return sPhone === cleanPhone;
+      });
+      if (matchedShop) {
+        found = {
+          uid: matchedShop.uid || matchedShop.id,
+          id: matchedShop.uid || matchedShop.id,
+          name: matchedShop.ownerName || matchedShop.name,
+          shopName: matchedShop.shopName || matchedShop.name,
+          role: "shop_owner",
+          city: matchedShop.city || "Raipur",
+          address: matchedShop.address || "",
+          phone: cleanPhone,
+          email: `${cleanPhone}@tyresaathi.in`,
+          services: matchedShop.services || []
+        };
+      }
+    }
+
+    // 3. Check customer bookings in Firestore if still not found
+    if (!found) {
+      try {
+        const bSnap = await getDocs(collection(db, "bookings"));
+        if (!bSnap.empty) {
+          const bDoc = bSnap.docs
+            .map((d) => d.data())
+            .find((b) => {
+              const bp = String(b.customerPhone || b.phone || "").trim().replace(/\D/g, "").slice(-10);
+              return bp === cleanPhone;
+            });
+          if (bDoc) {
+            found = {
+              uid: `cust_${cleanPhone}`,
+              id: `cust_${cleanPhone}`,
+              name: bDoc.customerName || bDoc.name || `Customer ${cleanPhone.slice(-4)}`,
+              role: "customer",
+              phone: cleanPhone,
+              email: bDoc.customerEmail || `${cleanPhone}@tyresaathi.in`,
+              city: bDoc.city || "",
+              vehicleNumber: bDoc.vehicleNumber || "",
+              vehicleType: bDoc.vehicleType || ""
+            };
+          }
+        }
+      } catch (bErr) {
+        console.warn("Bookings lookup notice:", bErr);
+      }
+    }
+
+    // 4. Known registered customer accounts
+    if (!found) {
+      if (cleanPhone === "9620611176") {
+        found = {
+          uid: "cust_9620611176",
+          id: "cust_9620611176",
+          name: "Indus test",
+          email: "industest@gmail.com",
+          phone: "9620611176",
+          role: "customer"
+        };
+      } else if (cleanPhone === "9910281345") {
+        found = {
+          uid: "cust_9910281345",
+          id: "cust_9910281345",
+          name: "UCAN MAIL",
+          email: "ucanmail@gmail.com",
+          phone: "9910281345",
+          role: "customer"
+        };
+      }
     }
 
     try {
@@ -198,6 +290,8 @@ export default function Login() {
       const randomOtp = Math.floor(1000 + Math.random() * 9000).toString();
       setGeneratedOtp(randomOtp);
       setMatchedUser(found || {
+        uid: `phone_${cleanPhone}`,
+        id: `phone_${cleanPhone}`,
         name: `User ${cleanPhone.slice(-4)}`,
         phone: cleanPhone,
         role: "customer",
@@ -241,7 +335,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await loginWithPhone(phone, matchedUser);
+      const loginRes = await loginWithPhone(phone, matchedUser);
       try {
         const cleanPhone = phone.trim().replace(/\D/g, "").slice(-10);
         logUserActivityToSheet({
@@ -254,7 +348,9 @@ export default function Login() {
       } catch (sheetErr) {
         console.warn("Phone login sheet logging notice:", sheetErr);
       }
-      navigate("/", { replace: true });
+      
+      const targetRole = loginRes?.data?.role || matchedUser?.role || "customer";
+      navigateByRole(targetRole);
     } catch (err) {
       console.error("Phone login error:", err);
       setError("Login karne me samasya aayi: " + err.message);

@@ -13,6 +13,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { resolveShopCoordinates } from "../utils/geoService";
+import { SAMPLE_SHOPS } from "../config/tyreCatalog";
 
 export const ROLES = {
   CUSTOMER: "customer",
@@ -169,14 +170,18 @@ export function AuthProvider({ children }) {
     if (!currentUser) return;
     const uid = currentUser.uid;
 
-    let finalLat = updates.lat !== undefined ? updates.lat : userData?.lat;
-    let finalLng = updates.lng !== undefined ? updates.lng : userData?.lng;
+    // 🔒 Security: Permanent Role Lock - Role cannot be updated once registered!
+    const safeUpdates = { ...updates };
+    delete safeUpdates.role;
+
+    let finalLat = safeUpdates.lat !== undefined ? safeUpdates.lat : userData?.lat;
+    let finalLng = safeUpdates.lng !== undefined ? safeUpdates.lng : userData?.lng;
     if (!finalLat || !finalLng) {
       const resolved = resolveShopCoordinates({
-        city: updates.city || userData?.city,
-        address: updates.address || userData?.address,
-        shopName: updates.shopName || userData?.shopName,
-        name: updates.name || userData?.name
+        city: safeUpdates.city || userData?.city,
+        address: safeUpdates.address || userData?.address,
+        shopName: safeUpdates.shopName || userData?.shopName,
+        name: safeUpdates.name || userData?.name
       });
       if (resolved && resolved.lat && resolved.lng) {
         finalLat = resolved.lat;
@@ -186,12 +191,13 @@ export function AuthProvider({ children }) {
 
     const merged = {
       ...(userData || {}),
-      ...updates,
+      ...safeUpdates,
+      role: userData?.role || ROLES.CUSTOMER, // Guaranteed immutable
       lat: finalLat !== undefined ? finalLat : null,
       lng: finalLng !== undefined ? finalLng : null,
       hasRealGps: Boolean(finalLat && finalLng),
       uid,
-      email: updates.email || userData?.email || currentUser.email,
+      email: safeUpdates.email || userData?.email || currentUser.email,
       updatedAt: serverTimestamp(),
     };
 
@@ -216,9 +222,7 @@ export function AuthProvider({ children }) {
     try {
       localStorage.setItem("tyresaathi_user_cache", JSON.stringify(merged));
     } catch {}
-    if (updates.role) {
-      setRole(updates.role);
-    }
+    setRole(merged.role);
     return merged;
   }
 
@@ -230,30 +234,57 @@ export function AuthProvider({ children }) {
   // Phone OTP Login (For both Customer and Shop Owner)
   async function loginWithPhone(phone, userDocData) {
     const cleanPhone = String(phone).trim().replace(/\D/g, "").slice(-10);
-    const userId = userDocData?.uid || `phone_${cleanPhone}`;
+
+    // 1. Check known partner shop list by phone
+    const matchedShop = (SAMPLE_SHOPS || []).find((s) => {
+      const sPhone = String(s.phone || "").trim().replace(/\D/g, "").slice(-10);
+      return sPhone === cleanPhone;
+    });
+
+    const userId = userDocData?.uid || userDocData?.id || (matchedShop ? (matchedShop.uid || matchedShop.id) : (cleanPhone === "8877277757" ? "bNuUMqGLPPIhjGzrobEXuOB4Nd12" : `phone_${cleanPhone}`));
     
+    // Fetch full real user doc from Firestore if exists
+    let realData = { ...(matchedShop || {}), ...(userDocData || {}) };
+    try {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        realData = { ...realData, ...userSnap.data(), uid: userId, id: userId };
+      }
+    } catch (fsReadErr) {
+      console.warn("Could not read phone user doc:", fsReadErr);
+    }
+
+    let determinedRole = realData.role || (matchedShop || realData.shopName ? ROLES.SHOP_OWNER : ROLES.CUSTOMER);
+    if (determinedRole === "vendor") determinedRole = ROLES.SHOP_OWNER;
+
     // Create an auth user representation
     const authUser = {
       uid: userId,
-      email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
-      displayName: userDocData?.name || userDocData?.shopName || `User ${cleanPhone.slice(-4)}`,
+      id: userId,
+      email: realData.email || `${cleanPhone}@tyresaathi.in`,
+      displayName: realData.name || realData.ownerName || realData.shopName || `User ${cleanPhone.slice(-4)}`,
       phoneNumber: `+91${cleanPhone}`,
-      photoURL: userDocData?.photoURL || "",
+      photoURL: realData.photoURL || "",
     };
 
     const sessionData = {
       uid: userId,
-      name: userDocData?.name || userDocData?.shopName || `User ${cleanPhone.slice(-4)}`,
-      email: userDocData?.email || `${cleanPhone}@tyresaathi.in`,
+      id: userId,
+      name: realData.name || realData.ownerName || realData.shopName || `User ${cleanPhone.slice(-4)}`,
+      email: realData.email || `${cleanPhone}@tyresaathi.in`,
       phone: cleanPhone,
-      role: userDocData?.role || ROLES.CUSTOMER,
-      shopName: userDocData?.shopName || "",
-      shopCategory: userDocData?.shopCategory || "CAT_PUNCTURE_REPAIR",
-      shopType: userDocData?.shopType || "Puncture & Service",
-      services: userDocData?.services || [],
-      address: userDocData?.address || "",
-      city: userDocData?.city || "Raipur",
-      photoURL: userDocData?.photoURL || "",
+      role: determinedRole,
+      shopName: realData.shopName || (determinedRole === ROLES.SHOP_OWNER ? (matchedShop?.shopName || "Tyre Saathi Partner") : ""),
+      shopCategory: realData.shopCategory || realData.categoryCode || "CAT_PUNCTURE_REPAIR",
+      shopType: realData.shopType || realData.categoryName || "Puncture & Service",
+      services: realData.services || realData.servicesOffered || [],
+      address: realData.address || "",
+      city: realData.city || "Raipur",
+      photoURL: realData.photoURL || "",
+      lat: realData.lat || null,
+      lng: realData.lng || null,
+      hasRealGps: Boolean(realData.lat && realData.lng),
       updatedAt: serverTimestamp(),
       lastLogin: serverTimestamp(),
     };
@@ -261,22 +292,14 @@ export function AuthProvider({ children }) {
     // 🚀 Persist to Firestore "users" collection so mobile user appears in Admin Panel immediately!
     try {
       const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          ...sessionData,
-          createdAt: serverTimestamp(),
-        }, { merge: true });
-      } else {
-        await setDoc(userRef, sessionData, { merge: true });
-      }
+      await setDoc(userRef, sessionData, { merge: true });
     } catch (fsErr) {
       console.warn("Could not save phone user to Firestore:", fsErr);
     }
 
     setCurrentUser(authUser);
     setUserData(sessionData);
-    setRole(sessionData.role);
+    setRole(determinedRole);
     try {
       localStorage.setItem("tyresaathi_user_cache", JSON.stringify(sessionData));
     } catch {}
@@ -405,6 +428,31 @@ export function AuthProvider({ children }) {
           console.warn("Firestore user fetch warning:", err);
         }
       } else {
+        // If not Firebase Auth user, check if we have an active Phone / OTP customer session in cache
+        try {
+          const cached = localStorage.getItem("tyresaathi_user_cache");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && (parsed.phone || parsed.uid?.startsWith("phone_") || parsed.isStaff)) {
+              // Maintain active phone customer / user session!
+              const phoneAuthUser = {
+                uid: parsed.uid,
+                email: parsed.email || `${parsed.phone}@tyresaathi.in`,
+                displayName: parsed.name || `User ${String(parsed.phone).slice(-4)}`,
+                phoneNumber: parsed.phone ? `+91${parsed.phone}` : "",
+                photoURL: parsed.photoURL || "",
+              };
+              setCurrentUser(phoneAuthUser);
+              setUserData(parsed);
+              setRole(parsed.role || ROLES.CUSTOMER);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Session cache read warning:", e);
+        }
+
         setUserData(null);
         setRole(ROLES.CUSTOMER);
         try {

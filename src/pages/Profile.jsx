@@ -217,7 +217,7 @@ export default function Profile() {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim(),
-        role: formData.role,
+        role: profile?.role || formData.role,
         shopName: formData.role === ROLES.SHOP_OWNER ? formData.shopName.trim() : "",
         shopCategory: formData.role === ROLES.SHOP_OWNER ? formData.shopCategory : "",
         shopType: formData.role === ROLES.SHOP_OWNER ? (selectedCat.name || formData.shopType) : "",
@@ -520,24 +520,27 @@ export default function Profile() {
         ) : (
           /* ✏️ EDIT PROFILE FORM */
           <form className="profile-edit-form" onSubmit={handleSave}>
-            <div className="edit-role-section">
-              <label className="field-label-bold">Account Role (अपना रोल चुनें):</label>
-              <div className="role-toggle-row">
-                <button
-                  type="button"
-                  className={`role-choice-btn ${formData.role === ROLES.SHOP_OWNER ? "role-choice-active" : ""}`}
-                  onClick={() => setFormData({ ...formData, role: ROLES.SHOP_OWNER })}
-                >
-                  🏪 Shop Owner (दुकानदार)
-                </button>
-
-                <button
-                  type="button"
-                  className={`role-choice-btn ${formData.role === ROLES.CUSTOMER ? "role-choice-active" : ""}`}
-                  onClick={() => setFormData({ ...formData, role: ROLES.CUSTOMER })}
-                >
-                  👤 Customer (ग्राहक)
-                </button>
+            {/* 🔒 Permanent Role Lock Display (Sign-up ke baad badla nahi ja sakta) */}
+            <div className="edit-role-section" style={{
+              background: "var(--card-subtle, #f8fafc)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              marginBottom: "16px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Account Type (खाते का प्रकार)
+                  </div>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-main)", marginTop: "2px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    {formData.role === ROLES.ADMIN ? "🛡️ Master Administrator" : formData.role === ROLES.SHOP_OWNER ? "🏪 Shop Owner (दुकानदार)" : "👤 Customer (ग्राहक)"}
+                  </div>
+                </div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.05)", padding: "5px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 600, color: "var(--text-muted)" }}>
+                  <span>🔒 Permanent Role</span>
+                  <span style={{ opacity: 0.8 }}>(अपरिवर्तनीय)</span>
+                </div>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import Navbar from "./Navbar.jsx";
 import Sidebar from "./Sidebar.jsx";
 import BottomNav from "./BottomNav.jsx";
 import Footer from "./Footer.jsx";
+import CartDrawer from "./CartDrawer.jsx";
 import { MessageSquare } from "lucide-react";
 import { getSupportContactConfig } from "../config/supportConfig.js";
 
@@ -47,6 +48,7 @@ export default function Layout() {
         <main className="admin-main-viewport">
           <Outlet />
         </main>
+        <CartDrawer />
 
         <style>{`
           .admin-fullscreen-shell {
@@ -107,6 +109,7 @@ export default function Layout() {
         </main>
       </div>
       <BottomNav onMenuClick={() => setSidebarOpen(true)} />
+      <CartDrawer />
 
       <style>{`
         .main-dashboard-viewport {

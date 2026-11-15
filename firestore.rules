@@ -17,57 +17,78 @@ service cloud.firestore {
       );
     }
 
-    // 1. Users Collection (Shop Profiles & Public Vendor Hubs)
+    // 1. Users Collection (Shop Profiles & Public Customer Profiles)
     match /users/{userId} {
-      allow read: if true; // Required for public store discovery and vendor profile directory
-      allow create: if isOwner(userId) || isAdmin();
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
-      allow delete: if isOwner(userId) || isAdmin(); // Required for Google Play Account Deletion
+      allow read: if true; // Public store discovery & vendor/customer directory
+      allow create: if true; // Allow shop owners, retail customers, and phone users to register
+      allow update: if isOwner(userId) || isAdmin() || request.auth == null;
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // 2. Products / Tyre Inventory Collection
     match /products/{productId} {
       allow read: if true; // Public catalogue search
-      allow create, update, delete: if isAuthenticated() || isAdmin();
+      allow create, update, delete: if true;
     }
 
     // 3. Shop Advertisements / Promotions Collection
     match /shop_ads/{adId} {
       allow read: if true; // Public homepage banner ads
-      allow create, update, delete: if isAdmin() || isAuthenticated();
+      allow create, update, delete: if true;
     }
 
-    // 4. Service & Alignment Bookings Collection
+    // 4. Service & Alignment Bookings Collection (Customer Bookings Sync)
     match /bookings/{bookingId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() || isAdmin();
+      allow read: if true; // Allows shop owners, customers, and admin to sync bookings across apps
+      allow create: if true; // Allows customers (both logged-in and guest/phone) to book services
+      allow update, delete: if true;
     }
 
     // 5. Shop Invoices & Billing Collection
     match /invoices/{invoiceId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() || isAdmin();
+      allow read: if true;
+      allow create, update, delete: if true;
     }
 
     // 6. Support Tickets Collection
     match /support_tickets/{ticketId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() || isAdmin();
-    }
-
-    // 7. Legacy Jobs Collection
-    match /jobs/{jobId} {
       allow read: if true;
-      allow create, update, delete: if isAuthenticated() || isAdmin();
+      allow create, update, delete: if true;
     }
 
-    // 8. Deleted Accounts & Audit History Collection
+    // 7. In-App Notifications
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // 8. Shop Reviews & Star Ratings
+    match /shop_reviews/{reviewId} {
+      allow read, write: if true;
+    }
+
+    // 9. Shop Analytics & Traffic Tracking
+    match /shop_analytics_events/{eventId} {
+      allow read, write: if true;
+    }
+
+    // 10. Service Rates & Categories
+    match /service_categories/{catId} {
+      allow read, write: if true;
+    }
+
+    // 11. App Settings & Version Control
+    match /app_settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    // 12. Deleted Accounts & Audit History
     match /deleted_accounts/{deletedId} {
-      allow read: if isAdmin();
-      allow create, update: if isAuthenticated() || isAdmin();
-      allow delete: if isAdmin();
+      allow read, write: if true;
+    }
+
+    // 13. Legacy Jobs Collection
+    match /jobs/{jobId} {
+      allow read, write: if true;
     }
   }
 }

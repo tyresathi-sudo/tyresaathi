@@ -231,6 +231,49 @@ const SAMPLE_ADMIN_SHOPS = [
   }
 ];
 
+export const SAMPLE_ADMIN_CUSTOMERS = [
+  {
+    uid: "cust_9620611176",
+    name: "Indus test",
+    email: "industest@gmail.com",
+    phone: "9620611176",
+    role: "customer",
+    city: "Bengaluru",
+    state: "Karnataka",
+    pincode: "560001",
+    address: "Indus Hub, Koramangala, Bengaluru",
+    vehicleType: "Car / SUV",
+    vehicleNumber: "Ka 01 0622",
+    vehicleModel: "Commercial / Car 10.00-20",
+    createdAt: "28-Sep-2026, 10:00 AM",
+    source: "Service Booking",
+    totalBookings: 1,
+    totalSpent: 17000,
+    lastActive: "2026-09-28"
+  },
+  {
+    uid: "cust_9910281345",
+    name: "UCAN MAIL",
+    email: "ucanmail195@gmail.com",
+    phone: "9910281345",
+    role: "customer",
+    city: "Raipur",
+    state: "Chhattisgarh",
+    pincode: "492001",
+    address: "Block 10, Parking No 4, Transport Nagar, Raipur",
+    vehicleType: "Commercial Truck / Bus",
+    vehicleNumber: "CG04CT8786",
+    vehicleModel: "Heavy Commercial Truck",
+    createdAt: "24-Sep-2026, 10:00 AM",
+    source: "Tyre Service Booking",
+    totalBookings: 2,
+    totalSpent: 4200,
+    lastActive: "2026-09-24"
+  }
+];
+
+export const SAMPLE_ADMIN_USERS = [...SAMPLE_ADMIN_SHOPS, ...SAMPLE_ADMIN_CUSTOMERS];
+
 const SAMPLE_GLOBAL_BOOKINGS = [];
 const SAMPLE_ADMIN_INVOICES = [];
 const SAMPLE_ADMIN_TICKETS = [];
@@ -622,7 +665,7 @@ export default function AdminPanel() {
   };
 
   // Admin Datasets State
-  const [users, setUsers] = useState(SAMPLE_ADMIN_SHOPS);
+  const [users, setUsers] = useState(SAMPLE_ADMIN_USERS);
   const [bookings, setBookings] = useState(SAMPLE_GLOBAL_BOOKINGS);
   const [invoices, setInvoices] = useState(SAMPLE_ADMIN_INVOICES);
   const [tickets, setTickets] = useState(() => {
@@ -1642,12 +1685,6 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
 
         const isDummy = (data, docId) => {
           if (DUMMY_UIDS.has(docId) || DUMMY_UIDS.has(data.uid)) return true;
-          const email = (data.email || "").toLowerCase().trim();
-          const name = (data.name || "").toLowerCase().trim();
-          const shopName = (data.shopName || "").toLowerCase().trim();
-          if (email === "t55912047@gmail.com" || email === "ucanmail195@gmail.com" || email === "wange9han@gmail.com") return true;
-          if (name === "indus test" || name === "ucan mail" || name === "lzh") return true;
-          if (shopName === "lzh" || shopName === "indus test") return true;
           return false;
         };
 
@@ -1655,11 +1692,6 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
         for (const d of usersSnap.docs) {
           const data = d.data();
           if (isDummy(data, d.id)) {
-            try {
-              deleteDoc(doc(db, "users", d.id));
-            } catch (delErr) {
-              console.warn("Purge dummy user:", delErr);
-            }
             continue;
           }
 
@@ -1682,13 +1714,61 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
             hasRealGps: Boolean(resolvedLat && resolvedLng)
           });
         }
-        setUsers(list.length > 0 ? list : SAMPLE_ADMIN_SHOPS);
+
+        // Always merge verified original customers (Indus test, UCAN MAIL) if not already in list
+        const phoneSet = new Set(list.map(u => (u.phone || "").replace(/\D/g, "").slice(-10)));
+        const nameSet = new Set(list.map(u => (u.name || "").toLowerCase().trim()));
+        SAMPLE_ADMIN_CUSTOMERS.forEach(sc => {
+          const cleanP = (sc.phone || "").replace(/\D/g, "").slice(-10);
+          const cleanN = (sc.name || "").toLowerCase().trim();
+          if (!phoneSet.has(cleanP) && !nameSet.has(cleanN)) {
+            phoneSet.add(cleanP);
+            nameSet.add(cleanN);
+            list.push(sc);
+          }
+        });
+
+        // Also extract any genuine customers directly from live bookings
+        try {
+          const bkgSnap = await getDocs(collection(db, "bookings"));
+          if (!bkgSnap.empty) {
+            bkgSnap.docs.forEach((bDoc) => {
+              const b = bDoc.data();
+              const bPhone = (b.customerPhone || "").replace(/\D/g, "").slice(-10);
+              const bName = (b.customerName || "").trim();
+              if (bName && (!bPhone || !phoneSet.has(bPhone)) && !nameSet.has(bName.toLowerCase())) {
+                if (bPhone) phoneSet.add(bPhone);
+                nameSet.add(bName.toLowerCase());
+                list.push({
+                  uid: b.customerId || bDoc.id,
+                  name: bName,
+                  phone: b.customerPhone || "",
+                  email: b.customerEmail || "—",
+                  role: "customer",
+                  city: b.shopCity || "Raipur",
+                  state: "Chhattisgarh",
+                  address: b.customerAddress || "Registered Customer",
+                  vehicleType: b.vehicleType || "Car / SUV",
+                  vehicleNumber: b.vehicleNumber || "—",
+                  createdAt: b.date || "Recent",
+                  source: "Service Booking",
+                  totalBookings: 1,
+                  totalSpent: Number(b.totalAmount || b.price || 0)
+                });
+              }
+            });
+          }
+        } catch (bErr) {
+          console.warn("Bookings customer extraction notice:", bErr);
+        }
+
+        setUsers(list.length > 0 ? list : SAMPLE_ADMIN_USERS);
       } else {
-        setUsers(SAMPLE_ADMIN_SHOPS);
+        setUsers(SAMPLE_ADMIN_USERS);
       }
     } catch (err) {
       console.warn("Firestore users load:", err);
-      setUsers(SAMPLE_ADMIN_SHOPS);
+      setUsers(SAMPLE_ADMIN_USERS);
     }
 
     try {
@@ -2399,17 +2479,6 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
   });
 
   let rawCustomerList = Array.from(customerMap.values());
-
-  // If real database is empty and preview mode is on, provide helpful preview sample customers
-  if (rawCustomerList.length === 0 && !isRealMode) {
-    rawCustomerList = [
-      { id: "c_1", name: "Your Name", phone: "9826112345", email: "your@gmail.com", city: "Raipur", vehicleType: "Car / SUV", vehicleNumber: "CG 04 MB 1234", vehicleModel: "Hyundai Creta", totalBookings: 3, totalSpent: 4500, lastActive: "2026-09-22", source: "Registered Customer" },
-      { id: "c_2", name: "Vikram Verma", phone: "9425298765", email: "vikram.verma@yahoo.com", city: "Bhilai", vehicleType: "Commercial / Truck", vehicleNumber: "CG 07 CA 9081", vehicleModel: "Tata 407", totalBookings: 5, totalSpent: 18200, lastActive: "2026-09-23", source: "Service Booking" },
-      { id: "c_3", name: "Amit Patel", phone: "9755567890", email: "amit.patel@gmail.com", city: "Bilaspur", vehicleType: "Bike / Scooter", vehicleNumber: "CG 10 AB 4567", vehicleModel: "Honda Activa 6G", totalBookings: 2, totalSpent: 1200, lastActive: "2026-09-20", source: "In-Store Billing" },
-      { id: "c_4", name: "Suresh Sahu", phone: "9131012456", email: "suresh.sahu@gmail.com", city: "Raipur", vehicleType: "Tractor / Agri", vehicleNumber: "CG 04 TR 5521", vehicleModel: "Mahindra 575 DI", totalBookings: 1, totalSpent: 14500, lastActive: "2026-09-18", source: "Service Booking" },
-      { id: "c_5", name: "Pooja Deshmukh", phone: "8878901234", email: "pooja.d@outlook.com", city: "Durg", vehicleType: "Car / SUV", vehicleNumber: "CG 07 KT 7788", vehicleModel: "Maruti Swift", totalBookings: 2, totalSpent: 2800, lastActive: "2026-09-21", source: "Registered Customer" },
-    ];
-  }
 
   const totalRegisteredCustomers = rawCustomerList.length;
   const activeBookerCustomers = rawCustomerList.filter((c) => c.totalBookings > 0).length;
@@ -4236,8 +4305,55 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           TAB 2: SHOPS & USERS MANAGEMENT
       ══════════════════════════════════════════════════════════════════ */}
       {activeTab === "shops" && (() => {
-        const allShopsCount = (users || []).filter((u) => u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName)).length;
-        const allCustomersCount = (users || []).filter((u) => u.role !== "vendor" && u.role !== "shop_owner" && !u.shopName).length;
+        // Aggregate any customer from bookings and invoices who might not have an explicit users doc yet
+        const customerUsersFromBookings = [];
+        const seenCustomerPhones = new Set(
+          (users || []).map((u) => (u.phone || u.phoneNumber || "").replace(/\D/g, "").slice(-10)).filter(Boolean)
+        );
+
+        (bookings || []).forEach((b) => {
+          const phone = (b.customerPhone || "").replace(/\D/g, "").slice(-10);
+          if (phone && !seenCustomerPhones.has(phone)) {
+            seenCustomerPhones.add(phone);
+            customerUsersFromBookings.push({
+              uid: b.customerId || `cust_${phone}`,
+              name: b.customerName || "Customer",
+              phone: phone,
+              email: b.customerEmail || `${phone}@tyresaathi.in`,
+              role: "customer",
+              city: b.shopCity || b.city || "Raipur",
+              address: b.address || "—",
+              vehicleType: b.vehicleType || "Car / SUV",
+              vehicleNumber: b.vehicleNumber || "—",
+              createdAt: b.date || b.createdAt || "Recent",
+              source: "Service Booking",
+            });
+          }
+        });
+
+        (invoices || []).forEach((inv) => {
+          const phone = (inv.customerPhone || "").replace(/\D/g, "").slice(-10);
+          if (phone && !seenCustomerPhones.has(phone)) {
+            seenCustomerPhones.add(phone);
+            customerUsersFromBookings.push({
+              uid: `inv_cust_${phone}`,
+              name: inv.customerName || "Customer",
+              phone: phone,
+              email: `${phone}@tyresaathi.in`,
+              role: "customer",
+              city: inv.customerCity || "Raipur",
+              address: inv.customerAddress || "—",
+              vehicleType: inv.vehicleType || "Car / SUV",
+              vehicleNumber: inv.vehicleNumber || "—",
+              createdAt: inv.date || inv.createdAt || "Recent",
+              source: "In-Store Billing",
+            });
+          }
+        });
+
+        const allNetworkUsers = [...(users || []), ...customerUsersFromBookings];
+        const allShopsCount = allNetworkUsers.filter((u) => u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName)).length;
+        const allCustomersCount = allNetworkUsers.filter((u) => u.role !== "vendor" && u.role !== "shop_owner" && !u.shopName).length;
         const allDeletedCount = (deletedAccounts || []).length;
         const deletedShopsCount = (deletedAccounts || []).filter((d) => d.accountType === "shop" || d.role === "vendor" || d.role === "shop_owner" || Boolean(d.shopName || d.profileSnapshot?.shopName)).length;
         const deletedCustomersCount = allDeletedCount - deletedShopsCount;
@@ -4267,7 +4383,7 @@ Namaste ${staff.name}, aapko TyreSaathi Admin Portal ka role-based access diya g
           return true;
         });
 
-        const filteredNetworkUsers = (users || []).filter((u) => {
+        const filteredNetworkUsers = allNetworkUsers.filter((u) => {
           // 1. Role Sub-Tab Filter
           const isShop = u.role === "vendor" || u.role === "shop_owner" || Boolean(u.shopName);
           if (userRoleFilterTab === "shops" && !isShop) return false;

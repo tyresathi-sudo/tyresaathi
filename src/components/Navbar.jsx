@@ -44,6 +44,31 @@ export default function Navbar({ onMenuClick }) {
   const megaMenuRef = useRef(null);
   const userDropdownRef = useRef(null);
 
+  // Dynamic Cart Badge Count
+  const [cartCount, setCartCount] = useState(() => {
+    try {
+      const items = JSON.parse(localStorage.getItem("tyresaathi_cart") || "[]");
+      return Array.isArray(items) ? items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    const updateBadge = () => {
+      try {
+        const items = JSON.parse(localStorage.getItem("tyresaathi_cart") || "[]");
+        setCartCount(Array.isArray(items) ? items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0);
+      } catch (e) {}
+    };
+    window.addEventListener("cartUpdated", updateBadge);
+    window.addEventListener("storage", updateBadge);
+    return () => {
+      window.removeEventListener("cartUpdated", updateBadge);
+      window.removeEventListener("storage", updateBadge);
+    };
+  }, []);
+
   // Close dropdowns on click outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -187,11 +212,16 @@ export default function Navbar({ onMenuClick }) {
               )}
             </div>
 
-            {/* Cart Icon */}
-            <Link to="/bookings" className="top-cart-btn" title="View Bookings & Cart">
+            {/* Cart Icon -> Opens Cart Drawer */}
+            <button 
+              type="button" 
+              onClick={() => window.dispatchEvent(new Event("open_cart_drawer"))} 
+              className="top-cart-btn" 
+              title="View Cart"
+            >
               <ShoppingCart size={15} />
-              <span className="cart-badge-count">0</span>
-            </Link>
+              <span className="cart-badge-count">{cartCount}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -287,12 +317,14 @@ export default function Navbar({ onMenuClick }) {
             </NavLink>
 
             <NavLink to="/bookings" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
-              BOOKINGS
+              {isVendor ? "APPOINTMENTS" : "MY BOOKINGS"}
             </NavLink>
 
-            <NavLink to="/billing" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
-              BILLING
-            </NavLink>
+            {(isVendor || isAdmin) && (
+              <NavLink to="/billing" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
+                BILLING
+              </NavLink>
+            )}
 
             <NavLink to="/search" className={({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`}>
               SEARCH

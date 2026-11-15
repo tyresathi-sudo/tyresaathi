@@ -31,9 +31,13 @@ export default function Register() {
 
   useEffect(() => {
     if (user && !authLoading) {
-      navigate("/", { replace: true });
+      if (role === ROLES.SHOP_OWNER) {
+        navigate("/bookings", { replace: true });
+      } else {
+        navigate("/store-location", { replace: true });
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, role, navigate]);
 
   // GPS Auto-detect location handler
   async function handleAutoDetectLocation() {
@@ -147,7 +151,11 @@ export default function Register() {
         }
       }
 
-      navigate("/", { replace: true });
+      if (role === ROLES.SHOP_OWNER) {
+        navigate("/bookings", { replace: true });
+      } else {
+        navigate("/store-location", { replace: true });
+      }
     } catch (err) {
       console.warn("Registration Error:", err);
       setError(friendlyError(err.code || err.message));

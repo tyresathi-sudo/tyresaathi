@@ -196,7 +196,12 @@ export default function Bookings() {
         const snap = await getDocs(collection(db, "bookings"));
         if (!snap.empty) {
           const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          setBookings(fetched);
+          // Merge any unsynced local device bookings
+          const localStr = localStorage.getItem(storageKey);
+          const localList = localStr ? JSON.parse(localStr) : [];
+          const existingIds = new Set(fetched.map((b) => b.id));
+          const unsynced = localList.filter((b) => !existingIds.has(b.id));
+          setBookings([...fetched, ...unsynced]);
         } else {
           const local = localStorage.getItem(storageKey);
           if (local) setBookings(JSON.parse(local));
@@ -287,12 +292,15 @@ export default function Bookings() {
     }
 
     setLoading(true);
+    const cleanCustPhone = (newBooking.customerPhone || profile?.phone || "").trim().replace(/\D/g, "").slice(-10);
+    const resolvedCustId = user?.uid || `phone_${cleanCustPhone}`;
+
     const bookingData = {
       ...newBooking,
-      customerId: user?.uid || "guest_cust",
-      userId: user?.uid || "guest_cust",
-      customerEmail: user?.email || (profile?.email || ""),
-      customerPhone: newBooking.customerPhone || profile?.phone || "",
+      customerId: resolvedCustId,
+      userId: resolvedCustId,
+      customerEmail: user?.email || (profile?.email || `${cleanCustPhone}@tyresaathi.in`),
+      customerPhone: cleanCustPhone || newBooking.customerPhone,
       status: "pending",
       createdAt: new Date().toISOString(),
     };
@@ -314,6 +322,26 @@ export default function Bookings() {
         service: bookingData.serviceType || "",
         customerName: bookingData.customerName,
       });
+
+      // Save customer profile to users collection
+      try {
+        if (cleanCustPhone) {
+          const custEntry = {
+            uid: resolvedCustId,
+            name: newBooking.customerName.trim(),
+            phone: cleanCustPhone,
+            email: user?.email || profile?.email || `${cleanCustPhone}@tyresaathi.in`,
+            role: "customer",
+            city: newBooking.shopCity || profile?.city || "Raipur",
+            vehicleType: newBooking.vehicleType,
+            vehicleNumber: newBooking.vehicleNumber.trim(),
+            lastActive: new Date().toISOString().split("T")[0],
+            source: "Service Booking",
+          };
+          setDoc(doc(db, "users", resolvedCustId), custEntry, { merge: true }).catch(() => {});
+        }
+      } catch (custErr) {}
+
       try {
         const storageKey = getBookingStorageKey();
         const local = JSON.parse(localStorage.getItem(storageKey) || "[]");
@@ -409,15 +437,18 @@ export default function Bookings() {
     const myUid = user?.uid;
     const myEmail = (user?.email || "").toLowerCase().trim();
     const myPhone = (profile?.phone || user?.phoneNumber || "").replace(/[^0-9]/g, "").slice(-10);
+    const myName = (profile?.name || user?.displayName || "").toLowerCase().trim();
 
     const bCustId = b?.customerId || b?.userId;
     const bCustEmail = (b?.customerEmail || "").toLowerCase().trim();
     const bCustPhone = (b?.customerPhone || "").replace(/[^0-9]/g, "").slice(-10);
+    const bCustName = (b?.customerName || "").toLowerCase().trim();
 
     const isMyCustomerBooking = 
       Boolean(myUid && bCustId && bCustId === myUid) ||
       Boolean(myEmail && bCustEmail && bCustEmail === myEmail) ||
-      Boolean(myPhone && bCustPhone && myPhone === bCustPhone);
+      Boolean(myPhone && bCustPhone && myPhone === bCustPhone) ||
+      Boolean(myName && bCustName && (myName === bCustName || bCustName.includes(myName) || myName.includes(bCustName)));
 
     if (isVendor || isShopOwner) {
       const myShopName = (profile?.shopName || "").toLowerCase().trim();
