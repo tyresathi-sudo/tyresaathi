@@ -1669,9 +1669,9 @@ export default function StoreLocation() {
                                     type="button"
                                     className="shop-prod-specs-btn"
                                     onClick={(e) => handleOpenProductSpecs(p, e)}
-                                    title="Tyre Specifications dekhein"
+                                    title="Tyre Specifications aur Photos dekhein"
                                   >
-                                    🔍 Specs
+                                    🔍 Details & Photos
                                   </button>
 
                                   {isOutOfStock ? (

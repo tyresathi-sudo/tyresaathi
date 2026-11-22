@@ -15,8 +15,10 @@ import {
   ShieldCheck, 
   ChevronRight,
   Store,
-  Star
+  Star,
+  Eye
 } from "lucide-react";
+import ProductDetailsModal from "../components/ProductDetailsModal.jsx";
 import { 
   INITIAL_FEATURED_PRODUCTS, 
   MEGA_MENU_BRANDS, 
@@ -35,6 +37,7 @@ export default function Search() {
   const [selectedBrand, setSelectedBrand] = useState(brandParam);
   const [selectedCategory, setSelectedCategory] = useState(categoryParam);
   const [selectedSize, setSelectedSize] = useState("all");
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState(null);
   const [products, setProducts] = useState([]);
   const [shops, setShops] = useState(SAMPLE_SHOPS || []);
   const [loading, setLoading] = useState(true);
@@ -358,7 +361,11 @@ export default function Search() {
 
                 <div className="products-card-grid">
                   {nearestProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onSelectProduct={setSelectedProductForDetails}
+                    />
                   ))}
                 </div>
               </div>
@@ -379,12 +386,24 @@ export default function Search() {
 
                 <div className="products-card-grid">
                   {distantProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onSelectProduct={setSelectedProductForDetails}
+                    />
                   ))}
                 </div>
               </div>
             )}
           </>
+        )}
+
+        {/* 🛞 High-Res Photo & Technical Specifications Modal */}
+        {selectedProductForDetails && (
+          <ProductDetailsModal
+            product={selectedProductForDetails}
+            onClose={() => setSelectedProductForDetails(null)}
+          />
         )}
       </div>
 
@@ -598,7 +617,7 @@ export default function Search() {
 }
 
 // Single Product Card with 4-photo thumbnails and distance badge
-function ProductCard({ product }) {
+function ProductCard({ product, onSelectProduct }) {
   const images = Array.isArray(product.images) && product.images.length > 0
     ? product.images
     : [product.imageUrl || "/tyresaathi-logo.png"];
@@ -614,7 +633,12 @@ function ProductCard({ product }) {
   return (
     <div className="product-item-card">
       {/* Top Image Box */}
-      <div className="card-img-wrapper">
+      <div 
+        className="card-img-wrapper" 
+        onClick={() => onSelectProduct && onSelectProduct(product)}
+        style={{ cursor: "pointer" }}
+        title="Click to view full photo & specifications"
+      >
         <img
           src={selectedImg}
           alt={product.productName || "Tyre"}
@@ -630,17 +654,33 @@ function ProductCard({ product }) {
         <span className={`card-distance-pill ${(product.distanceKm || 0) <= 3 ? "dist-nearest" : "dist-far"}`}>
           📍 {product.distanceKm || 2.5} km away
         </span>
+
+        {/* Quick View Button */}
+        <button 
+          type="button" 
+          className="card-quick-view-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onSelectProduct) onSelectProduct(product);
+          }}
+          title="View Details & Photos"
+        >
+          <Eye size={12} /> Details & Photos
+        </button>
       </div>
 
       {/* Multi-photo Mini Thumbs (if more than 1 photo exists) */}
       {images.length > 1 && (
-        <div className="card-thumbs-strip">
+        <div className="card-thumbs-strip" onClick={(e) => e.stopPropagation()}>
           {images.map((imgUrl, i) => (
             <button
               key={i}
               type="button"
               className={`card-mini-thumb ${selectedImg === imgUrl ? "thumb-selected" : ""}`}
-              onClick={() => setSelectedImg(imgUrl)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedImg(imgUrl);
+              }}
             >
               <img src={imgUrl} alt={`angle ${i + 1}`} />
             </button>
@@ -660,7 +700,14 @@ function ProductCard({ product }) {
           )}
         </div>
 
-        <h3 className="card-product-title">{product.productName}</h3>
+        <h3 
+          className="card-product-title"
+          onClick={() => onSelectProduct && onSelectProduct(product)}
+          style={{ cursor: "pointer" }}
+          title="Click to view specifications & photos"
+        >
+          {product.productName}
+        </h3>
 
         <div className="card-price-row">
           <span className="card-selling-price">₹{product.offerPrice || "0"}</span>
@@ -682,6 +729,15 @@ function ProductCard({ product }) {
 
         {/* Action Buttons */}
         <div className="card-action-buttons">
+          <button
+            type="button"
+            className="card-details-btn"
+            onClick={() => onSelectProduct && onSelectProduct(product)}
+            title="View Specifications & Photos"
+          >
+            <Eye size={14} /> Details / Photos
+          </button>
+
           <Link
             to={`/bookings?shopId=${product.shopId || ""}&shopName=${encodeURIComponent(product.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(product.shopPhone || "")}&service=${encodeURIComponent(product.productName || "Tyre Purchase & Fitment")}&openModal=true`}
             className="card-book-service-btn"
@@ -885,32 +941,78 @@ function ProductCard({ product }) {
           color: white;
           border-radius: 10px;
           text-decoration: none;
-          font-size: 14.5px;
+          font-size: 13.5px;
           font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 11px 16px;
+          padding: 10px 12px;
           box-shadow: 0 2px 10px rgba(192, 57, 43, 0.3);
           transition: transform 0.15s ease;
+          white-space: nowrap;
         }
         .card-book-service-btn:hover {
           background: #b91c1c;
           transform: translateY(-1px);
+        }
+        .card-details-btn {
+          flex: 1;
+          background: var(--surface-2, #f1f5f9);
+          color: var(--text, #1e293b);
+          border: 1.5px solid var(--border, #cbd5e1);
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 800;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 10px 12px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+        .card-details-btn:hover {
+          background: #ffffff;
+          border-color: #c0392b;
+          color: #c0392b;
+          transform: translateY(-1px);
+        }
+        .card-quick-view-btn {
+          position: absolute;
+          bottom: 10px;
+          right: 10px;
+          background: rgba(15, 23, 42, 0.85);
+          color: white;
+          border: none;
+          border-radius: 14px;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 4px 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+          backdrop-filter: blur(4px);
+          z-index: 3;
+          transition: background 0.15s ease;
+        }
+        .card-quick-view-btn:hover {
+          background: #c0392b;
         }
         .card-call-shop-btn {
           background: #16a34a;
           color: white;
           border-radius: 10px;
           text-decoration: none;
-          font-size: 14.5px;
+          font-size: 13.5px;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 6px;
-          padding: 11px 18px;
+          padding: 10px 14px;
           transition: background 0.15s ease;
         }
         .card-call-shop-btn:hover {

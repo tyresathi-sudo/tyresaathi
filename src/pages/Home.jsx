@@ -15,7 +15,8 @@ import {
   Flame,
   Sparkles,
   Megaphone,
-  CheckCircle2
+  CheckCircle2,
+  Eye
 } from "lucide-react";
 import { 
   MEGA_MENU_BRANDS, 
@@ -28,11 +29,13 @@ import { INITIAL_SHOP_ADS } from "../config/shopAdsData";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import AdCarouselSlider from "../components/AdCarouselSlider";
+import ProductDetailsModal from "../components/ProductDetailsModal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Home() {
   const { isVendor, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState(null);
   const [searchSize, setSearchSize] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedVehicleType, setSelectedVehicleType] = useState("Car");
@@ -384,17 +387,40 @@ export default function Home() {
               const prodImg = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "/tyresaathi-logo.png";
               return (
                 <div key={p.id} className="home-product-card">
-                  <div className="product-image-box">
+                  <div 
+                    className="product-image-box"
+                    onClick={() => setSelectedProductForDetails(p)}
+                    style={{ cursor: "pointer" }}
+                    title="Click to view details & high-res photos"
+                  >
                     <img
                       src={prodImg}
                       alt={p.productName || "Tyre"}
                       onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
                     />
                     <span className="dist-badge">📍 {p.distanceKm || "1.0"} km (Nearest)</span>
+                    <button
+                      type="button"
+                      className="home-img-view-hint"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProductForDetails(p);
+                      }}
+                      title="View Photos & Specs"
+                    >
+                      <Eye size={12} /> Details
+                    </button>
                   </div>
                   <div className="product-info-box">
                     <span className="brand-tag">{p.brandName || "Tyre"} • {p.sizeName || p.size || ""}</span>
-                    <h4 className="prod-title">{p.productName || p.title}</h4>
+                    <h4 
+                      className="prod-title"
+                      onClick={() => setSelectedProductForDetails(p)}
+                      style={{ cursor: "pointer" }}
+                      title="Click to view specifications"
+                    >
+                      {p.productName || p.title}
+                    </h4>
                     <div className="price-line">
                       <span className="deal-price">₹{p.offerPrice || p.price}</span>
                       {p.originalPrice && <span className="mrp-price">₹{p.originalPrice}</span>}
@@ -402,7 +428,15 @@ export default function Home() {
                     <div className="shop-line">
                       <small>🏪 {p.shopName || "TyreSaathi Partner"}</small>
                     </div>
-                    <div className="btn-row">
+                    <div className="btn-row" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="btn-view-details"
+                        onClick={() => setSelectedProductForDetails(p)}
+                        title="View Specifications & Photos"
+                      >
+                        <Eye size={13} /> Details
+                      </button>
                       <Link 
                         to={`/bookings?shopId=${p.shopId || ""}&shopName=${encodeURIComponent(p.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(p.shopPhone || "")}&service=${encodeURIComponent(p.productName || "Tyre Purchase & Fitment")}&openModal=true`} 
                         className="btn-book"
@@ -478,6 +512,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* 🛞 Product Details & High-Res Image View Modal */}
+      {selectedProductForDetails && (
+        <ProductDetailsModal
+          product={selectedProductForDetails}
+          onClose={() => setSelectedProductForDetails(null)}
+        />
+      )}
 
       <style>{`
         .home-page-container {
@@ -1189,6 +1231,50 @@ export default function Home() {
         }
         .btn-call:hover {
           background: #219653;
+        }
+        .btn-view-details {
+          background: var(--surface-2, #f1f5f9);
+          color: var(--text, #1e293b);
+          border: 1.5px solid var(--border, #cbd5e1);
+          border-radius: 8px;
+          padding: 8px 11px;
+          font-size: 0.8125rem;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+        .btn-view-details:hover {
+          background: #ffffff;
+          border-color: #c0392b;
+          color: #c0392b;
+          transform: translateY(-1px);
+        }
+        .home-img-view-hint {
+          position: absolute;
+          bottom: 8px;
+          right: 8px;
+          background: rgba(15, 23, 42, 0.85);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 9px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+          backdrop-filter: blur(4px);
+          z-index: 2;
+          transition: background 0.15s ease;
+        }
+        .home-img-view-hint:hover {
+          background: #c0392b;
         }
 
         /* Service Banner */
