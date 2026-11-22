@@ -15,7 +15,16 @@ import {
   ExternalLink,
   LifeBuoy,
   Store,
-  ShieldAlert
+  ShieldAlert,
+  User,
+  Phone,
+  MessageCircle,
+  Car,
+  Wrench,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+  Eye
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { 
@@ -35,11 +44,19 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
   const [latestToast, setLatestToast] = useState(null);
+  const [selectedNotifDetail, setSelectedNotifDetail] = useState(null);
   const dropdownRef = useRef(null);
   const prevCountRef = useRef(0);
 
   const userId = user?.uid || profile?.shopId || "";
   const userRole = profile?.role || (profile?.shopName ? "shop_owner" : "customer");
+  const isShopOwner = Boolean(
+    profile?.shopName || 
+    profile?.role === "shop_owner" || 
+    profile?.role === "vendor" ||
+    userRole === "shop_owner" ||
+    userRole === "vendor"
+  );
 
   useEffect(() => {
     const unsubscribe = listenUserNotifications(
@@ -84,25 +101,182 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Handle ESC key to close detail modal
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === "Escape") {
+        setSelectedNotifDetail(null);
+      }
+    }
+    if (selectedNotifDetail) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNotifDetail]);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  // Smart parser to extract structured detail fields for both Shop Owner and Customer
+  const parseNotificationDetails = (notif) => {
+    if (!notif) return {};
+    const d = notif.data || {};
+    const msg = notif.message || "";
+    const title = notif.title || "";
+
+    // 1. Service / Tyre name
+    let serviceName = d.serviceName || d.tyreName || d.productName || "";
+    if (!serviceName) {
+      const m1 = msg.match(/ne\s*["']([^"']+)["']\s*(?:\([^)]+\))?\s*ke liye/i);
+      const m2 = msg.match(/Aapki\s*["']([^"']+)["']\s*booking/i);
+      const m3 = msg.match(/for\s*([^,\n]+?)\s*on\s+\d/i);
+      if (m1) serviceName = m1[1].trim();
+      else if (m2) serviceName = m2[1].trim();
+      else if (m3) serviceName = m3[1].trim();
+    }
+
+    // 2. Shop Name
+    let shopName = d.shopName || "";
+    if (!shopName) {
+      const m1 = msg.match(/at\s*["']([^"']+)["']/i);
+      const m2 = msg.match(/shop\s*["']([^"']+)["']/i);
+      const m3 = title.match(/at\s+([^!.]+)/i);
+      if (m1) shopName = m1[1].trim();
+      else if (m2) shopName = m2[1].trim();
+      else if (m3) shopName = m3[1].trim();
+    }
+
+    // 3. Status
+    let status = d.status || "";
+    if (!status) {
+      const m1 = title.match(/Booking Status Update:\s*([A-Za-z_-]+)/i);
+      const m2 = msg.match(/status ab\s*["']([^"']+)["']/i);
+      if (m1) status = m1[1].trim();
+      else if (m2) status = m2[1].trim();
+    }
+
+    // 4. Customer Name & Phone
+    let customerName = d.customerName || "";
+    let customerPhone = d.customerPhone || "";
+    if (!customerPhone) {
+      const phoneMatch = msg.match(/(\d{10})/);
+      if (phoneMatch) customerPhone = phoneMatch[1];
+    }
+    if (!customerName) {
+      const nameMatch = msg.match(/^([A-Za-z0-9\s]+?)\s*\(\d{10}\)/);
+      if (nameMatch) customerName = nameMatch[1].trim();
+      else if (msg.includes("ne aapki shop")) {
+        const revMatch = msg.match(/^([A-Za-z0-9\s]+?)\s+ne aapki shop/i);
+        if (revMatch) customerName = revMatch[1].trim();
+      }
+    }
+
+    // 5. Vehicle Number
+    let vehicleNumber = d.vehicleNumber || "";
+    if (!vehicleNumber) {
+      const vMatch = msg.match(/\(([A-Za-z]{2}\s*\d{1,2}\s*[A-Za-z]{0,3}\s*\d{3,4})\)/i);
+      if (vMatch) vehicleNumber = vMatch[1].trim();
+    }
+
+    // 6. Rating & Reviewer
+    let rating = d.rating || "";
+    let reviewerName = d.reviewerName || customerName || "";
+    if (!rating) {
+      const rMatch = title.match(/(\d+)\s*[- ]Star/i) || msg.match(/(\d+)\s*Star/i);
+      if (rMatch) rating = rMatch[1];
+    }
+    if (!reviewerName && msg.includes("ne aapki shop")) {
+      const rMatch = msg.match(/^([A-Za-z0-9\s]+?)\s+ne aapki shop/i);
+      if (rMatch) reviewerName = rMatch[1].trim();
+    }
+
+    // 7. Booking ID
+    let bookingId = d.bookingId || "";
+    if (!bookingId) {
+      const bMatch = msg.match(/Booking\s*#([A-Za-z0-9_-]+)/i);
+      if (bMatch) bookingId = bMatch[1];
+    }
+
+    // 8. Shop Phone
+    let shopPhone = d.shopPhone || "";
+
+    // 9. Booking Date & Time Slot
+    let bookingDate = d.bookingDate || "";
+    let bookingTimeSlot = d.bookingTimeSlot || "";
+    if (!bookingDate) {
+      const dtMatch = msg.match(/on\s+(\d{1,2}\s+[A-Za-z]+)\s*(?:\(([^)]+)\))?/i);
+      if (dtMatch) {
+        bookingDate = dtMatch[1];
+        if (dtMatch[2]) bookingTimeSlot = dtMatch[2];
+      }
+    }
+
+    // 10. Support Ticket No
+    let ticketNo = d.ticketNo || "";
+    if (!ticketNo) {
+      const tMatch = title.match(/#?([A-Za-z]{2,5}-\d{3,})/i) || msg.match(/#?([A-Za-z]{2,5}-\d{3,})/i);
+      if (tMatch) ticketNo = tMatch[1];
+    }
+
+    return {
+      serviceName,
+      shopName,
+      status,
+      customerName,
+      customerPhone,
+      vehicleNumber,
+      rating,
+      reviewerName,
+      bookingId,
+      shopPhone,
+      bookingDate,
+      bookingTimeSlot,
+      ticketNo
+    };
+  };
+
+  const getStatusBadge = (status) => {
+    if (!status) return null;
+    const s = String(status).toLowerCase();
+    if (s.includes("complete") || s.includes("finish") || s.includes("done")) {
+      return { label: "COMPLETED", color: "#16a34a", bg: "#dcfce7", border: "#bbf7d0" };
+    }
+    if (s.includes("progress") || s.includes("running") || s.includes("process")) {
+      return { label: "IN PROGRESS", color: "#2563eb", bg: "#dbeafe", border: "#bfdbfe" };
+    }
+    if (s.includes("accept") || s.includes("confirm")) {
+      return { label: "ACCEPTED", color: "#4f46e5", bg: "#e0e7ff", border: "#c7d2fe" };
+    }
+    if (s.includes("reject") || s.includes("cancel")) {
+      return { label: "CANCELLED", color: "#dc2626", bg: "#fee2e2", border: "#fecaca" };
+    }
+    return { label: String(status).toUpperCase(), color: "#d97706", bg: "#fef3c7", border: "#fde68a" };
+  };
+
   const handleNotificationClick = async (notif) => {
+    if (!notif) return;
     if (!notif.read) {
       await markNotificationAsRead(notif.id);
     }
     setIsOpen(false);
     setLatestToast(null);
+    setSelectedNotifDetail(notif);
+  };
 
+  const handleNavigateFromDetail = (notif) => {
+    setSelectedNotifDetail(null);
+    if (!notif) return;
     if (notif.link) {
       navigate(notif.link);
     } else if (notif.type === "ticket_created" || notif.type === "support_ticket" || notif.type === "ticket") {
-      navigate("/admin?tab=support");
+      navigate(isAdminRoute ? "/admin?tab=support" : "/support");
     } else if (notif.type === "shop_registered" || notif.type === "verification_requested" || notif.type === "vendor_registration") {
       navigate("/admin?tab=shops");
     } else if (notif.type === "booking_created" || notif.type === "booking_status") {
       navigate("/bookings");
     } else if (notif.type === "rating_received") {
       navigate("/store-location");
+    } else {
+      navigate("/bookings");
     }
   };
 
@@ -268,6 +442,7 @@ export default function NotificationBell() {
                     key={notif.id}
                     className={`notif-item-row ${!notif.read ? "notif-unread" : ""}`}
                     onClick={() => handleNotificationClick(notif)}
+                    title="Click to view full details (विवरण देखने के लिए क्लिक करें)"
                   >
                     {getNotificationIcon(notif.type)}
 
@@ -280,6 +455,10 @@ export default function NotificationBell() {
                         </span>
                       </div>
                       <p className="notif-item-msg">{notif.message}</p>
+                      <div className="notif-item-action-hint">
+                        <span>Tap to view details (विवरण देखें)</span>
+                        <ChevronRight size={12} />
+                      </div>
                     </div>
 
                     {!notif.read && <span className="unread-dot" title="Unread" />}
@@ -329,6 +508,294 @@ export default function NotificationBell() {
           </div>
         </div>
       )}
+
+      {/* 🪟 Full Notification Details Modal (Both Shop Owner & Customer) */}
+      {selectedNotifDetail && (() => {
+        const details = parseNotificationDetails(selectedNotifDetail);
+        const statusBadge = getStatusBadge(details.status);
+        const isBooking = 
+          selectedNotifDetail.type === "booking_created" || 
+          selectedNotifDetail.type === "booking_status" || 
+          Boolean(details.serviceName) ||
+          Boolean(details.vehicleNumber);
+        const isRating = selectedNotifDetail.type === "rating_received" || Boolean(details.rating);
+        const isTicket = selectedNotifDetail.type?.includes("ticket") || Boolean(details.ticketNo);
+
+        const contactPhone = isShopOwner 
+          ? (details.customerPhone || details.shopPhone) 
+          : (details.shopPhone || details.customerPhone);
+
+        return (
+          <div className="notif-modal-backdrop" onClick={() => setSelectedNotifDetail(null)}>
+            <div className="notif-modal-card" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="notif-modal-header">
+                <div className="notif-modal-header-left">
+                  {getNotificationIcon(selectedNotifDetail.type)}
+                  <div>
+                    <span className="notif-modal-category">
+                      {isBooking 
+                        ? (selectedNotifDetail.type === "booking_status" ? "Booking Status Update (स्थिति अपडेट)" : "Service Booking (सर्विस बुकिंग)")
+                        : isRating 
+                        ? "Shop Rating & Review (ग्राहक समीक्षा)" 
+                        : isTicket 
+                        ? "Helpdesk & Support Ticket (सपोर्ट टिकट)" 
+                        : "Notification Alert (अलर्ट)"}
+                    </span>
+                    <div className="notif-modal-time">
+                      <Clock size={11} style={{ display: "inline", marginRight: "4px" }} />
+                      {selectedNotifDetail.dateStr || "Recently"}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  className="notif-modal-close-btn"
+                  onClick={() => setSelectedNotifDetail(null)}
+                  title="Close (बंद करें)"
+                >
+                  <X size={17} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="notif-modal-body">
+                {/* Hero Message Box */}
+                <div className="notif-hero-box">
+                  <h3 className="notif-hero-title">{selectedNotifDetail.title}</h3>
+                  <p className="notif-hero-msg">{selectedNotifDetail.message}</p>
+                </div>
+
+                {/* Structured Key Details */}
+                <div className="notif-details-grid">
+                  {/* Booking Details */}
+                  {isBooking && (
+                    <>
+                      {details.serviceName && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Wrench size={13} color="#2563eb" />
+                            Tyre / Service
+                          </span>
+                          <span className="notif-field-val font-semibold">{details.serviceName}</span>
+                        </div>
+                      )}
+
+                      {statusBadge && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <RefreshCw size={13} color="#16a34a" />
+                            Current Status
+                          </span>
+                          <span 
+                            className="notif-status-pill"
+                            style={{ 
+                              color: statusBadge.color, 
+                              background: statusBadge.bg, 
+                              borderColor: statusBadge.border 
+                            }}
+                          >
+                            {statusBadge.label}
+                          </span>
+                        </div>
+                      )}
+
+                      {details.vehicleNumber && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Car size={13} color="#4f46e5" />
+                            Vehicle Number
+                          </span>
+                          <span className="notif-field-val uppercase font-mono font-bold">{details.vehicleNumber}</span>
+                        </div>
+                      )}
+
+                      {details.shopName && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Store size={13} color="#d97706" />
+                            Shop Name
+                          </span>
+                          <span className="notif-field-val">{details.shopName}</span>
+                        </div>
+                      )}
+
+                      {details.customerName && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <User size={13} color="#059669" />
+                            Customer
+                          </span>
+                          <span className="notif-field-val">{details.customerName}</span>
+                        </div>
+                      )}
+
+                      {contactPhone && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Phone size={13} color="#0891b2" />
+                            {isShopOwner ? "Customer Mobile" : "Shop Contact"}
+                          </span>
+                          <span className="notif-field-val font-mono font-semibold">+91 {contactPhone}</span>
+                        </div>
+                      )}
+
+                      {details.bookingDate && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Calendar size={13} color="#7c3aed" />
+                            Date & Slot
+                          </span>
+                          <span className="notif-field-val">
+                            {details.bookingDate} {details.bookingTimeSlot ? `(${details.bookingTimeSlot})` : ""}
+                          </span>
+                        </div>
+                      )}
+
+                      {details.bookingId && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Layers size={13} color="#64748b" />
+                            Booking Ref
+                          </span>
+                          <span className="notif-field-val font-mono text-xs text-slate-500">#{details.bookingId}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Rating Details */}
+                  {isRating && (
+                    <>
+                      {details.reviewerName && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <User size={13} color="#d97706" />
+                            Customer Reviewer
+                          </span>
+                          <span className="notif-field-val font-semibold">
+                            {details.reviewerName}
+                            <span className="verified-badge-pill">Verified</span>
+                          </span>
+                        </div>
+                      )}
+
+                      {details.rating && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Star size={13} color="#f59e0b" />
+                            Rating Given
+                          </span>
+                          <span className="notif-rating-stars">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star 
+                                key={i} 
+                                size={14} 
+                                fill={i < Number(details.rating) ? "#f59e0b" : "#e2e8f0"} 
+                                color={i < Number(details.rating) ? "#f59e0b" : "#cbd5e1"} 
+                              />
+                            ))}
+                            <strong style={{ color: "#d97706", marginLeft: "4px" }}>{details.rating} / 5 Stars</strong>
+                          </span>
+                        </div>
+                      )}
+
+                      {details.shopName && (
+                        <div className="notif-field-row">
+                          <span className="notif-field-label">
+                            <Store size={13} color="#64748b" />
+                            Shop Rated
+                          </span>
+                          <span className="notif-field-val">{details.shopName}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Support Ticket Details */}
+                  {isTicket && details.ticketNo && (
+                    <div className="notif-field-row">
+                      <span className="notif-field-label">
+                        <LifeBuoy size={13} color="#dc2626" />
+                        Ticket Ref
+                      </span>
+                      <span className="notif-field-val font-mono font-bold" style={{ color: "#dc2626" }}>#{details.ticketNo}</span>
+                    </div>
+                  )}
+
+                  {/* General / Generic Notice */}
+                  {!isBooking && !isRating && !isTicket && (
+                    <div className="notif-field-row">
+                      <span className="notif-field-label">
+                        <AlertCircle size={13} color="#2563eb" />
+                        Notification Type
+                      </span>
+                      <span className="notif-field-val capitalize">{selectedNotifDetail.type || "General Alert"}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="notif-modal-footer">
+                {contactPhone && (
+                  <a 
+                    href={`tel:+91${contactPhone}`}
+                    className="notif-btn-call"
+                    title={`Call +91 ${contactPhone}`}
+                  >
+                    <Phone size={13} /> Call
+                  </a>
+                )}
+
+                {contactPhone && (
+                  <a 
+                    href={`https://wa.me/91${contactPhone}?text=${encodeURIComponent(`Namaste! TyreSaathi par aapki booking ke sambandh me sampark kiya ja raha hai.`)}`}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="notif-btn-whatsapp"
+                    title="WhatsApp Chat"
+                  >
+                    <MessageCircle size={13} /> WhatsApp
+                  </a>
+                )}
+
+                <button 
+                  type="button" 
+                  className="notif-btn-primary"
+                  onClick={() => handleNavigateFromDetail(selectedNotifDetail)}
+                >
+                  {isBooking ? (
+                    <>
+                      <Calendar size={14} /> Open in Bookings
+                    </>
+                  ) : isRating ? (
+                    <>
+                      <Star size={14} /> View Shop Reviews
+                    </>
+                  ) : isTicket ? (
+                    <>
+                      <LifeBuoy size={14} /> Open Support Desk
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink size={14} /> View Details
+                    </>
+                  )}
+                </button>
+
+                <button 
+                  type="button" 
+                  className="notif-btn-secondary"
+                  onClick={() => setSelectedNotifDetail(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Scoped Styles for Notification Bell & Panel */}
       <style>{`
@@ -736,20 +1203,18 @@ export default function NotificationBell() {
 
         .notif-item-top {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: space-between;
-          gap: 6px;
-          margin-bottom: 2px;
+          gap: 8px;
+          margin-bottom: 3px;
         }
 
         .notif-item-title {
-          font-size: 12.5px;
-          font-weight: 800;
+          font-size: 13px;
+          font-weight: 700;
           color: #0f172a;
-          line-height: 1.25;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          line-height: 1.35;
+          word-break: break-word;
         }
 
         .notif-item-time {
@@ -758,14 +1223,31 @@ export default function NotificationBell() {
           font-weight: 600;
           flex-shrink: 0;
           white-space: nowrap;
+          margin-top: 1px;
         }
 
         .notif-item-msg {
           margin: 0;
-          font-size: 11.5px;
+          font-size: 12px;
           color: #64748b;
-          line-height: 1.4;
+          line-height: 1.45;
           word-break: break-word;
+        }
+
+        .notif-item-action-hint {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #c0392b;
+          margin-top: 5px;
+          opacity: 0.85;
+          transition: all 0.15s ease;
+        }
+        .notif-item-row:hover .notif-item-action-hint {
+          opacity: 1;
+          transform: translateX(2px);
         }
 
         .unread-dot {
@@ -809,6 +1291,292 @@ export default function NotificationBell() {
           color: #0f172a;
         }
 
+        /* 🪟 Notification Detail Modal & Backdrop */
+        .notif-modal-backdrop {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(5px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 99999999;
+          padding: 16px;
+          animation: notifBackdropFadeIn 0.2s ease-out;
+        }
+
+        @keyframes notifBackdropFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .notif-modal-card {
+          background: #ffffff;
+          border-radius: 20px;
+          max-width: 490px;
+          width: 100%;
+          box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
+          border: 1px solid #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          max-height: 90vh;
+          overflow: hidden;
+          animation: notifModalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes notifModalScaleUp {
+          from { opacity: 0; transform: scale(0.95) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .notif-modal-header {
+          padding: 16px 20px;
+          background: #ffffff;
+          border-bottom: 1px solid #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .notif-modal-header-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .notif-modal-category {
+          display: block;
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #dc2626;
+        }
+
+        .notif-modal-time {
+          display: flex;
+          align-items: center;
+          font-size: 11.5px;
+          color: #64748b;
+          font-weight: 600;
+          margin-top: 2px;
+        }
+
+        .notif-modal-close-btn {
+          background: #f1f5f9;
+          border: none;
+          border-radius: 50%;
+          width: 34px;
+          height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #64748b;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+        }
+        .notif-modal-close-btn:hover {
+          background: #fee2e2;
+          color: #dc2626;
+          transform: rotate(90deg);
+        }
+
+        .notif-modal-body {
+          padding: 18px 20px;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .notif-hero-box {
+          background: #f8fafc;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 14px 16px;
+          margin-bottom: 16px;
+        }
+
+        .notif-hero-title {
+          font-size: 15px;
+          font-weight: 800;
+          color: #0f172a;
+          margin: 0 0 6px 0;
+          line-height: 1.4;
+          word-break: break-word;
+        }
+
+        .notif-hero-msg {
+          font-size: 13px;
+          color: #334155;
+          margin: 0;
+          line-height: 1.55;
+          word-break: break-word;
+        }
+
+        .notif-details-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          background: #ffffff;
+          border: 1px solid #f1f5f9;
+          border-radius: 14px;
+          padding: 10px;
+        }
+
+        .notif-field-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px;
+          background: #f8fafc;
+          border-radius: 10px;
+          font-size: 12.5px;
+          gap: 10px;
+        }
+
+        .notif-field-label {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          color: #64748b;
+          font-weight: 600;
+          flex-shrink: 0;
+          font-size: 12px;
+        }
+
+        .notif-field-val {
+          color: #0f172a;
+          font-weight: 700;
+          text-align: right;
+          word-break: break-word;
+          font-size: 12.5px;
+        }
+
+        .notif-status-pill {
+          display: inline-flex;
+          align-items: center;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 4px 10px;
+          border-radius: 9999px;
+          border: 1px solid transparent;
+          letter-spacing: 0.3px;
+        }
+
+        .notif-rating-stars {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .verified-badge-pill {
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          color: #059669;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 6px;
+          margin-left: 6px;
+        }
+
+        .notif-modal-footer {
+          padding: 14px 20px;
+          background: #f8fafc;
+          border-top: 1px solid #f1f5f9;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .notif-btn-call {
+          background: #16a34a;
+          color: #ffffff !important;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 9px 14px;
+          border-radius: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          text-decoration: none;
+          transition: all 0.15s ease;
+          border: none;
+          cursor: pointer;
+        }
+        .notif-btn-call:hover {
+          background: #15803d;
+          transform: translateY(-1px);
+        }
+
+        .notif-btn-whatsapp {
+          background: #25d366;
+          color: #ffffff !important;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 9px 14px;
+          border-radius: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          text-decoration: none;
+          transition: all 0.15s ease;
+          border: none;
+          cursor: pointer;
+        }
+        .notif-btn-whatsapp:hover {
+          background: #1eb857;
+          transform: translateY(-1px);
+        }
+
+        .notif-btn-primary {
+          flex: 1;
+          min-width: 140px;
+          background: #c0392b;
+          color: #ffffff;
+          font-size: 12.5px;
+          font-weight: 700;
+          padding: 9px 14px;
+          border-radius: 10px;
+          border: none;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          box-shadow: 0 2px 6px rgba(192, 57, 43, 0.25);
+          transition: all 0.15s ease;
+        }
+        .notif-btn-primary:hover {
+          background: #a93226;
+          transform: translateY(-1px);
+        }
+
+        .notif-btn-secondary {
+          background: #ffffff;
+          border: 1.5px solid #cbd5e1;
+          color: #475569;
+          font-size: 12.5px;
+          font-weight: 700;
+          padding: 9px 14px;
+          border-radius: 10px;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.15s ease;
+        }
+        .notif-btn-secondary:hover {
+          background: #f1f5f9;
+          border-color: #94a3b8;
+          color: #0f172a;
+        }
+
         /* 📱 Mobile Responsive Compact View (< 640px) */
         @media (max-width: 640px) {
           .notif-mobile-backdrop {
@@ -844,6 +1612,28 @@ export default function NotificationBell() {
 
           .notif-panel-body {
             max-height: 310px !important;
+          }
+
+          .notif-modal-card {
+            max-width: 95vw !important;
+            max-height: 85vh !important;
+            border-radius: 16px !important;
+          }
+          .notif-modal-header {
+            padding: 12px 16px !important;
+          }
+          .notif-modal-body {
+            padding: 14px 16px !important;
+          }
+          .notif-modal-footer {
+            padding: 12px 16px !important;
+          }
+          .notif-btn-primary, .notif-btn-call, .notif-btn-whatsapp {
+            flex: 1 1 100% !important;
+            justify-content: center !important;
+          }
+          .notif-btn-secondary {
+            flex: 1 1 100% !important;
           }
         }
       `}</style>
