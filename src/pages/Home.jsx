@@ -399,17 +399,6 @@ export default function Home() {
                       onError={(e) => { e.target.src = "/tyresaathi-logo.png"; }}
                     />
                     <span className="dist-badge">📍 {p.distanceKm || "1.0"} km (Nearest)</span>
-                    <button
-                      type="button"
-                      className="home-img-view-hint"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedProductForDetails(p);
-                      }}
-                      title="View Photos & Specs"
-                    >
-                      <Eye size={12} /> Details
-                    </button>
                   </div>
                   <div className="product-info-box">
                     <span className="brand-tag">{p.brandName || "Tyre"} • {p.sizeName || p.size || ""}</span>
@@ -435,13 +424,13 @@ export default function Home() {
                         onClick={() => setSelectedProductForDetails(p)}
                         title="View Specifications & Photos"
                       >
-                        <Eye size={13} /> Details
+                        <Eye size={12} /> Details
                       </button>
                       <Link 
                         to={`/bookings?shopId=${p.shopId || ""}&shopName=${encodeURIComponent(p.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(p.shopPhone || "")}&service=${encodeURIComponent(p.productName || "Tyre Purchase & Fitment")}&openModal=true`} 
                         className="btn-book"
                       >
-                        <Calendar size={13} /> Book Service
+                        <Calendar size={12} /> Book
                       </Link>
                       <Link 
                         to={`/store-location?shopId=${p.shopId || ""}&shopName=${encodeURIComponent(p.shopName || "")}`} 
@@ -1091,30 +1080,30 @@ export default function Home() {
           border-radius: 6px;
         }
         .product-info-box {
-          padding: 16px 18px;
+          padding: 12px 14px;
           display: flex;
           flex-direction: column;
           flex: 1;
         }
         .brand-tag {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           font-weight: 800;
           color: #c0392b;
           text-transform: uppercase;
           letter-spacing: 0.3px;
         }
         .prod-title {
-          font-size: 1.05rem;
+          font-size: 15px;
           font-weight: 800;
           color: var(--text);
-          margin: 4px 0 8px;
+          margin: 3px 0 6px;
           line-height: 1.3;
         }
         .price-line {
           display: flex;
           align-items: baseline;
           gap: 8px;
-          margin-bottom: 6px;
+          margin-bottom: 5px;
         }
         .deal-price {
           font-size: 1.35rem;
@@ -1122,19 +1111,19 @@ export default function Home() {
           color: #27ae60;
         }
         .mrp-price {
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           text-decoration: line-through;
         }
         .shop-line {
-          font-size: 0.82rem;
+          font-size: 0.8rem;
           color: var(--text-muted);
-          margin-bottom: 12px;
+          margin-bottom: 8px;
           font-weight: 500;
         }
         .btn-row {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           margin-top: auto;
         }
 
@@ -1199,54 +1188,24 @@ export default function Home() {
         .btn-empty-search:hover {
           border-color: #c0392b;
         }
-        .btn-book {
-          flex: 1;
-          background: #c0392b;
-          color: white;
-          border-radius: 8px;
-          text-decoration: none;
-          font-size: 0.88rem;
-          font-weight: 700;
-          padding: 9px 12px;
-          text-align: center;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          transition: background 0.2s ease;
-        }
-        .btn-book:hover {
-          background: #a93226;
-        }
-        .btn-call {
-          background: #27ae60;
-          color: white;
-          border-radius: 8px;
-          text-decoration: none;
-          padding: 9px 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.2s ease;
-        }
-        .btn-call:hover {
-          background: #219653;
-        }
         .btn-view-details {
+          flex: 1;
           background: var(--surface-2, #f1f5f9);
           color: var(--text, #1e293b);
           border: 1.5px solid var(--border, #cbd5e1);
           border-radius: 8px;
-          padding: 8px 11px;
-          font-size: 0.8125rem;
+          padding: 7px 6px;
+          font-size: 12px;
           font-weight: 700;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
+          gap: 4px;
+          min-height: 34px;
           cursor: pointer;
           transition: all 0.15s ease;
           white-space: nowrap;
+          box-sizing: border-box;
         }
         .btn-view-details:hover {
           background: #ffffff;
@@ -1254,27 +1213,45 @@ export default function Home() {
           color: #c0392b;
           transform: translateY(-1px);
         }
-        .home-img-view-hint {
-          position: absolute;
-          bottom: 8px;
-          right: 8px;
-          background: rgba(15, 23, 42, 0.85);
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-size: 11px;
-          font-weight: 700;
-          padding: 3px 9px;
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          cursor: pointer;
-          backdrop-filter: blur(4px);
-          z-index: 2;
-          transition: background 0.15s ease;
-        }
-        .home-img-view-hint:hover {
+        .btn-book {
+          flex: 1;
           background: #c0392b;
+          color: white;
+          border-radius: 8px;
+          text-decoration: none;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 7px 6px;
+          min-height: 34px;
+          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          transition: background 0.2s ease, transform 0.15s ease;
+          white-space: nowrap;
+          box-sizing: border-box;
+        }
+        .btn-book:hover {
+          background: #a93226;
+          transform: translateY(-1px);
+        }
+        .btn-call {
+          flex: 0 0 auto;
+          background: #27ae60;
+          color: white;
+          border-radius: 8px;
+          text-decoration: none;
+          padding: 7px 10px;
+          min-height: 34px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.2s ease;
+          box-sizing: border-box;
+        }
+        .btn-call:hover {
+          background: #219653;
         }
 
         /* Service Banner */

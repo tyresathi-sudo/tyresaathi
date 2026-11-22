@@ -654,19 +654,6 @@ function ProductCard({ product, onSelectProduct }) {
         <span className={`card-distance-pill ${(product.distanceKm || 0) <= 3 ? "dist-nearest" : "dist-far"}`}>
           📍 {product.distanceKm || 2.5} km away
         </span>
-
-        {/* Quick View Button */}
-        <button 
-          type="button" 
-          className="card-quick-view-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onSelectProduct) onSelectProduct(product);
-          }}
-          title="View Details & Photos"
-        >
-          <Eye size={12} /> Details & Photos
-        </button>
       </div>
 
       {/* Multi-photo Mini Thumbs (if more than 1 photo exists) */}
@@ -735,19 +722,19 @@ function ProductCard({ product, onSelectProduct }) {
             onClick={() => onSelectProduct && onSelectProduct(product)}
             title="View Specifications & Photos"
           >
-            <Eye size={14} /> Details / Photos
+            <Eye size={13} /> Details
           </button>
 
           <Link
             to={`/bookings?shopId=${product.shopId || ""}&shopName=${encodeURIComponent(product.shopName || "TyreSaathi Partner Hub")}&shopPhone=${encodeURIComponent(product.shopPhone || "")}&service=${encodeURIComponent(product.productName || "Tyre Purchase & Fitment")}&openModal=true`}
             className="card-book-service-btn"
           >
-            <Calendar size={14} /> Book / Buy
+            <Calendar size={13} /> Book
           </Link>
 
           {product.shopPhone && (
             <a href={`tel:${product.shopPhone}`} className="card-call-shop-btn" title="Call Shop">
-              <Phone size={14} /> Call
+              <Phone size={13} /> Call
             </a>
           )}
         </div>
@@ -771,13 +758,13 @@ function ProductCard({ product, onSelectProduct }) {
         }
         .card-img-wrapper {
           position: relative;
-          height: 240px;
+          height: 220px;
           background: #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
-          padding: 12px;
+          padding: 10px;
           border-bottom: 1px solid var(--border);
         }
         .main-card-img {
@@ -793,25 +780,25 @@ function ProductCard({ product, onSelectProduct }) {
         }
         .card-discount-pill {
           position: absolute;
-          top: 10px;
-          left: 10px;
+          top: 8px;
+          left: 8px;
           background: #c0392b;
           color: white;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 6px;
+          padding: 2.5px 7px;
+          border-radius: 5px;
           box-shadow: 0 2px 6px rgba(192, 57, 43, 0.4);
           z-index: 2;
         }
         .card-distance-pill {
           position: absolute;
-          bottom: 10px;
-          left: 10px;
-          font-size: 11.5px;
+          bottom: 8px;
+          left: 8px;
+          font-size: 10.5px;
           font-weight: 700;
-          padding: 4px 10px;
-          border-radius: 14px;
+          padding: 3px 8px;
+          border-radius: 12px;
           color: white;
           z-index: 2;
         }
@@ -824,16 +811,16 @@ function ProductCard({ product, onSelectProduct }) {
         }
         .card-thumbs-strip {
           display: flex;
-          gap: 8px;
-          padding: 8px 12px;
+          gap: 6px;
+          padding: 6px 10px;
           background: var(--surface-2);
           border-bottom: 1px solid var(--border);
           overflow-x: auto;
         }
         .card-mini-thumb {
-          width: 42px;
-          height: 42px;
-          border-radius: 8px;
+          width: 38px;
+          height: 38px;
+          border-radius: 6px;
           border: 1.5px solid var(--border);
           padding: 2px;
           overflow: hidden;
@@ -854,124 +841,105 @@ function ProductCard({ product, onSelectProduct }) {
           object-fit: contain;
         }
         .card-info-content {
-          padding: 14px 16px;
+          padding: 12px 14px;
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 5px;
         }
         .brand-size-tag-row {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           flex-wrap: wrap;
         }
         .brand-badge-tag {
-          font-size: 13px;
+          font-size: 11.5px;
           font-weight: 800;
           color: #c0392b;
           text-transform: uppercase;
         }
         .size-badge-tag {
-          font-size: 13px;
+          font-size: 11.5px;
           font-weight: 700;
           background: var(--bg);
           border: 1px solid var(--border);
-          padding: 3px 9px;
-          border-radius: 6px;
+          padding: 2px 7px;
+          border-radius: 5px;
           color: var(--text);
         }
         .condition-badge-tag {
-          font-size: 12.5px;
+          font-size: 11px;
           color: var(--text-muted);
           font-weight: 600;
         }
         .card-product-title {
-          font-size: 1.15rem;
+          font-size: 15px;
           font-weight: 800;
           color: var(--text);
           margin: 0;
-          line-height: 1.35;
+          line-height: 1.3;
         }
         .card-price-row {
           display: flex;
           align-items: baseline;
-          gap: 10px;
+          gap: 8px;
         }
         .card-selling-price {
-          font-size: 1.6rem;
+          font-size: 1.35rem;
           font-weight: 800;
           color: #16a34a;
         }
         .card-mrp-price {
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           text-decoration: line-through;
         }
         .card-shop-banner {
           background: var(--bg);
-          padding: 10px 12px;
-          border-radius: 10px;
+          padding: 8px 10px;
+          border-radius: 8px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
           border: 1px solid var(--border);
         }
         .shop-name-row {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 12.5px;
           color: var(--text);
         }
         .stock-info-text {
-          font-size: 13px;
+          font-size: 11.5px;
           font-weight: 600;
           color: var(--text-muted);
         }
         .card-action-buttons {
           display: flex;
-          gap: 10px;
-          margin-top: 8px;
-        }
-        .card-book-service-btn {
-          flex: 1;
-          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
-          color: white;
-          border-radius: 10px;
-          text-decoration: none;
-          font-size: 13.5px;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           gap: 6px;
-          padding: 10px 12px;
-          box-shadow: 0 2px 10px rgba(192, 57, 43, 0.3);
-          transition: transform 0.15s ease;
-          white-space: nowrap;
-        }
-        .card-book-service-btn:hover {
-          background: #b91c1c;
-          transform: translateY(-1px);
+          margin-top: 6px;
         }
         .card-details-btn {
           flex: 1;
           background: var(--surface-2, #f1f5f9);
           color: var(--text, #1e293b);
           border: 1.5px solid var(--border, #cbd5e1);
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 800;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 5px;
-          padding: 10px 12px;
+          gap: 4px;
+          padding: 8px 6px;
+          min-height: 36px;
           cursor: pointer;
           transition: all 0.15s ease;
           white-space: nowrap;
+          box-sizing: border-box;
         }
         .card-details-btn:hover {
           background: #ffffff;
@@ -979,41 +947,46 @@ function ProductCard({ product, onSelectProduct }) {
           color: #c0392b;
           transform: translateY(-1px);
         }
-        .card-quick-view-btn {
-          position: absolute;
-          bottom: 10px;
-          right: 10px;
-          background: rgba(15, 23, 42, 0.85);
+        .card-book-service-btn {
+          flex: 1;
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
           color: white;
-          border: none;
-          border-radius: 14px;
-          font-size: 11px;
-          font-weight: 700;
-          padding: 4px 10px;
-          display: inline-flex;
+          border-radius: 8px;
+          text-decoration: none;
+          font-size: 12px;
+          font-weight: 800;
+          display: flex;
           align-items: center;
+          justify-content: center;
           gap: 4px;
-          cursor: pointer;
-          backdrop-filter: blur(4px);
-          z-index: 3;
-          transition: background 0.15s ease;
+          padding: 8px 6px;
+          min-height: 36px;
+          box-shadow: 0 2px 8px rgba(192, 57, 43, 0.25);
+          transition: transform 0.15s ease;
+          white-space: nowrap;
+          box-sizing: border-box;
         }
-        .card-quick-view-btn:hover {
-          background: #c0392b;
+        .card-book-service-btn:hover {
+          background: #b91c1c;
+          transform: translateY(-1px);
         }
         .card-call-shop-btn {
+          flex: 0 0 auto;
           background: #16a34a;
           color: white;
-          border-radius: 10px;
+          border-radius: 8px;
           text-decoration: none;
-          font-size: 13.5px;
+          font-size: 12px;
           font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 10px 14px;
+          gap: 4px;
+          padding: 8px 10px;
+          min-height: 36px;
           transition: background 0.15s ease;
+          white-space: nowrap;
+          box-sizing: border-box;
         }
         .card-call-shop-btn:hover {
           background: #15803d;

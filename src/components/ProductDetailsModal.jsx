@@ -556,7 +556,7 @@ export default function ProductDetailsModal({ product, onClose }) {
         }
 
         .pdm-title {
-          font-size: 1.25rem;
+          font-size: 1.12rem;
           font-weight: 800;
           color: var(--text, #0f172a);
           margin: 0;
@@ -798,13 +798,13 @@ export default function ProductDetailsModal({ product, onClose }) {
         }
 
         .pdm-current-price {
-          font-size: 1.85rem;
+          font-size: 1.5rem;
           font-weight: 900;
           color: #16a34a;
         }
 
         .pdm-mrp-price {
-          font-size: 1.05rem;
+          font-size: 0.92rem;
           color: var(--text-muted, #64748b);
           text-decoration: line-through;
         }
