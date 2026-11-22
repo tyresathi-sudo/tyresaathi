@@ -796,19 +796,25 @@ export default function Billing() {
                               {isService ? (
                                 <select
                                   className="service-quick-dropdown"
-                                  value={it.name && it.rate ? `${it.name}|${it.rate}` : it.name || ""}
+                                  value={
+                                    presetServices.some((s) => `${s.name}|${s.rate}` === `${it.name}|${it.rate}`)
+                                      ? `${it.name}|${it.rate}`
+                                      : (it.name || "")
+                                  }
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     if (val && val !== "custom") {
                                       const [sName, sRate] = val.split("|");
                                       handleItemChange(it.id, "name", sName || val);
-                                      if (sRate) handleItemChange(it.id, "rate", Number(sRate));
+                                      if (sRate !== undefined) handleItemChange(it.id, "rate", Number(sRate) || 0);
                                     } else if (val === "custom") {
-                                      const customName = prompt("सर्विस का नाम लिखें (Enter Custom Service Name):", "");
-                                      if (customName) {
-                                        handleItemChange(it.id, "name", customName);
-                                        const customRate = prompt("सर्विस चार्ज / दर दर्ज करें (Rate ₹):", "100");
-                                        if (customRate) handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                      const customName = prompt("सर्विस का नाम लिखें (Enter Custom Service Name):", it.name || "");
+                                      if (customName !== null && customName.trim()) {
+                                        handleItemChange(it.id, "name", customName.trim());
+                                        const customRate = prompt("सर्विस चार्ज / दर दर्ज करें (Rate ₹):", it.rate || "100");
+                                        if (customRate !== null) {
+                                          handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                        }
                                       }
                                     }
                                   }}
@@ -819,6 +825,9 @@ export default function Billing() {
                                       {s.icon || "🛠️"} {s.name} (₹{s.rate})
                                     </option>
                                   ))}
+                                  {it.name && !presetServices.some((s) => s.name === it.name) && (
+                                    <option value={it.name}>✏️ {it.name} (₹{it.rate || 0}) (कस्टम)</option>
+                                  )}
                                   <option value="custom">✏️ + Custom Work (हाथ से लिखें)</option>
                                 </select>
                               ) : (
@@ -830,8 +839,10 @@ export default function Billing() {
                                     if (val && val !== "custom") {
                                       handleItemChange(it.id, "name", val);
                                     } else if (val === "custom") {
-                                      const customB = prompt("ब्रांड या सामान का नाम लिखें (Enter Brand / Item Name):", "");
-                                      if (customB) handleItemChange(it.id, "name", customB);
+                                      const customB = prompt("ब्रांड या सामान का नाम लिखें (Enter Brand / Item Name):", it.name || "");
+                                      if (customB !== null && customB.trim()) {
+                                        handleItemChange(it.id, "name", customB.trim());
+                                      }
                                     }
                                   }}
                                 >
@@ -839,6 +850,9 @@ export default function Billing() {
                                   {STANDARD_TYRE_BRANDS.map((b) => (
                                     <option key={b} value={b}>{b}</option>
                                   ))}
+                                  {it.name && !STANDARD_TYRE_BRANDS.includes(it.name) && (
+                                    <option value={it.name}>✏️ {it.name} (कस्टम)</option>
+                                  )}
                                   <option value="custom">✏️ + Other / Custom Brand</option>
                                 </select>
                               )}
@@ -853,8 +867,10 @@ export default function Billing() {
                                     if (val && val !== "custom") {
                                       handleItemChange(it.id, "tyreSize", val);
                                     } else if (val === "custom") {
-                                      const customSize = prompt("टायर साइज़ लिखें (Enter Custom Tyre Size):", "");
-                                      if (customSize) handleItemChange(it.id, "tyreSize", customSize);
+                                      const customSize = prompt("टायर साइज़ लिखें (Enter Custom Tyre Size):", it.tyreSize || "");
+                                      if (customSize !== null && customSize.trim()) {
+                                        handleItemChange(it.id, "tyreSize", customSize.trim());
+                                      }
                                     }
                                   }}
                                 >
@@ -862,6 +878,9 @@ export default function Billing() {
                                   {STANDARD_TYRE_SIZES.map((s, idx) => (
                                     <option key={idx} value={s.size}>{s.label}</option>
                                   ))}
+                                  {it.tyreSize && !STANDARD_TYRE_SIZES.some((s) => s.size === it.tyreSize) && (
+                                    <option value={it.tyreSize}>✏️ {it.tyreSize} (कस्टम)</option>
+                                  )}
                                   <option value="custom">✏️ + Other Size (हाथ से लिखें)</option>
                                 </select>
                               ) : (
@@ -978,19 +997,25 @@ export default function Billing() {
                               <label>2. सर्विस चुनें (Service Dropdown):</label>
                               <select
                                 className="service-quick-dropdown"
-                                value={it.name && it.rate ? `${it.name}|${it.rate}` : it.name || ""}
+                                value={
+                                  presetServices.some((s) => `${s.name}|${s.rate}` === `${it.name}|${it.rate}`)
+                                    ? `${it.name}|${it.rate}`
+                                    : (it.name || "")
+                                }
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (val && val !== "custom") {
                                     const [sName, sRate] = val.split("|");
                                     handleItemChange(it.id, "name", sName || val);
-                                    if (sRate) handleItemChange(it.id, "rate", Number(sRate));
+                                    if (sRate !== undefined) handleItemChange(it.id, "rate", Number(sRate) || 0);
                                   } else if (val === "custom") {
-                                    const customName = prompt("सर्विस का नाम लिखें:", "");
-                                    if (customName) {
-                                      handleItemChange(it.id, "name", customName);
-                                      const customRate = prompt("दर दर्ज करें (Rate ₹):", "100");
-                                      if (customRate) handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                    const customName = prompt("सर्विस का नाम लिखें:", it.name || "");
+                                    if (customName !== null && customName.trim()) {
+                                      handleItemChange(it.id, "name", customName.trim());
+                                      const customRate = prompt("दर दर्ज करें (Rate ₹):", it.rate || "100");
+                                      if (customRate !== null) {
+                                        handleItemChange(it.id, "rate", Number(customRate) || 0);
+                                      }
                                     }
                                   }
                                 }}
@@ -1001,6 +1026,9 @@ export default function Billing() {
                                     {s.icon || "🛠️"} {s.name} (₹{s.rate})
                                   </option>
                                 ))}
+                                {it.name && !presetServices.some((s) => s.name === it.name) && (
+                                  <option value={it.name}>✏️ {it.name} (₹{it.rate || 0}) (कस्टम)</option>
+                                )}
                                 <option value="custom">✏️ + Custom Work (हाथ से लिखें)</option>
                               </select>
                             </div>
@@ -1014,6 +1042,11 @@ export default function Billing() {
                                   const val = e.target.value;
                                   if (val && val !== "custom") {
                                     handleItemChange(it.id, "tyreSize", val);
+                                  } else if (val === "custom") {
+                                    const customSize = prompt("टायर साइज़ लिखें:", it.tyreSize || "");
+                                    if (customSize !== null && customSize.trim()) {
+                                      handleItemChange(it.id, "tyreSize", customSize.trim());
+                                    }
                                   }
                                 }}
                               >
@@ -1021,6 +1054,10 @@ export default function Billing() {
                                 {STANDARD_TYRE_SIZES.map((s, idx) => (
                                   <option key={idx} value={s.size}>{s.label}</option>
                                 ))}
+                                {it.tyreSize && !STANDARD_TYRE_SIZES.some((s) => s.size === it.tyreSize) && (
+                                  <option value={it.tyreSize}>✏️ {it.tyreSize} (कस्टम)</option>
+                                )}
+                                <option value="custom">✏️ + Other Size</option>
                               </select>
                             </div>
                           </div>
@@ -1036,8 +1073,10 @@ export default function Billing() {
                                   if (val && val !== "custom") {
                                     handleItemChange(it.id, "name", val);
                                   } else if (val === "custom") {
-                                    const customB = prompt("ब्रांड या मॉडल का नाम लिखें:", "");
-                                    if (customB) handleItemChange(it.id, "name", customB);
+                                    const customB = prompt("ब्रांड या मॉडल का नाम लिखें:", it.name || "");
+                                    if (customB !== null && customB.trim()) {
+                                      handleItemChange(it.id, "name", customB.trim());
+                                    }
                                   }
                                 }}
                               >
@@ -1045,6 +1084,9 @@ export default function Billing() {
                                 {STANDARD_TYRE_BRANDS.map((b) => (
                                   <option key={b} value={b}>{b}</option>
                                 ))}
+                                {it.name && !STANDARD_TYRE_BRANDS.includes(it.name) && (
+                                  <option value={it.name}>✏️ {it.name} (कस्टम)</option>
+                                )}
                                 <option value="custom">✏️ + Custom Brand</option>
                               </select>
                             </div>
@@ -1059,8 +1101,10 @@ export default function Billing() {
                                   if (val && val !== "custom") {
                                     handleItemChange(it.id, "tyreSize", val);
                                   } else if (val === "custom") {
-                                    const customSize = prompt("टायर साइज़ लिखें:", "");
-                                    if (customSize) handleItemChange(it.id, "tyreSize", customSize);
+                                    const customSize = prompt("टायर साइज़ लिखें:", it.tyreSize || "");
+                                    if (customSize !== null && customSize.trim()) {
+                                      handleItemChange(it.id, "tyreSize", customSize.trim());
+                                    }
                                   }
                                 }}
                               >
@@ -1068,6 +1112,9 @@ export default function Billing() {
                                 {STANDARD_TYRE_SIZES.map((s, idx) => (
                                   <option key={idx} value={s.size}>{s.label}</option>
                                 ))}
+                                {it.tyreSize && !STANDARD_TYRE_SIZES.some((s) => s.size === it.tyreSize) && (
+                                  <option value={it.tyreSize}>✏️ {it.tyreSize} (कस्टम)</option>
+                                )}
                                 <option value="custom">✏️ + Other Size</option>
                               </select>
                             </div>

@@ -804,10 +804,14 @@ export default function Profile() {
       {/* Profile Actions: Settings & Logout */}
       <div className="profile-actions-row">
         <Link to="/settings" className="profile-settings-btn">
-          <SettingsIcon size={16} /> App & Account Settings (सेटिंग्स)
+          <SettingsIcon size={15} />
+          <span className="btn-label-desktop">App & Account Settings (सेटिंग्स)</span>
+          <span className="btn-label-mobile">Settings (सेटिंग्स)</span>
         </Link>
         <button className="logout-btn-clean" onClick={handleLogout}>
-          <LogOut size={16} /> Logout from Account (लॉगआउट)
+          <LogOut size={15} />
+          <span className="btn-label-desktop">Logout from Account (लॉगआउट)</span>
+          <span className="btn-label-mobile">Logout (लॉगआउट)</span>
         </button>
       </div>
 
@@ -1258,94 +1262,93 @@ export default function Profile() {
           box-shadow: 0 4px 14px rgba(192, 57, 43, 0.25);
         }
 
-        /* Settings */
-        .settings-row {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 14px 18px;
-          margin-bottom: 12px;
-          font-weight: 600;
-          font-size: 0.95rem;
-        }
-        .theme-switch {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: var(--surface-2);
-          border: none;
-          border-radius: 100px;
-          padding: 7px 14px;
-          font-weight: 700;
-          font-size: 0.82rem;
-          cursor: pointer;
-          color: var(--text);
-        }
-        .logout-btn-full {
-          width: 100%;
-          background: var(--surface-2);
-          color: var(--danger);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 12px;
-          font-weight: 700;
-          font-size: 0.95rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-        }
+
 
         .profile-actions-row {
           display: flex;
-          flex-direction: column;
-          gap: 10px;
-          margin-top: 16px;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          margin-top: 14px;
+          width: 100%;
+          max-width: 560px;
+          margin-left: auto;
+          margin-right: auto;
         }
         .profile-settings-btn {
+          flex: 1;
           background: var(--surface);
           border: 1.5px solid var(--border);
           color: var(--text);
-          border-radius: 12px;
-          padding: 13px 18px;
+          border-radius: 9px;
+          padding: 9px 14px;
+          min-height: 40px;
           font-weight: 700;
-          font-size: 0.95rem;
+          font-size: 13px;
           text-decoration: none;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 7px;
           transition: all 0.2s ease;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+          box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+          box-sizing: border-box;
+          white-space: nowrap;
         }
         .profile-settings-btn:hover {
           background: var(--surface-2);
           border-color: #c0392b;
           color: #c0392b;
+          transform: translateY(-1px);
         }
         .logout-btn-clean {
-          width: 100%;
-          background: var(--surface-2);
-          color: #e74c3c;
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 13px;
+          flex: 1;
+          background: rgba(239, 68, 68, 0.07);
+          color: #dc2626;
+          border: 1.5px solid rgba(239, 68, 68, 0.22);
+          border-radius: 9px;
+          padding: 9px 14px;
+          min-height: 40px;
           font-weight: 700;
-          font-size: 0.95rem;
+          font-size: 13px;
           cursor: pointer;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 7px;
           transition: all 0.2s ease;
+          box-sizing: border-box;
+          white-space: nowrap;
         }
         .logout-btn-clean:hover {
-          background: #fdedec;
-          border-color: #e74c3c;
+          background: rgba(239, 68, 68, 0.14);
+          border-color: #dc2626;
+          transform: translateY(-1px);
+        }
+        .btn-label-mobile {
+          display: none;
+        }
+        .btn-label-desktop {
+          display: inline;
+        }
+        @media (max-width: 580px) {
+          .profile-actions-row {
+            max-width: 100%;
+            gap: 8px;
+            margin-top: 12px;
+          }
+          .profile-settings-btn,
+          .logout-btn-clean {
+            padding: 8px 10px;
+            font-size: 12px;
+            min-height: 38px;
+          }
+          .btn-label-desktop {
+            display: none;
+          }
+          .btn-label-mobile {
+            display: inline;
+          }
         }
       `}</style>
     </div>

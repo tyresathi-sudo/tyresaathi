@@ -574,7 +574,9 @@ export default function CartDrawer() {
         .cart-item-img {
           width: 72px;
           height: 72px;
-          object-fit: cover;
+          object-fit: contain;
+          background: #ffffff;
+          padding: 4px;
           border-radius: 8px;
           border: 1px solid #f1f5f9;
           flex-shrink: 0;

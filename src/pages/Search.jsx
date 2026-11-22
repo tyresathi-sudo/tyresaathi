@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
@@ -13,13 +13,16 @@ import {
   Calendar, 
   Truck, 
   ShieldCheck, 
-  ChevronRight 
+  ChevronRight,
+  Store,
+  Star
 } from "lucide-react";
 import { 
   INITIAL_FEATURED_PRODUCTS, 
   MEGA_MENU_BRANDS, 
   TYRE_CATEGORIES, 
-  POPULAR_SIZES 
+  POPULAR_SIZES,
+  SAMPLE_SHOPS
 } from "../config/tyreCatalog";
 
 export default function Search() {
@@ -33,6 +36,7 @@ export default function Search() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam);
   const [selectedSize, setSelectedSize] = useState("all");
   const [products, setProducts] = useState([]);
+  const [shops, setShops] = useState(SAMPLE_SHOPS || []);
   const [loading, setLoading] = useState(true);
 
   // Sync state with URL params if they change
@@ -42,13 +46,17 @@ export default function Search() {
     if (categoryParam) setSelectedCategory(categoryParam);
   }, [queryParam, brandParam, categoryParam]);
 
-  // Load real published products from Firestore
+  // Load real published products & registered partner shops from Firestore
   useEffect(() => {
-    async function loadFirestoreProducts() {
+    async function loadData() {
       try {
-        const snap = await getDocs(collection(db, "products"));
-        if (!snap.empty) {
-          const fetched = snap.docs
+        const [prodSnap, usersSnap] = await Promise.allSettled([
+          getDocs(collection(db, "products")),
+          getDocs(collection(db, "users")),
+        ]);
+
+        if (prodSnap.status === "fulfilled" && !prodSnap.value.empty) {
+          const fetched = prodSnap.value.docs
             .map((d) => ({
               id: d.id,
               distanceKm: (1.5).toFixed(1),
@@ -60,27 +68,62 @@ export default function Search() {
         } else {
           setProducts([]);
         }
+
+        if (usersSnap.status === "fulfilled" && !usersSnap.value.empty) {
+          const firestoreShops = usersSnap.value.docs
+            .map((d) => ({ uid: d.id, id: d.id, ...d.data() }))
+            .filter((u) => u.role === "vendor" || u.role === "shop_owner" || u.role === "admin" || u.shopName);
+          
+          if (firestoreShops.length > 0) {
+            const existingIds = new Set(firestoreShops.map((s) => s.uid || s.id));
+            const merged = [
+              ...firestoreShops,
+              ...(SAMPLE_SHOPS || []).filter((s) => !existingIds.has(s.uid || s.id))
+            ];
+            setShops(merged);
+          }
+        }
       } catch (e) {
-        console.warn("Firestore products load notice:", e);
+        console.warn("Search data load notice:", e);
         setProducts([]);
       } finally {
         setLoading(false);
       }
     }
-    loadFirestoreProducts();
+    loadData();
   }, []);
 
-  // Filter products
+  // 🏪 Smart Search for Matching Verified Partner Shops
+  const matchingShops = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return [];
+    const queryWords = q.split(/\s+/).filter(Boolean);
+
+    return shops.filter((s) => {
+      const sName = (s.name || s.shopName || "").toLowerCase();
+      const sOwner = (s.ownerName || "").toLowerCase();
+      const sCity = (s.city || "").toLowerCase();
+      const sAddr = (s.address || "").toLowerCase();
+      const sCategory = (s.categoryName || s.categoryHindi || "").toLowerCase();
+      const sServices = Array.isArray(s.services) ? s.services.join(" ").toLowerCase() : "";
+      const combined = `${sName} ${sOwner} ${sCity} ${sAddr} ${sCategory} ${sServices}`;
+
+      // All search words exist in combined text, or partial word matches shop name/owner
+      const allWordsMatch = queryWords.every((w) => combined.includes(w));
+      const partialWordMatch = queryWords.some((w) => w.length >= 3 && (sName.includes(w) || sOwner.includes(w) || sCity.includes(w)));
+      return allWordsMatch || partialWordMatch;
+    });
+  }, [shops, searchQuery]);
+
+  // Filter products with smart multi-word search
   const filteredProducts = products.filter((p) => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesQuery =
-      !q ||
-      p.productName?.toLowerCase().includes(q) ||
-      p.brandName?.toLowerCase().includes(q) ||
-      p.sizeName?.toLowerCase().includes(q) ||
-      p.vehicleTypeName?.toLowerCase().includes(q) ||
-      p.description?.toLowerCase().includes(q) ||
-      p.shopName?.toLowerCase().includes(q);
+    let matchesQuery = true;
+    if (q) {
+      const queryWords = q.split(/\s+/).filter(Boolean);
+      const pText = `${p.productName || ""} ${p.brandName || ""} ${p.sizeName || ""} ${p.vehicleTypeName || ""} ${p.shopName || ""} ${p.description || ""} ${p.city || ""}`.toLowerCase();
+      matchesQuery = queryWords.every((w) => pText.includes(w)) || pText.includes(q);
+    }
 
     const matchesBrand =
       selectedBrand === "all" ||
@@ -200,15 +243,104 @@ export default function Search() {
 
       {/* Main Results Section */}
       <div className="search-results-layout">
-        {filteredProducts.length === 0 ? (
-          <div className="no-results-card">
-            <SearchIcon size={48} color="#aaa" />
-            <h3>No Tyres or Services found</h3>
-            <p>Try searching for popular sizes like "185/65 R15", "100/90-17" or brand names like "Apollo", "MRF", "CEAT".</p>
-            <button className="btn-browse-all" onClick={resetFilters}>
-              Browse All Products
-            </button>
+        {/* 🏪 MATCHING VERIFIED PARTNER SHOPS SECTION */}
+        {matchingShops.length > 0 && (
+          <div className="results-group-section matching-shops-section" style={{ marginBottom: "28px" }}>
+            <div className="group-section-header">
+              <div className="header-left">
+                <span className="nearest-flame-icon">🏪</span>
+                <h2 className="group-title">
+                  Verified Partner Tyre Shops ({matchingShops.length} Found)
+                </h2>
+              </div>
+              <span className="group-count-tag" style={{ background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }}>
+                🛡️ Verified Local Partners
+              </span>
+            </div>
+
+            <div className="matching-shops-grid">
+              {matchingShops.map((shop) => {
+                const shopId = shop.id || shop.uid;
+                const shopName = shop.name || shop.shopName || "TyreSaathi Partner Shop";
+                const owner = shop.ownerName || shop.name || "";
+                const city = shop.city || "Raipur";
+                const address = shop.address || "";
+                const phone = shop.phone || "8877277757";
+                const rating = shop.rating || 4.9;
+                const reviews = shop.reviewsCount || 20;
+                const services = shop.services || shop.servicesOffered || ["Puncher", "Air / Nitrogen", "New Tyre Fitting"];
+
+                return (
+                  <div key={shopId} className="matching-shop-card">
+                    <div className="shop-card-main-info">
+                      <div className="shop-avatar-box">
+                        <Store size={26} color="#c0392b" />
+                      </div>
+                      <div className="shop-details-box">
+                        <div className="shop-header-row">
+                          <h3 className="shop-title-text">{shopName}</h3>
+                          <span className="shop-verified-tag">🛡️ Verified Partner</span>
+                        </div>
+
+                        <div className="shop-meta-line">
+                          <span className="shop-rating-pill">⭐ {Number(rating).toFixed(1)} ({reviews} reviews)</span>
+                          {owner && <span className="shop-owner-pill">👤 {owner}</span>}
+                          <span className="shop-city-pill">📍 {city}</span>
+                        </div>
+
+                        {address && <p className="shop-address-text">{address}</p>}
+
+                        <div className="shop-services-pills">
+                          {services.slice(0, 4).map((svc, i) => (
+                            <span key={i} className="shop-svc-pill">🔧 {svc}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shop-actions-strip">
+                      <Link 
+                        to={`/store-location?shopId=${shopId}&shopName=${encodeURIComponent(shopName)}`}
+                        className="btn-shop-view-store"
+                      >
+                        📍 View Store Location & Inventory →
+                      </Link>
+                      <Link 
+                        to={`/bookings?shopId=${shopId}&shopName=${encodeURIComponent(shopName)}&shopPhone=${encodeURIComponent(phone)}&openModal=true`}
+                        className="btn-shop-book"
+                      >
+                        <Calendar size={13} /> Book Service
+                      </Link>
+                      <a 
+                        href={`tel:${phone}`}
+                        className="btn-shop-call"
+                        title="Call Shop Directly"
+                      >
+                        <Phone size={14} /> Call
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )}
+
+        {filteredProducts.length === 0 ? (
+          matchingShops.length === 0 ? (
+            <div className="no-results-card">
+              <SearchIcon size={48} color="#aaa" />
+              <h3>No Tyres or Services found</h3>
+              <p>Try searching for popular sizes like "185/65 R15", "100/90-17" or shop names like "Bharat super tyre", "Tyre Saathi".</p>
+              <button className="btn-browse-all" onClick={resetFilters}>
+                Browse All Products
+              </button>
+            </div>
+          ) : (
+            <div className="shop-found-products-note" style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "12px", padding: "18px 22px", textAlign: "center", color: "var(--text-muted)", fontSize: "14px" }}>
+              💡 <strong>Verified Partner Shop mila!</strong> Is shop ke sabhi uplabdh tyres aur roadside services dekhne ke liye upar diye gaye <strong>"View Store Location & Inventory"</strong> button par click karein.
+            </div>
+          )
         ) : (
           <>
             {/* 📍 SECTION 1: NEAREST SHOPS (Priority 1) */}
@@ -783,6 +915,173 @@ function ProductCard({ product }) {
         }
         .card-call-shop-btn:hover {
           background: #15803d;
+        }
+
+        /* 🏪 Matching Verified Partner Shops Grid */
+        .matching-shops-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 16px;
+          margin-top: 14px;
+        }
+        .matching-shop-card {
+          background: var(--surface);
+          border: 1.5px solid var(--border);
+          border-radius: 14px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .matching-shop-card:hover {
+          transform: translateY(-2px);
+          border-color: #c0392b;
+          box-shadow: 0 8px 24px rgba(192, 57, 43, 0.12);
+        }
+        .shop-card-main-info {
+          display: flex;
+          gap: 14px;
+          align-items: flex-start;
+        }
+        .shop-avatar-box {
+          width: 50px;
+          height: 50px;
+          border-radius: 12px;
+          background: #fee2e2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .shop-details-box {
+          flex: 1;
+          min-width: 0;
+        }
+        .shop-header-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .shop-title-text {
+          font-size: 1.15rem;
+          font-weight: 800;
+          color: var(--text);
+          margin: 0;
+        }
+        .shop-verified-tag {
+          font-size: 11px;
+          font-weight: 700;
+          color: #059669;
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          padding: 2px 7px;
+          border-radius: 10px;
+        }
+        .shop-meta-line {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin: 4px 0 6px;
+          font-size: 12px;
+        }
+        .shop-rating-pill {
+          font-weight: 700;
+          color: #b45309;
+          background: #fef3c7;
+          padding: 2px 6px;
+          border-radius: 6px;
+        }
+        .shop-owner-pill {
+          color: var(--text-muted);
+          font-weight: 600;
+        }
+        .shop-city-pill {
+          color: #2563eb;
+          font-weight: 700;
+        }
+        .shop-address-text {
+          font-size: 12px;
+          color: var(--text-muted);
+          margin: 0 0 8px;
+          line-height: 1.35;
+        }
+        .shop-services-pills {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .shop-svc-pill {
+          font-size: 11px;
+          background: var(--card-subtle, #f1f5f9);
+          border: 1px solid var(--border);
+          padding: 2px 7px;
+          border-radius: 6px;
+          font-weight: 600;
+          color: var(--text-main);
+        }
+        .shop-actions-strip {
+          display: flex;
+          gap: 8px;
+          margin-top: auto;
+          padding-top: 8px;
+          border-top: 1px dashed var(--border);
+        }
+        .btn-shop-view-store {
+          flex: 1;
+          background: #0f172a;
+          color: white;
+          border-radius: 8px;
+          padding: 9px 12px;
+          font-size: 12.5px;
+          font-weight: 700;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          transition: background 0.15s ease;
+        }
+        .btn-shop-view-store:hover {
+          background: #c0392b;
+        }
+        .btn-shop-book {
+          background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+          color: white;
+          border-radius: 8px;
+          padding: 9px 12px;
+          font-size: 12.5px;
+          font-weight: 700;
+          text-decoration: none;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .btn-shop-call {
+          background: #16a34a;
+          color: white;
+          border-radius: 8px;
+          padding: 9px 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+          .matching-shops-grid {
+            grid-template-columns: 1fr;
+          }
+          .shop-actions-strip {
+            flex-wrap: wrap;
+          }
+          .btn-shop-view-store, .btn-shop-book {
+            flex: 1;
+            font-size: 12px;
+          }
         }
       `}</style>
     </div>

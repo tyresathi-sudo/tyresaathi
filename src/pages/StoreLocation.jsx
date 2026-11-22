@@ -106,6 +106,7 @@ export default function StoreLocation() {
   // Shop Profile Modal State
   const [shopProfileOpen, setShopProfileOpen] = useState(false);
   const [activeShopProfile, setActiveShopProfile] = useState(null);
+  const [shopActiveTab, setShopActiveTab] = useState("tyres"); // "tyres" | "services" | "reviews"
 
   // Shop Rating & Review Modal State
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
@@ -923,6 +924,12 @@ export default function StoreLocation() {
   const openShopProfile = (shop) => {
     setActiveShopProfile(shop);
     setShopProfileOpen(true);
+    const prods = allProducts.filter(
+      (p) =>
+        p.shopId === shop.id ||
+        p.shopName?.toLowerCase() === shop.name?.toLowerCase()
+    );
+    setShopActiveTab(prods.length > 0 ? "tyres" : "services");
     trackStoreEvent("view_shop_profile", { shopName: shop.name, shopId: shop.id });
   };
 
@@ -1456,8 +1463,8 @@ export default function StoreLocation() {
                     <button
                       type="button"
                       className="meta-star-badge-btn"
-                      onClick={(e) => openRatingModal(activeShopProfile, e)}
-                      title="Click to submit a rating for this shop"
+                      onClick={() => setShopActiveTab("reviews")}
+                      title="Click to view customer reviews and ratings"
                     >
                       <Star 
                         size={13} 
@@ -1469,7 +1476,7 @@ export default function StoreLocation() {
                           ? `${activeShopProfile.rating} (${activeShopProfile.reviewsCount} reviews)`
                           : "No ratings yet"}
                       </span>
-                      <span className="pill-rate-action">Rate Store</span>
+                      <span className="pill-rate-action">View Reviews</span>
                     </button>
                     <span className="meta-divider">•</span>
                     <span className="meta-timing"><Clock size={13} /> {activeShopProfile.timing}</span>
@@ -1534,298 +1541,356 @@ export default function StoreLocation() {
               </button>
             </div>
 
-            <div className="shop-modal-scrollable-body">
-              {/* Section 1: Services Available at this Hub */}
-              <div className="shop-body-section">
-                <div className="section-title-wrap">
-                  <Wrench size={18} color="#c0392b" />
-                  <h3 className="section-heading-text">Services Available at this Hub (सर्विस लिस्ट)</h3>
-                </div>
+            {/* 📑 Shop Profile Modern Nav Tabs */}
+            {(() => {
+              const activeReviews = getReviewsForShop(activeShopProfile);
+              const activeRevCount = activeReviews.length > 0 ? activeReviews.length : (activeShopProfile.reviewsCount || 0);
+              const servicesCount = (activeShopProfile.servicesOffered || activeShopProfile.services || []).length;
 
-                <div className="services-grid-list">
-                  {(activeShopProfile.servicesOffered || activeShopProfile.services || []).map((service, idx) => (
-                    <div key={idx} className="service-feature-card">
-                      <div className="svc-icon-circle">
-                        <CheckCircle2 size={16} color="#27ae60" />
-                      </div>
-                      <div className="svc-info">
-                        <strong>{service}</strong>
-                        <span>Available at shop & doorstep fitment</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="svc-book-btn"
-                        onClick={(e) => handleOpenBookingModal(activeShopProfile, service, e)}
-                      >
-                        Book This Service
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Section 2: Tyres & Products Available in this Shop */}
-              <div className="shop-body-section" style={{ marginTop: "24px" }}>
-                <div className="section-title-wrap">
-                  <Package size={18} color="#2980b9" />
-                  <h3 className="section-heading-text">
-                    Tyres & Products in Stock at {activeShopProfile.name}
-                  </h3>
-                </div>
-
-                {shopProducts.length > 0 ? (
-                  <div className="shop-products-grid">
-                    {shopProducts.map((p) => {
-                      const img = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80";
-                      const stockNum = p.stock !== undefined && p.stock !== null && p.stock !== "" ? Number(p.stock) : null;
-                      const isOutOfStock = stockNum !== null && stockNum <= 0;
-                      const isLowStock = stockNum !== null && stockNum > 0 && stockNum <= 3;
-
-                      const discountPercent = (p.originalPrice && (p.offerPrice || p.price) && Number(p.originalPrice) > Number(p.offerPrice || p.price))
-                        ? Math.round(((Number(p.originalPrice) - Number(p.offerPrice || p.price)) / Number(p.originalPrice)) * 100)
-                        : null;
-
-                      return (
-                        <div key={p.id} className="shop-prod-card" onClick={(e) => handleOpenProductSpecs(p, e)}>
-                          <div className="shop-prod-img-wrap">
-                            <img src={img} alt={p.productName} className="shop-prod-img" />
-                            <div className="shop-prod-badges-overlay">
-                              {discountPercent ? (
-                                <span className="badge-discount">{discountPercent}% OFF</span>
-                              ) : <span></span>}
-                              {p.condition === "old" ? (
-                                <span className="badge-condition used">♻️ Used</span>
-                              ) : (
-                                <span className="badge-condition new">✨ New</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="shop-prod-details">
-                            <span className="shop-prod-brand">{p.brandName || "Tyre"} • {p.sizeName || p.customSize || ""}</span>
-                            <h4 className="shop-prod-title" title={p.productName}>{p.productName}</h4>
-                            
-                            <div className="shop-prod-price-row">
-                              <span className="shop-prod-offer">₹{p.offerPrice || p.price}</span>
-                              {p.originalPrice && <span className="shop-prod-mrp">₹{p.originalPrice}</span>}
-                              {discountPercent && <span className="shop-prod-save-tag">Save ₹{Number(p.originalPrice) - Number(p.offerPrice || p.price)}</span>}
-                            </div>
-
-                            {/* ALAG SE HIGHLIGHTED DEDICATED LIVE STOCK BADGE */}
-                            <div className={`shop-stock-display-box ${isOutOfStock ? "stock-box-out" : isLowStock ? "stock-box-low" : "stock-box-ok"}`}>
-                              {isOutOfStock ? (
-                                <div className="stock-content-row">
-                                  <span className="stock-icon">🔴</span>
-                                  <span className="stock-text-main">Out of Stock (0)</span>
-                                </div>
-                              ) : isLowStock ? (
-                                <div className="stock-content-row">
-                                  <span className="stock-icon">⚠️</span>
-                                  <div className="stock-text-group">
-                                    <span className="stock-text-main">Stock: <strong>Only {stockNum} left!</strong></span>
-                                    <span className="stock-subtext">Jaldi book karein</span>
-                                  </div>
-                                </div>
-                              ) : stockNum !== null ? (
-                                <div className="stock-content-row">
-                                  <span className="stock-icon-dot"></span>
-                                  <div className="stock-text-group">
-                                    <span className="stock-text-main">Stock: <strong>{stockNum} Tyres</strong> Available</span>
-                                    <span className="stock-subtext">Ready in shop</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="stock-content-row">
-                                  <span className="stock-icon-dot"></span>
-                                  <span className="stock-text-main">Available in Shop</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Action Buttons Row */}
-                            <div className="shop-prod-actions-row">
-                              <button
-                                type="button"
-                                className="shop-prod-specs-btn"
-                                onClick={(e) => handleOpenProductSpecs(p, e)}
-                                title="Tyre Specifications dekhein"
-                              >
-                                🔍 Specs
-                              </button>
-
-                              {isOutOfStock ? (
-                                <button
-                                  type="button"
-                                  className="shop-prod-book-btn btn-disabled"
-                                  disabled
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  ❌ Out of Stock
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="shop-prod-book-btn"
-                                  onClick={(e) => handleAddToCart(p, 1, e)}
-                                  title="Cart me add karein"
-                                >
-                                  🛒 Add to Cart
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="no-custom-products-note">
-                    <p>
-                      💡 इस दुकान के लिए स्टैंडर्ड टायर फिटिंग व पंचर रिपेयर सर्विस उपलब्ध है। 
-                      आप नीचे दिए गए बटन से सीधे अपॉइंटमेंट बुक कर सकते हैं।
-                    </p>
-                    <button
-                      type="button"
-                      className="btn-book-main-cta"
-                      onClick={(e) => handleOpenBookingModal(activeShopProfile, "Tyre Service & Fitment", e)}
-                    >
-                      📅 Book Service / Tyre Fitment at {activeShopProfile.name}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Section 3: Customer Ratings & Reviews (ग्राहकों के रिव्यूज) */}
-              <div className="shop-body-section" style={{ marginTop: "28px" }}>
-                <div className="section-title-wrap" style={{ justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <Star size={18} color="#f59e0b" fill="#f59e0b" />
-                    <h3 className="section-heading-text">
-                      Customer Ratings & Reviews (ग्राहकों के रिव्यूज)
-                    </h3>
-                  </div>
+              return (
+                <div className="shop-profile-nav-tabs">
+                  <button
+                    type="button"
+                    className={`shop-tab-btn ${shopActiveTab === "tyres" ? "active" : ""}`}
+                    onClick={() => setShopActiveTab("tyres")}
+                  >
+                    <Package size={15} />
+                    <span>Tyres & Stock</span>
+                    {shopProducts.length > 0 && <span className="tab-pill-count">{shopProducts.length}</span>}
+                  </button>
 
                   <button
                     type="button"
-                    className="btn-write-review-cta"
-                    onClick={() => openRatingModal(activeShopProfile)}
+                    className={`shop-tab-btn ${shopActiveTab === "services" ? "active" : ""}`}
+                    onClick={() => setShopActiveTab("services")}
                   >
-                    ⭐ Write a Review (सत्यापित रिव्यू लिखें)
+                    <Wrench size={15} />
+                    <span>Services List</span>
+                    {servicesCount > 0 && <span className="tab-pill-count">{servicesCount}</span>}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`shop-tab-btn ${shopActiveTab === "reviews" ? "active" : ""}`}
+                    onClick={() => setShopActiveTab("reviews")}
+                  >
+                    <Star size={15} fill="#f59e0b" color="#f59e0b" />
+                    <span>Ratings & Reviews</span>
+                    <span className="tab-pill-count">{activeRevCount}</span>
                   </button>
                 </div>
+              );
+            })()}
 
-                {/* Rating Summary Card */}
-                {(() => {
-                  const activeReviews = getReviewsForShop(activeShopProfile);
-                  const activeRevCount = activeReviews.length > 0 ? activeReviews.length : (activeShopProfile.reviewsCount || 0);
-                  const activeAvgRating = activeReviews.length > 0 
-                    ? Number((activeReviews.reduce((acc, c) => acc + (Number(c.rating) || 0), 0) / activeReviews.length).toFixed(1))
-                    : (Number(activeShopProfile.rating) || 0);
+            <div className="shop-modal-scrollable-body">
+              {/* Tab 1: Tyres & Products Available in this Shop */}
+              {shopActiveTab === "tyres" && (
+                <div className="shop-body-section">
+                  <div className="section-title-wrap">
+                    <Package size={18} color="#2980b9" />
+                    <h3 className="section-heading-text">
+                      Tyres & Products in Stock at {activeShopProfile.name}
+                    </h3>
+                  </div>
 
-                  return (
+                  {shopProducts.length > 0 ? (
                     <>
-                      <div className="rating-summary-card">
-                        <div className="rating-score-box">
-                          <span className="big-rating-number">
-                            {activeRevCount > 0 ? activeAvgRating : "0.0"}
-                          </span>
-                          <div className="stars-visual-row">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star 
-                                key={s} 
-                                size={18} 
-                                fill={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "none"} 
-                                color={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "#cbd5e1"} 
-                              />
-                            ))}
-                          </div>
-                          <span className="rating-reviews-sub">
-                            {activeRevCount > 0 
-                              ? `Based on ${activeRevCount} verified customer ratings`
-                              : "Abhi koi customer rating nahi mili hai"}
-                          </span>
-                        </div>
+                      <div className="shop-products-grid">
+                        {shopProducts.map((p) => {
+                          const img = (Array.isArray(p.images) && p.images[0]) || p.imageUrl || "https://images.unsplash.com/photo-1578844251758-2f71da64c96f?w=300&auto=format&fit=crop&q=80";
+                          const stockNum = p.stock !== undefined && p.stock !== null && p.stock !== "" ? Number(p.stock) : null;
+                          const isOutOfStock = stockNum !== null && stockNum <= 0;
+                          const isLowStock = stockNum !== null && stockNum > 0 && stockNum <= 3;
 
-                        <div className="rating-cta-message">
-                          <h4>Aapne is dukan se tyre ya repair service li hai?</h4>
-                          <p>दुकान की सर्विस और गुणवत्ता के आधार पर अपनी प्रामाणिक रेटिंग एवं अनुभव साझा करें।</p>
-                          <button
-                            type="button"
-                            className="btn-open-rate-modal"
-                            onClick={() => openRatingModal(activeShopProfile)}
-                          >
-                            ⭐ Rate Store (सत्यापित रेटिंग दें)
-                          </button>
-                        </div>
-                      </div>
+                          const discountPercent = (p.originalPrice && (p.offerPrice || p.price) && Number(p.originalPrice) > Number(p.offerPrice || p.price))
+                            ? Math.round(((Number(p.originalPrice) - Number(p.offerPrice || p.price)) / Number(p.originalPrice)) * 100)
+                            : null;
 
-                      {/* Real Reviews List (No fake/dummy reviews) */}
-                      {activeReviews.length > 0 ? (
-                        <div className="reviews-cards-list">
-                          {activeReviews.map((rev) => (
-                            <div key={rev.id} className="customer-review-card">
-                              <div className="review-top-row">
-                                <div className="reviewer-avatar-info">
-                                  <div className="reviewer-avatar-circle">
-                                    {(rev.reviewerName || "Customer").charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <div className="reviewer-name-wrap">
-                                      <strong>{rev.reviewerName || "Verified Customer"}</strong>
-                                      <span className="verified-buyer-pill">
-                                        <CheckCircle2 size={11} /> Verified Customer
-                                      </span>
-                                    </div>
-                                    <span className="review-date-text">{rev.dateStr || "Recently reviewed"}</span>
-                                  </div>
-                                </div>
-
-                                <div className="review-star-pills">
-                                  {[1, 2, 3, 4, 5].map((s) => (
-                                    <Star
-                                      key={s}
-                                      size={14}
-                                      fill={s <= Number(rev.rating) ? "#f59e0b" : "none"}
-                                      color={s <= Number(rev.rating) ? "#f59e0b" : "#cbd5e1"}
-                                    />
-                                  ))}
+                          return (
+                            <div key={p.id} className="shop-prod-card" onClick={(e) => handleOpenProductSpecs(p, e)}>
+                              <div className="shop-prod-img-wrap">
+                                <img src={img} alt={p.productName} className="shop-prod-img" />
+                                <div className="shop-prod-badges-overlay">
+                                  {discountPercent ? (
+                                    <span className="badge-discount">{discountPercent}% OFF</span>
+                                  ) : <span></span>}
+                                  {p.condition === "old" ? (
+                                    <span className="badge-condition used">♻️ Used</span>
+                                  ) : (
+                                    <span className="badge-condition new">✨ New</span>
+                                  )}
                                 </div>
                               </div>
 
-                              {rev.comment && <p className="review-comment-text">"{rev.comment}"</p>}
-
-                              {Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                                <div className="review-tags-row">
-                                  {rev.tags.map((tag, tIdx) => (
-                                    <span key={tIdx} className="review-tag-chip">
-                                      {tag}
-                                    </span>
-                                  ))}
+                              <div className="shop-prod-details">
+                                <span className="shop-prod-brand">{p.brandName || "Tyre"} • {p.sizeName || p.customSize || ""}</span>
+                                <h4 className="shop-prod-title" title={p.productName}>{p.productName}</h4>
+                                
+                                <div className="shop-prod-price-row">
+                                  <span className="shop-prod-offer">₹{p.offerPrice || p.price}</span>
+                                  {p.originalPrice && <span className="shop-prod-mrp">₹{p.originalPrice}</span>}
+                                  {discountPercent && <span className="shop-prod-save-tag">Save ₹{Number(p.originalPrice) - Number(p.offerPrice || p.price)}</span>}
                                 </div>
-                              )}
+
+                                {/* ALAG SE HIGHLIGHTED DEDICATED LIVE STOCK BADGE */}
+                                <div className={`shop-stock-display-box ${isOutOfStock ? "stock-box-out" : isLowStock ? "stock-box-low" : "stock-box-ok"}`}>
+                                  {isOutOfStock ? (
+                                    <div className="stock-content-row">
+                                      <span className="stock-icon">🔴</span>
+                                      <span className="stock-text-main">Out of Stock (0)</span>
+                                    </div>
+                                  ) : isLowStock ? (
+                                    <div className="stock-content-row">
+                                      <span className="stock-icon">⚠️</span>
+                                      <div className="stock-text-group">
+                                        <span className="stock-text-main">Stock: <strong>Only {stockNum} left!</strong></span>
+                                        <span className="stock-subtext">Jaldi book karein</span>
+                                      </div>
+                                    </div>
+                                  ) : stockNum !== null ? (
+                                    <div className="stock-content-row">
+                                      <span className="stock-icon-dot"></span>
+                                      <div className="stock-text-group">
+                                        <span className="stock-text-main">Stock: <strong>{stockNum} Tyres</strong> Available</span>
+                                        <span className="stock-subtext">Ready in shop</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="stock-content-row">
+                                      <span className="stock-icon-dot"></span>
+                                      <span className="stock-text-main">Available in Shop</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Action Buttons Row */}
+                                <div className="shop-prod-actions-row">
+                                  <button
+                                    type="button"
+                                    className="shop-prod-specs-btn"
+                                    onClick={(e) => handleOpenProductSpecs(p, e)}
+                                    title="Tyre Specifications dekhein"
+                                  >
+                                    🔍 Specs
+                                  </button>
+
+                                  {isOutOfStock ? (
+                                    <button
+                                      type="button"
+                                      className="shop-prod-book-btn btn-disabled"
+                                      disabled
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      ❌ Out of Stock
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="shop-prod-book-btn"
+                                      onClick={(e) => handleAddToCart(p, 1, e)}
+                                      title="Cart me add karein"
+                                    >
+                                      🛒 Add to Cart
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          ))}
+                          );
+                        })}
+                      </div>
+
+                      {/* Clean footer hint linking to reviews */}
+                      <div className="shop-tab-footer-hint" onClick={() => setShopActiveTab("reviews")}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Star size={16} fill="#f59e0b" color="#f59e0b" />
+                          <span>Customer Rating: <strong>{activeShopProfile.rating || "5.0"} ⭐</strong> ({activeShopProfile.reviewsCount || 0} Verified Reviews)</span>
                         </div>
-                      ) : (
-                        <div className="no-reviews-empty-box">
-                          <div className="empty-star-icon">
-                            <Star size={36} color="#94a3b8" />
-                          </div>
-                          <h4>Abhi tak is shop ke liye koi review nahi hai</h4>
-                          <p>इस दुकान के लिए अपना प्रामाणिक अनुभव और रेटिंग दर्ज करने वाले पहले ग्राहक बनें!</p>
-                          <button
-                            type="button"
-                            className="btn-open-rate-modal"
-                            onClick={() => openRatingModal(activeShopProfile)}
-                          >
-                            ⭐ Be First to Review (पहला रिव्यू दर्ज करें)
-                          </button>
-                        </div>
-                      )}
+                        <span className="hint-arrow">Read Reviews →</span>
+                      </div>
                     </>
-                  );
-                })()}
-              </div>
+                  ) : (
+                    <div className="no-custom-products-note">
+                      <p>
+                        💡 इस दुकान के लिए स्टैंडर्ड टायर फिटिंग व पंचर रिपेयर सर्विस उपलब्ध है। 
+                        आप नीचे दिए गए बटन से सीधे अपॉइंटमेंट बुक कर सकते हैं।
+                      </p>
+                      <button
+                        type="button"
+                        className="btn-book-main-cta"
+                        onClick={(e) => handleOpenBookingModal(activeShopProfile, "Tyre Service & Fitment", e)}
+                      >
+                        📅 Book Service / Tyre Fitment at {activeShopProfile.name}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab 2: Services Available at this Hub */}
+              {shopActiveTab === "services" && (
+                <div className="shop-body-section">
+                  <div className="section-title-wrap">
+                    <Wrench size={18} color="#c0392b" />
+                    <h3 className="section-heading-text">Services Available at this Hub (सर्विस लिस्ट)</h3>
+                  </div>
+
+                  <div className="services-grid-list">
+                    {(activeShopProfile.servicesOffered || activeShopProfile.services || []).map((service, idx) => (
+                      <div key={idx} className="service-feature-card">
+                        <div className="svc-icon-circle">
+                          <CheckCircle2 size={16} color="#27ae60" />
+                        </div>
+                        <div className="svc-info">
+                          <strong>{service}</strong>
+                          <span>Available at shop & doorstep fitment</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="svc-book-btn"
+                          onClick={(e) => handleOpenBookingModal(activeShopProfile, service, e)}
+                        >
+                          Book This Service
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Customer Ratings & Reviews (ग्राहकों के रिव्यूज) */}
+              {shopActiveTab === "reviews" && (
+                <div className="shop-body-section">
+                  <div className="section-title-wrap" style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Star size={18} color="#f59e0b" fill="#f59e0b" />
+                      <h3 className="section-heading-text">
+                        Customer Ratings & Reviews (ग्राहकों के रिव्यूज)
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-write-review-cta"
+                      onClick={() => openRatingModal(activeShopProfile)}
+                    >
+                      ⭐ Write a Review (सत्यापित रिव्यू लिखें)
+                    </button>
+                  </div>
+
+                  {/* Rating Summary Card */}
+                  {(() => {
+                    const activeReviews = getReviewsForShop(activeShopProfile);
+                    const activeRevCount = activeReviews.length > 0 ? activeReviews.length : (activeShopProfile.reviewsCount || 0);
+                    const activeAvgRating = activeReviews.length > 0 
+                      ? Number((activeReviews.reduce((acc, c) => acc + (Number(c.rating) || 0), 0) / activeReviews.length).toFixed(1))
+                      : (Number(activeShopProfile.rating) || 0);
+
+                    return (
+                      <>
+                        <div className="rating-summary-card">
+                          <div className="rating-score-box">
+                            <span className="big-rating-number">
+                              {activeRevCount > 0 ? activeAvgRating : "0.0"}
+                            </span>
+                            <div className="stars-visual-row">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star 
+                                  key={s} 
+                                  size={18} 
+                                  fill={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "none"} 
+                                  color={activeRevCount > 0 && s <= Math.round(Number(activeAvgRating)) ? "#f59e0b" : "#cbd5e1"} 
+                                />
+                              ))}
+                            </div>
+                            <span className="rating-reviews-sub">
+                              {activeRevCount > 0 
+                                ? `Based on ${activeRevCount} verified customer ratings`
+                                : "Abhi koi customer rating nahi mili hai"}
+                            </span>
+                          </div>
+
+                          <div className="rating-cta-message">
+                            <h4>Aapne is dukan se tyre ya repair service li hai?</h4>
+                            <p>दुकान की सर्विस और गुणवत्ता के आधार पर अपनी प्रामाणिक रेटिंग एवं अनुभव साझा करें।</p>
+                            <button
+                              type="button"
+                              className="btn-open-rate-modal"
+                              onClick={() => openRatingModal(activeShopProfile)}
+                            >
+                              ⭐ Rate Store (सत्यापित रेटिंग दें)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Real Reviews List (No fake/dummy reviews) */}
+                        {activeReviews.length > 0 ? (
+                          <div className="reviews-cards-list">
+                            {activeReviews.map((rev) => (
+                              <div key={rev.id} className="customer-review-card">
+                                <div className="review-top-row">
+                                  <div className="reviewer-avatar-info">
+                                    <div className="reviewer-avatar-circle">
+                                      {(rev.reviewerName || "Customer").charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="reviewer-name-wrap">
+                                        <strong>{rev.reviewerName || "Verified Customer"}</strong>
+                                        <span className="verified-buyer-pill">
+                                          <CheckCircle2 size={11} /> Verified Customer
+                                        </span>
+                                      </div>
+                                      <span className="review-date-text">{rev.dateStr || "Recently reviewed"}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="review-star-pills">
+                                    {[1, 2, 3, 4, 5].map((s) => (
+                                      <Star
+                                        key={s}
+                                        size={14}
+                                        fill={s <= Number(rev.rating) ? "#f59e0b" : "none"}
+                                        color={s <= Number(rev.rating) ? "#f59e0b" : "#cbd5e1"}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {rev.comment && <p className="review-comment-text">"{rev.comment}"</p>}
+
+                                {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                                  <div className="review-tags-row">
+                                    {rev.tags.map((tag, tIdx) => (
+                                      <span key={tIdx} className="review-tag-chip">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="no-reviews-empty-box">
+                            <div className="empty-star-icon">
+                              <Star size={36} color="#94a3b8" />
+                            </div>
+                            <h4>Abhi tak is shop ke liye koi review nahi hai</h4>
+                            <p>इस दुकान के लिए अपना प्रामाणिक अनुभव और रेटिंग दर्ज करने वाले पहले ग्राहक बनें!</p>
+                            <button
+                              type="button"
+                              className="btn-open-rate-modal"
+                              onClick={() => openRatingModal(activeShopProfile)}
+                            >
+                              ⭐ Be First to Review (पहला रिव्यू दर्ज करें)
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -3371,6 +3436,77 @@ export default function StoreLocation() {
           flex-wrap: wrap;
         }
 
+        /* 🏪 Shop Profile Modern Nav Tabs */
+        .shop-profile-nav-tabs {
+          display: flex;
+          background: #f8fafc;
+          border-bottom: 2px solid #e2e8f0;
+          padding: 0 16px;
+          gap: 6px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .shop-profile-nav-tabs::-webkit-scrollbar {
+          display: none;
+        }
+        .shop-tab-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 12px 16px;
+          border: none;
+          background: transparent;
+          color: #64748b;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          border-bottom: 3px solid transparent;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        .shop-tab-btn:hover {
+          color: #c0392b;
+        }
+        .shop-tab-btn.active {
+          color: #c0392b;
+          border-bottom-color: #c0392b;
+          font-weight: 800;
+          background: rgba(192, 57, 43, 0.04);
+        }
+        .tab-pill-count {
+          background: #e2e8f0;
+          color: #475569;
+          font-size: 11px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 10px;
+        }
+        .shop-tab-btn.active .tab-pill-count {
+          background: #fee2e2;
+          color: #c0392b;
+        }
+        .shop-tab-footer-hint {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #fffbeb;
+          border: 1px solid #fde68a;
+          border-radius: 10px;
+          padding: 11px 16px;
+          margin-top: 18px;
+          cursor: pointer;
+          color: #92400e;
+          font-size: 13px;
+          transition: background 0.15s ease;
+        }
+        .shop-tab-footer-hint:hover {
+          background: #fef3c7;
+        }
+        .hint-arrow {
+          font-weight: 800;
+          color: #d97706;
+        }
+
         .contact-action-btn {
           flex: 1;
           min-width: 130px;
@@ -3496,9 +3632,14 @@ export default function StoreLocation() {
 
         /* Review Cards List */
         .reviews-cards-list {
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
           gap: 12px;
+        }
+        @media (max-width: 640px) {
+          .reviews-cards-list {
+            grid-template-columns: 1fr;
+          }
         }
 
         .customer-review-card {
@@ -4002,16 +4143,23 @@ export default function StoreLocation() {
         .shop-prod-img-wrap {
           position: relative;
           width: 100%;
-          height: 110px;
+          height: 125px;
           border-radius: 8px;
           overflow: hidden;
-          background: #f1f5f9;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px;
+          border: 1px solid var(--border, #f1f5f9);
         }
 
         .shop-prod-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
           transition: transform 0.3s ease;
         }
         .shop-prod-card:hover .shop-prod-img {
@@ -4254,16 +4402,22 @@ export default function StoreLocation() {
         .spec-main-img-wrap {
           position: relative;
           width: 100%;
-          height: 180px;
+          height: 200px;
           border-radius: 12px;
           overflow: hidden;
-          background: #f8fafc;
+          background: #ffffff;
           border: 1px solid #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
         }
         .spec-main-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
         }
         .spec-img-badges {
           position: absolute;
@@ -4283,17 +4437,22 @@ export default function StoreLocation() {
           border-radius: 8px;
           overflow: hidden;
           border: 2px solid transparent;
-          padding: 0;
+          padding: 2px;
           cursor: pointer;
-          background: #f1f5f9;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .spec-thumb-btn.active {
           border-color: #c0392b;
         }
         .spec-thumb-btn img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
         }
 
         .spec-stock-banner {

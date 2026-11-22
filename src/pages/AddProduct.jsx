@@ -57,7 +57,7 @@ export default function AddProduct() {
   const [loading, setLoading] = useState(edit);
   const [uploadingSlot, setUploadingSlot] = useState(null);
 
-  // Form State with 4 photo slots (Clean empty state)
+  // Form State with 4 photo slots (Clean state for step-by-step filling)
   const [form, setForm] = useState({
     productType: "tyre",
     condition: "new", // 'new' or 'old'
@@ -73,7 +73,7 @@ export default function AddProduct() {
     productName: "",
     description: "",
     images: ["", "", "", ""], // 4 dedicated photo slots
-    tyreType: "Tubeless",
+    tyreType: "",
     warranty: "",
     tubeSize: "",
     valveType: "TR",
@@ -130,19 +130,24 @@ export default function AddProduct() {
       if (field === "categoryKey") {
         const found = TYRE_CATEGORIES.find((c) => c.id === value);
         updated.categoryName = found ? found.name : value;
-        const newVehicles = VEHICLE_TYPES[value] || [];
-        const newSizes = POPULAR_SIZES[value] || [];
-        updated.vehicleTypeName = newVehicles[0] || "";
-        updated.sizeName = newSizes[0] || "";
+        // Reset sub-selections so user can pick step-by-step for the new category
+        updated.vehicleTypeName = "";
+        updated.sizeName = "";
+        updated.customSize = "";
+        updated.modelName = "";
+        updated.customModel = "";
+        const brand = updated.brandName === "OTHER" ? (updated.customBrand || "") : (updated.brandName || "");
+        updated.productName = brand.trim();
       }
 
-      // Auto synthesize product title
+      // Auto synthesize product title step-by-step as fields are filled
       if (["brandName", "modelName", "sizeName", "categoryKey", "customBrand", "customSize", "customModel"].includes(field)) {
-        const brand = updated.brandName === "OTHER" ? updated.customBrand : updated.brandName;
-        const model = updated.modelName === "OTHER" ? updated.customModel : updated.modelName;
-        const size = updated.sizeName === "OTHER" ? updated.customSize : updated.sizeName;
+        const brand = updated.brandName === "OTHER" ? (updated.customBrand || "") : (updated.brandName || "");
+        const model = updated.modelName === "OTHER" ? (updated.customModel || "") : (updated.modelName || "");
+        const size = updated.sizeName === "OTHER" ? (updated.customSize || "") : (updated.sizeName || "");
         if (updated.productType === "tyre") {
-          updated.productName = `${brand || ""} ${model || ""} ${size || ""}`.trim();
+          const parts = [brand, model, size].filter(Boolean);
+          updated.productName = parts.length > 0 ? parts.join(" ") : "";
         }
       }
 
@@ -216,10 +221,21 @@ export default function AddProduct() {
   const handleSubmit = async (e, isDraft = false) => {
     e.preventDefault();
 
-    const finalBrand = form.brandName === "OTHER" ? form.customBrand : form.brandName;
-    const finalSize = form.sizeName === "OTHER" ? form.customSize : form.sizeName;
+    const finalBrand = form.brandName === "OTHER" ? (form.customBrand || "") : form.brandName;
+    const finalSize = form.sizeName === "OTHER" ? (form.customSize || "") : form.sizeName;
     const finalModel = form.modelName === "OTHER" ? form.customModel : form.modelName;
     const finalTitle = form.productType === "service" ? form.serviceName : (form.productName || `${finalBrand} ${finalSize}`).trim();
+
+    if (form.productType === "tyre") {
+      if (!finalBrand) {
+        alert("कृपया टायर का ब्रांड (Brand) चुनें!");
+        return;
+      }
+      if (!finalSize) {
+        alert("कृपया टायर का साइज़ (Size) चुनें!");
+        return;
+      }
+    }
 
     if (!finalTitle) {
       alert("Please enter a valid product / service name!");
@@ -369,6 +385,7 @@ export default function AddProduct() {
                   onChange={(e) => updateField("vehicleTypeName", e.target.value)}
                   className="smart-select"
                 >
+                  <option value="">-- गाड़ी का मॉडल चुनें (Select Vehicle Type) --</option>
                   {currentVehicleTypes.map((v, i) => (
                     <option key={i} value={v}>
                       {v}
@@ -386,6 +403,7 @@ export default function AddProduct() {
                     onChange={(e) => updateField("brandName", e.target.value)}
                     className="smart-select"
                   >
+                    <option value="">-- ब्रांड चुनें (Select Brand) --</option>
                     {MEGA_MENU_BRANDS.map((b, i) => (
                       <option key={i} value={b.name}>
                         {b.name}
@@ -414,6 +432,7 @@ export default function AddProduct() {
                     onChange={(e) => updateField("sizeName", e.target.value)}
                     className="smart-select"
                   >
+                    <option value="">-- साइज चुनें (Select Size) --</option>
                     {currentSizes.map((s, i) => (
                       <option key={i} value={s}>
                         {s}
@@ -444,6 +463,7 @@ export default function AddProduct() {
                     onChange={(e) => updateField("modelName", e.target.value)}
                     className="smart-select"
                   >
+                    <option value="">-- Optional / Select Tread Pattern (पैटर्न चुनें) --</option>
                     {POPULAR_PATTERNS.map((p, i) => (
                       <option key={i} value={p}>
                         {p}
@@ -470,6 +490,7 @@ export default function AddProduct() {
                     onChange={(e) => updateField("tyreType", e.target.value)}
                     className="smart-select"
                   >
+                    <option value="">-- Construction चुनें (वैकल्पिक) --</option>
                     <option value="Tubeless">Tubeless (ट्यूबलेस)</option>
                     <option value="Tube Type">Tube Type (ट्यूब वाला)</option>
                     <option value="Radial">Radial Steel Belted</option>
@@ -726,52 +747,187 @@ export default function AddProduct() {
               ))}
             </div>
 
-            {/* Product Meta */}
-            <div className="preview-body">
-              <span className="preview-category-badge">{form.categoryName || "Vehicle Category"}</span>
-              <h3 className="preview-product-title">
-                {form.productType === "service" 
-                  ? (form.serviceName || "सर्विस का नाम...") 
-                  : (form.productName || "उत्पाद का नाम (ऑटो जनरेट होगा)...")}
-              </h3>
+            {/* Product Meta & Full Specifications Preview */}
+            {(() => {
+              const brandVal = form.brandName === "OTHER" ? form.customBrand : form.brandName;
+              const sizeVal = form.sizeName === "OTHER" ? form.customSize : form.sizeName;
+              const modelVal = form.modelName === "OTHER" ? form.customModel : form.modelName;
 
-              <div className="preview-price-box">
-                {form.offerPrice ? (
-                  <>
-                    <span className="preview-offer-price">₹{form.offerPrice}</span>
-                    {Number(form.originalPrice) > Number(form.offerPrice) && (
-                      <span className="preview-mrp">₹{form.originalPrice}</span>
+              const titleParts = [brandVal, modelVal, sizeVal].filter(Boolean);
+              const autoTitle = titleParts.length > 0 ? titleParts.join(" ") : "";
+              const displayTitle = form.productType === "service" 
+                ? (form.serviceName || "सर्विस का नाम दर्ज करें...") 
+                : (form.productName || autoTitle || "उत्पाद का नाम (Brand और Size चुनें)");
+
+              const isTitlePlaceholder = !form.productName && !autoTitle;
+
+              return (
+                <div className="preview-body">
+                  {/* Badges Row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
+                    <span className="preview-category-badge">{form.categoryName || "Vehicle Category"}</span>
+                    {form.condition === "old" ? (
+                      <span style={{ fontSize: "11px", fontWeight: 700, background: "#fef3c7", color: "#d97706", padding: "2px 8px", borderRadius: "12px", border: "1px solid #fde68a" }}>
+                        ♻️ Second Hand / Re-treaded
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: "11px", fontWeight: 700, background: "#ecfdf5", color: "#059669", padding: "2px 8px", borderRadius: "12px", border: "1px solid #a7f3d0" }}>
+                        ✨ Brand New (नया)
+                      </span>
                     )}
-                  </>
-                ) : (
-                  <span className="preview-offer-price" style={{ color: "var(--text-muted)", fontSize: "16px" }}>
-                    ₹ -- (दाम दर्ज करें)
-                  </span>
-                )}
-              </div>
+                    {form.tyreType && (
+                      <span style={{ fontSize: "11px", fontWeight: 700, background: "#f1f5f9", color: "#475569", padding: "2px 8px", borderRadius: "12px" }}>
+                        {form.tyreType}
+                      </span>
+                    )}
+                  </div>
 
-              <div className="preview-features-list">
-                <div className="preview-feature-item">
-                  <strong>🏷️ Brand:</strong> {form.brandName === "OTHER" ? (form.customBrand || "Custom") : (form.brandName || "चुनें")}
-                </div>
-                {form.sizeName && (
-                  <div className="preview-feature-item">
-                    <strong>📏 Size:</strong> {form.sizeName === "OTHER" ? (form.customSize || "Custom") : form.sizeName}
+                  <h3 className="preview-product-title" style={{ color: isTitlePlaceholder ? "var(--text-muted)" : "var(--text)", fontWeight: isTitlePlaceholder ? 600 : 800 }}>
+                    {displayTitle}
+                  </h3>
+
+                  <div className="preview-price-box">
+                    {form.offerPrice ? (
+                      <>
+                        <span className="preview-offer-price">₹{Number(form.offerPrice).toLocaleString('en-IN')}</span>
+                        {Number(form.originalPrice) > Number(form.offerPrice) && (
+                          <>
+                            <span className="preview-mrp">₹{Number(form.originalPrice).toLocaleString('en-IN')}</span>
+                            <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#c0392b", background: "#fdedec", padding: "2px 7px", borderRadius: "6px" }}>
+                              Save ₹{(Number(form.originalPrice) - Number(form.offerPrice)).toLocaleString('en-IN')} ({discountPercent}% OFF)
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="preview-offer-price" style={{ color: "var(--text-muted)", fontSize: "16px" }}>
+                        ₹ -- (दाम दर्ज करें)
+                      </span>
+                    )}
                   </div>
-                )}
-                {form.productType !== "service" && (
-                  <div className="preview-feature-item">
-                    <strong>📦 Stock:</strong>{" "}
-                    <span style={{ color: Number(form.stock) > 0 ? "#27ae60" : "var(--text-muted)", fontWeight: 700 }}>
-                      {Number(form.stock) > 0 ? `${form.stock} Pieces in Stock` : (form.stock === "" ? "संख्या दर्ज करें" : "Out of Stock")}
-                    </span>
+
+                  {/* 📋 Complete Technical Specifications List */}
+                  <div className="preview-features-list">
+                    <div style={{ fontSize: "11px", fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+                      📋 Full Specifications (पूरी तकनीकी जानकारी):
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>🏷️ Brand (ब्रांड):</strong>
+                      <span>{brandVal ? brandVal : <span style={{ color: "#94a3b8" }}>— (ब्रांड चुनें)</span>}</span>
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>📏 Tyre Size (साइज):</strong>
+                      <span>{sizeVal ? sizeVal : <span style={{ color: "#94a3b8" }}>— (साइज चुनें)</span>}</span>
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>🚗 Vehicle Type (गाड़ी का मॉडल):</strong>
+                      <span>{form.vehicleTypeName ? form.vehicleTypeName : <span style={{ color: "#94a3b8" }}>— (मॉडल चुनें)</span>}</span>
+                    </div>
+
+                    {modelVal && (
+                      <div className="preview-feature-item">
+                        <strong>⚙️ Pattern (पैटर्न):</strong>
+                        <span>{modelVal}</span>
+                      </div>
+                    )}
+
+                    <div className="preview-feature-item">
+                      <strong>🔧 Construction (टाइप):</strong>
+                      <span>{form.tyreType ? form.tyreType : <span style={{ color: "#94a3b8" }}>— (टाइप चुनें)</span>}</span>
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>🆕 Condition (हालत):</strong>
+                      <span>{form.condition === "old" ? "♻️ Re-mould / Second Hand" : "✨ Brand New (Fresh Batch)"}</span>
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>🛡️ Warranty (वारंटी):</strong>
+                      <span>{form.warranty ? form.warranty : <span style={{ color: "#94a3b8" }}>— (वैकल्पिक दर्ज करें)</span>}</span>
+                    </div>
+
+                    {form.productType !== "service" && (
+                      <div className="preview-feature-item">
+                        <strong>📦 Stock Status (स्टॉक):</strong>
+                        <span style={{ color: form.stock === "" ? "#94a3b8" : Number(form.stock) > 0 ? (Number(form.stock) <= 3 ? "#d97706" : "#16a34a") : "#dc2626", fontWeight: 700 }}>
+                          {form.stock === "" ? (
+                            "संख्या दर्ज करें"
+                          ) : Number(form.stock) > 0 ? (
+                            Number(form.stock) <= 3 ? `⚠️ Only ${form.stock} Left in Stock` : `🟢 ${form.stock} Pieces Available in Shop`
+                          ) : (
+                            "🔴 Out of Stock"
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="preview-feature-item">
+                      <strong>🏪 Partner Shop:</strong>
+                      <span>{activeProfile?.shopName || "Tyre Saathi Official Hub"}</span>
+                    </div>
+
+                    <div className="preview-feature-item">
+                      <strong>📍 Location:</strong>
+                      <span>{activeProfile?.city || "Raipur, Chhattisgarh"}</span>
+                    </div>
                   </div>
-                )}
-                <div className="preview-feature-item">
-                  <strong>🏪 Shop:</strong> {activeProfile?.shopName || "आपकी दुकान का नाम"}
+
+                  {/* 🛒 Live Customer Action Buttons Simulation */}
+                  <div style={{ marginTop: "14px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          flex: 1,
+                          background: "linear-gradient(135deg, #c0392b 0%, #e74c3c 100%)",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "9px 12px",
+                          fontWeight: 700,
+                          fontSize: "12.5px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "5px",
+                          cursor: "default"
+                        }}
+                      >
+                        🛒 Add to Cart
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        style={{
+                          flex: 1,
+                          background: "var(--card-subtle, #f1f5f9)",
+                          color: "var(--text-main)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "8px",
+                          padding: "9px 12px",
+                          fontWeight: 700,
+                          fontSize: "12.5px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "5px",
+                          cursor: "default"
+                        }}
+                      >
+                        📅 Book Fitment
+                      </button>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center" }}>
+                      🔒 यह कार्ड ग्राहक को वेबसाइट व ऐप पर 100% ऐसा ही दिखेगा
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -1269,9 +1425,9 @@ export default function AddProduct() {
           color: var(--text-muted);
         }
         .preview-thumb img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
         }
         .preview-body {
           padding: 18px 20px;
@@ -1309,13 +1465,36 @@ export default function AddProduct() {
         .preview-features-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          font-size: 0.92rem;
+          gap: 4px;
+          font-size: 0.88rem;
           color: var(--text);
           background: var(--bg);
           padding: 12px 14px;
-          border-radius: 10px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+        }
+        .preview-feature-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 5px 0;
+          border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+          font-size: 12px;
+          gap: 8px;
+        }
+        .preview-feature-item:last-child {
+          border-bottom: none;
+        }
+        .preview-feature-item strong {
+          color: var(--text-muted);
           font-weight: 600;
+          flex-shrink: 0;
+        }
+        .preview-feature-item span {
+          font-weight: 700;
+          color: var(--text);
+          text-align: right;
+          word-break: break-word;
         }
 
         @media (max-width: 640px) {

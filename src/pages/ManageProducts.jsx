@@ -472,6 +472,15 @@ export default function ManageProducts() {
                         {item.sizeName && (
                           <span className="spec-chip">📏 {item.sizeName}</span>
                         )}
+                        {item.vehicleTypeName && (
+                          <span className="spec-chip">🚗 {item.vehicleTypeName}</span>
+                        )}
+                        {item.modelName && (
+                          <span className="spec-chip">⚙️ {item.modelName}</span>
+                        )}
+                        {item.tyreType && (
+                          <span className="spec-chip">🔧 {item.tyreType}</span>
+                        )}
                         {item.condition && (
                           <span className="spec-chip">{item.condition === "old" ? "♻️ Used" : "✨ Brand New"}</span>
                         )}

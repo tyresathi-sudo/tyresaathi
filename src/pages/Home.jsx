@@ -34,6 +34,7 @@ export default function Home() {
   const { isVendor, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchSize, setSearchSize] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedVehicleType, setSelectedVehicleType] = useState("Car");
   const [searchBrand, setSearchBrand] = useState("all");
   const [shopAds, setShopAds] = useState(() => {
@@ -139,13 +140,28 @@ export default function Home() {
     };
   }, []);
 
+  // 🏪 Live Suggestions for Shops matching user input on Home Page
+  const suggestedShops = useMemo(() => {
+    const q = searchSize.toLowerCase().trim();
+    if (!q || q.length < 2) return [];
+    const queryWords = q.split(/\s+/).filter(Boolean);
+
+    return (SAMPLE_SHOPS || []).filter((s) => {
+      const sName = (s.name || s.shopName || "").toLowerCase();
+      const sOwner = (s.ownerName || "").toLowerCase();
+      const sCity = (s.city || "").toLowerCase();
+      const combined = `${sName} ${sOwner} ${sCity}`;
+      return queryWords.every((w) => combined.includes(w)) || queryWords.some((w) => w.length >= 3 && sName.includes(w));
+    }).slice(0, 4);
+  }, [searchSize]);
+
   const handleHeroSearch = (e) => {
     e.preventDefault();
+    setShowSuggestions(false);
     let url = "/search?";
     if (searchSize.trim()) url += `q=${encodeURIComponent(searchSize.trim())}&`;
-    if (selectedVehicleType) url += `vehicle=${encodeURIComponent(selectedVehicleType)}&`;
     if (searchBrand !== "all") url += `brand=${encodeURIComponent(searchBrand)}&`;
-    navigate(url);
+    navigate(url.replace(/[?&]$/, ""));
   };
 
   const activeAds = useMemo(() => {
@@ -185,14 +201,46 @@ export default function Home() {
 
           {/* Quick Search Widget */}
           <form className="hero-search-card" onSubmit={handleHeroSearch}>
-            <div className="search-field-unit">
-              <label>TYRE SIZE / VEHICLE</label>
+            <div className="search-field-unit" style={{ position: "relative" }}>
+              <label>TYRE SIZE, VEHICLE OR SHOP NAME</label>
               <input
                 type="text"
-                placeholder="e.g. 195/55 R16, SUV, KA 01 0622"
+                placeholder="e.g. Bharat Tyre, 10.00-20, Apollo, Raipur..."
                 value={searchSize}
-                onChange={(e) => setSearchSize(e.target.value)}
+                onChange={(e) => {
+                  setSearchSize(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 250)}
               />
+
+              {/* 🏪 Live Suggestions Panel when typing Shop Name / Tyre Size */}
+              {showSuggestions && suggestedShops.length > 0 && (
+                <div className="search-auto-suggestions-panel">
+                  <div className="sugg-header">🏪 Matching Verified Partner Shops:</div>
+                  {suggestedShops.map((shop) => (
+                    <div 
+                      key={shop.id || shop.uid} 
+                      className="sugg-item"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setShowSuggestions(false);
+                        navigate(`/store-location?shopId=${shop.id || shop.uid}&shopName=${encodeURIComponent(shop.name || shop.shopName)}`);
+                      }}
+                    >
+                      <div className="sugg-left">
+                        <span className="sugg-icon">🏪</span>
+                        <div>
+                          <div className="sugg-title">{shop.name || shop.shopName}</div>
+                          <div className="sugg-sub">📍 {shop.city} • 👤 {shop.ownerName || ""}</div>
+                        </div>
+                      </div>
+                      <span className="sugg-action">Open Store ➔</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="search-field-unit">
@@ -593,6 +641,74 @@ export default function Home() {
           color: #94a3b8;
           font-size: 14.5px;
         }
+
+        /* 🏪 Auto-Suggestions Dropdown Panel */
+        .search-auto-suggestions-panel {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #ffffff;
+          border-radius: 12px;
+          border: 1.5px solid #cbd5e1;
+          box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+          margin-top: 6px;
+          z-index: 100;
+          overflow: hidden;
+          color: #0f172a;
+        }
+        .sugg-header {
+          font-size: 11px;
+          font-weight: 800;
+          color: #64748b;
+          text-transform: uppercase;
+          background: #f8fafc;
+          padding: 8px 14px;
+          border-bottom: 1px solid #e2e8f0;
+          letter-spacing: 0.4px;
+        }
+        .sugg-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          border-bottom: 1px solid #f1f5f9;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .sugg-item:last-child {
+          border-bottom: none;
+        }
+        .sugg-item:hover {
+          background: #fef2f2;
+        }
+        .sugg-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .sugg-icon {
+          font-size: 20px;
+        }
+        .sugg-title {
+          font-size: 14px;
+          font-weight: 800;
+          color: #0f172a;
+        }
+        .sugg-sub {
+          font-size: 11.5px;
+          color: #64748b;
+          margin-top: 2px;
+        }
+        .sugg-action {
+          font-size: 12px;
+          font-weight: 700;
+          color: #c0392b;
+          background: #fee2e2;
+          padding: 4px 9px;
+          border-radius: 6px;
+          white-space: nowrap;
+        }
         .vehicle-pills-selector {
           display: flex;
           gap: 8px;
@@ -901,13 +1017,25 @@ export default function Home() {
         }
         .product-image-box {
           position: relative;
-          height: 190px;
-          background: #f8f9fa;
+          height: 200px;
+          background: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          padding: 10px;
+          border-bottom: 1px solid #f1f5f9;
         }
         .product-image-box img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+          max-width: 100%;
+          max-height: 100%;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+          transition: transform 0.3s ease;
+        }
+        .home-product-card:hover .product-image-box img {
+          transform: scale(1.04);
         }
         .dist-badge {
           position: absolute;
